@@ -1,0 +1,176 @@
+from typing import List, Optional
+from .models import Announcement, AnnouncementCreate, AnnouncementUpdate
+from ...shared.clients.public_data_client import PublicDataAPIClient
+from ...core.database import get_database
+from bson import ObjectId
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+class AnnouncementService:
+    """사업공고 서비스"""
+    
+    def __init__(self, db=None):
+        self.db = db or get_database()
+        self.collection = self.db.announcements
+    
+    def fetch_and_save_announcements(
+        self, 
+        page_no: int = 1, 
+        num_of_rows: int = 10,
+        business_name: Optional[str] = None,
+        business_type: Optional[str] = None
+    ) -> List[Announcement]:
+        """공공데이터에서 사업공고 정보를 가져와 저장"""
+        announcements = []
+        
+        try:
+            # 공공데이터 API 호출
+            with PublicDataAPIClient() as client:
+                response = client.get_announcement_information(
+                    page_no=page_no,
+                    num_of_rows=num_of_rows,
+                    business_name=business_name,
+                    business_type=business_type
+                )
+                
+                logger.info(f"API 응답: {response.total_count}건 중 {response.current_count}건 조회")
+                
+                # 응답 데이터 처리
+                for item in response.data:
+                    try:
+                        # 공공데이터 응답을 우리 모델에 맞게 변환
+                        announcement_data = self._transform_api_data(item)
+                        
+                        # 중복 체크
+                        business_id = announcement_data.get("business_id")
+                        if business_id:
+                            existing = self.collection.find_one({
+                                "announcement_data.business_id": business_id
+                            })
+                            
+                            if existing:
+                                logger.info(f"기존 사업공고 스킵: {announcement_data.get('business_name')}")
+                                continue
+                        
+                        # 새 공고 저장
+                        announcement = Announcement(
+                            announcement_data=announcement_data,
+                            source_url=f"공공데이터포털-사업공고-{business_id or 'unknown'}"
+                        )
+                        
+                        result = self.collection.insert_one(announcement.dict(by_alias=True))
+                        announcement.id = str(result.inserted_id)
+                        announcements.append(announcement)
+                        
+                        logger.info(f"새로운 사업공고 저장: {announcement_data.get('business_name')}")
+                        
+                    except Exception as e:
+                        logger.error(f"데이터 변환/저장 오류: {e}, 데이터: {item}")
+                        continue
+                        
+        except Exception as e:
+            logger.error(f"공공데이터 API 호출 실패: {e}")
+            # API 호출 실패시 빈 리스트 반환
+            
+        return announcements
+    
+    def _transform_api_data(self, api_item: dict) -> dict:
+        """공공데이터 API 응답을 내부 모델로 변환"""
+        # XML에서 파싱된 실제 필드명에 맞게 매핑
+        return {
+            "business_id": api_item.get("pbanc_no") or api_item.get("biz_no"),
+            "business_name": api_item.get("intg_pbanc_biz_nm") or api_item.get("biz_nm"),
+            "business_type": api_item.get("biz_clsf") or "창업지원",
+            "business_overview": api_item.get("biz_cn") or api_item.get("intg_pbanc_biz_nm"),
+            "support_target": api_item.get("sprt_trgt") or api_item.get("aply_trgt"),
+            "recruitment_period": f"{api_item.get('aply_bgng_dt', '')} ~ {api_item.get('aply_end_dt', '')}".strip(' ~'),
+            "application_method": api_item.get("aply_mthd_onli_rcpt_istc") or "온라인 접수",
+            "contact_info": api_item.get("pbanc_ntrp_nm") or api_item.get("biz_prch_dprt_nm"),
+            "announcement_date": self._parse_date(api_item.get("pbanc_dt")),
+            "deadline": self._parse_date(api_item.get("aply_end_dt")),
+            "status": api_item.get("pbanc_sttus") or "모집중"
+        }
+    
+    def _parse_date(self, date_str):
+        """날짜 문자열을 datetime 객체로 변환"""
+        if not date_str:
+            return None
+        try:
+            # 다양한 날짜 형식 처리 (실제 API 응답에 맞게 조정)
+            from datetime import datetime
+            if isinstance(date_str, str):
+                # YYYYMMDD 형식 처리
+                if len(date_str) == 8 and date_str.isdigit():
+                    return datetime.strptime(date_str, "%Y%m%d")
+                # YYYY-MM-DD 형식 처리
+                elif "-" in date_str:
+                    return datetime.strptime(date_str[:10], "%Y-%m-%d")
+            return None
+        except Exception:
+            return None
+    
+    def get_announcements(
+        self, 
+        skip: int = 0, 
+        limit: int = 20,
+        is_active: bool = True
+    ) -> List[Announcement]:
+        """저장된 사업공고 목록 조회"""
+        cursor = self.collection.find({"is_active": is_active}).skip(skip).limit(limit)
+        announcements = []
+        for doc in cursor:
+            # ObjectId를 문자열로 변환
+            if "_id" in doc:
+                doc["_id"] = str(doc["_id"])
+            announcements.append(Announcement(**doc))
+        return announcements
+    
+    def get_announcement_by_id(self, announcement_id: str) -> Optional[Announcement]:
+        """ID로 사업공고 조회"""
+        try:
+            doc = self.collection.find_one({"_id": ObjectId(announcement_id)})
+            if doc:
+                doc["_id"] = str(doc["_id"])
+                return Announcement(**doc)
+            return None
+        except Exception:
+            return None
+    
+    def create_announcement(self, announcement_data: AnnouncementCreate) -> Announcement:
+        """새 사업공고 생성"""
+        announcement = Announcement(**announcement_data.dict())
+        result = self.collection.insert_one(announcement.dict(by_alias=True))
+        announcement.id = str(result.inserted_id)
+        return announcement
+    
+    def update_announcement(
+        self, 
+        announcement_id: str, 
+        update_data: AnnouncementUpdate
+    ) -> Optional[Announcement]:
+        """사업공고 수정"""
+        update_dict = {k: v for k, v in update_data.dict().items() if v is not None}
+        if not update_dict:
+            return None
+            
+        try:
+            self.collection.update_one(
+                {"_id": ObjectId(announcement_id)},
+                {"$set": update_dict}
+            )
+            return self.get_announcement_by_id(announcement_id)
+        except Exception:
+            return None
+    
+    def delete_announcement(self, announcement_id: str) -> bool:
+        """사업공고 삭제 (비활성화)"""
+        try:
+            result = self.collection.update_one(
+                {"_id": ObjectId(announcement_id)},
+                {"$set": {"is_active": False}}
+            )
+            return result.modified_count > 0
+        except Exception:
+            return False

@@ -1,0 +1,56 @@
+{
+    "mcpServers": {
+      "ghost-mcp": {
+          "command": "node",
+          "args": ["/home/data-sketchers/dev/ghost/mcp/ghost-mcp/build/server.js"],
+          "env": {
+              "GHOST_API_URL": "https://blog.sinbum.com",
+              "GHOST_ADMIN_API_KEY": "68792160c450c800018f0c5e:c799b22877945bd1d1ab952499ad07f19154afe350653d58b27ec943c52b45cd",
+              "GHOST_API_VERSION": "v5.0"
+          }
+        }, "task-master": {
+          "type": "stdio",
+          "command": "npx",
+          "args": [
+              "-y",
+              "--package=task-master-ai",
+              "task-master-ai"
+          ],
+          "env": {}
+      },
+      "notionApi": {
+          "command": "npx",
+          "args": [
+              "-y",
+              "@notionhq/notion-mcp-server"
+          ],
+          "env": {
+              "OPENAPI_MCP_HEADERS": "{\"Authorization\": \"Bearer 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\", \"Notion-Version\": \"2022-06-28\" }"
+          }
+      },
+      "sequential-thinking": {
+          "command": "npx",
+          "args": [
+              "-y",
+              "@modelcontextprotocol/server-sequential-thinking"
+          ]
+      },
+      "naver-search": {
+      "command": "node",
+      "args": ["/home/data-sketchers/dev/ghost/mcp/naver-search-mcp/dist/src/index.js"],
+      "env": {
+        "NAVER_CLIENT_ID": "zIouO5J7u_BuuA1eGYEA",
+        "NAVER_CLIENT_SECRET": "BgYJsRhL56"
+      }
+    },
+    "exa": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "mcp-remote",
+          "https://mcp.exa.ai/mcp?exaApiKey=6e434ebf-ab45-4a00-b208-c27a18fcdc2f"
+
+        ]
+      }
+    }
+  }
