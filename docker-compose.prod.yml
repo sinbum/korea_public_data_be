@@ -1,0 +1,228 @@
+services:
+  # MongoDB 프로덕션 환경
+  mongodb:
+    image: mongo:6.0
+    container_name: korea_mongodb_prod
+    restart: always
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+      - MONGO_INITDB_DATABASE=${MONGO_INITDB_DATABASE}
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./volumes/mongodb/data:/data/db
+      - ./volumes/mongodb/configdb:/data/configdb
+      - ./scripts/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    networks:
+      - korea_api_network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
+
+  # Redis 프로덕션 환경
+  redis:
+    image: redis:7-alpine
+    container_name: korea_redis_prod
+    restart: always
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./volumes/redis/data:/data
+    networks:
+      - korea_api_network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+
+  # API 서버 프로덕션 환경
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGODB_URL=mongodb://api_user:api_password@mongodb:27017/korea_public_api
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_NAME=${DATABASE_NAME:-korea_public_api}
+      - PUBLIC_DATA_API_KEY=${PUBLIC_DATA_API_KEY}
+      - PUBLIC_DATA_API_KEY_DECODE=${PUBLIC_DATA_API_KEY_DECODE}
+      - API_BASE_URL=${API_BASE_URL}
+      - DEBUG=False
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./volumes/logs:/app/logs
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - korea_api_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+      replicas: 2
+
+  # Nginx 로드 밸런서 (프로덕션)
+  nginx:
+    image: nginx:alpine
+    container_name: korea_nginx_prod
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./volumes/logs/nginx:/var/log/nginx
+    depends_on:
+      - api
+    networks:
+      - korea_api_network
+
+  # Celery Worker 프로덕션 환경
+  celery_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    restart: always
+    command: celery -A app.core.celery worker --loglevel=info --concurrency=4
+    environment:
+      - MONGODB_URL=mongodb://api_user:api_password@mongodb:27017/korea_public_api
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_NAME=${DATABASE_NAME:-korea_public_api}
+      - PUBLIC_DATA_API_KEY=${PUBLIC_DATA_API_KEY}
+      - PUBLIC_DATA_API_KEY_DECODE=${PUBLIC_DATA_API_KEY_DECODE}
+      - DEBUG=False
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./volumes/logs:/app/logs
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - korea_api_network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+      replicas: 2
+
+  # Celery Beat 프로덕션 환경
+  celery_beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: korea_celery_beat_prod
+    restart: always
+    command: celery -A app.core.celery beat --loglevel=info
+    environment:
+      - MONGODB_URL=mongodb://api_user:api_password@mongodb:27017/korea_public_api
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_NAME=${DATABASE_NAME:-korea_public_api}
+      - PUBLIC_DATA_API_KEY=${PUBLIC_DATA_API_KEY}
+      - PUBLIC_DATA_API_KEY_DECODE=${PUBLIC_DATA_API_KEY_DECODE}
+      - DEBUG=False
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./volumes/logs:/app/logs
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - korea_api_network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  # Celery Flower 프로덕션 환경 (선택적)
+  flower:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: korea_celery_flower_prod
+    restart: always
+    command: celery -A app.core.celery flower --port=5555 --basic_auth=admin:${FLOWER_PASSWORD:-secure_password}
+    ports:
+      - "5555:5555"
+    environment:
+      - MONGODB_URL=mongodb://api_user:api_password@mongodb:27017/korea_public_api
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./volumes/logs:/app/logs
+    depends_on:
+      - redis
+    networks:
+      - korea_api_network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  # 모니터링: Prometheus (선택적)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: korea_prometheus_prod
+    restart: always
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./volumes/prometheus:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - korea_api_network
+
+  # 모니터링: Grafana (선택적)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: korea_grafana_prod
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+    volumes:
+      - ./volumes/grafana:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - korea_api_network
+
+networks:
+  korea_api_network:
+    driver: bridge
+

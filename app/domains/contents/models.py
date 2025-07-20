@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
-from ...shared.models import BaseDocument
+from ...shared.models.base import BaseDocument
 
 
 class ContentData(BaseModel):

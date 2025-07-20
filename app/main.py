@@ -9,6 +9,7 @@ import uvicorn
 from .core.config import settings
 from .core.database import connect_to_mongo, close_mongo_connection
 from .domains.announcements.router import router as announcements_router
+# from .domains.data_sources.router import router as data_sources_router
 from .shared.exceptions import (
     http_exception_handler,
     validation_exception_handler,
@@ -30,14 +31,21 @@ async def lifespan(app: FastAPI):
     """애플리케이션 생명주기 관리"""
     # 시작시 실행
     logger.info("애플리케이션 시작 중...")
-    connect_to_mongo()
+    try:
+        connect_to_mongo()
+        logger.info("MongoDB 연결 성공")
+    except Exception as e:
+        logger.warning(f"MongoDB 연결 실패, 나중에 재시도: {e}")
     logger.info("애플리케이션 시작 완료")
     
     yield
     
     # 종료시 실행
     logger.info("애플리케이션 종료 중...")
-    close_mongo_connection()
+    try:
+        close_mongo_connection()
+    except Exception as e:
+        logger.error(f"MongoDB 연결 종료 중 오류: {e}")
     logger.info("애플리케이션 종료 완료")
 
 
@@ -103,17 +111,12 @@ app.add_exception_handler(StarletteHTTPException, http_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(Exception, general_exception_handler)
 
-# MongoDB 연결 초기화
-try:
-    connect_to_mongo()
-    logger.info("MongoDB 연결 성공")
-except Exception as e:
-    logger.error(f"MongoDB 연결 실패: {e}")
-    # 일단 서버는 시작하되 연결 오류는 로그로만 남김
+# MongoDB 연결은 lifespan에서 처리
 
 
 # 라우터 등록
 app.include_router(announcements_router, prefix="/api/v1")
+# app.include_router(data_sources_router, prefix="/api/v1")
 
 # TODO: 다른 도메인 라우터들도 추가
 # app.include_router(contents_router, prefix="/api/v1")

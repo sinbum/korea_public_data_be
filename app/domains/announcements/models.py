@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
-from ...shared.models import BaseDocument
+from ...shared.models.base import BaseDocument
 
 
 class AnnouncementData(BaseModel):
@@ -79,13 +79,19 @@ class AnnouncementData(BaseModel):
     }
 
 
-class Announcement(BaseDocument):
+class Announcement(BaseModel):
     """사업공고 MongoDB 문서 모델"""
+    id: Optional[str] = Field(None, alias="_id", description="고유 식별자")
     announcement_data: AnnouncementData
     source_url: Optional[str] = Field(None, description="원본 URL")
     is_active: bool = Field(True, description="활성 상태")
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
     
-    model_config = {"collection": "announcements"}
+    model_config = {
+        "populate_by_name": True,
+        "collection": "announcements"
+    }
 
 
 class AnnouncementCreate(BaseModel):

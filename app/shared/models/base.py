@@ -4,6 +4,25 @@ from datetime import datetime
 from bson import ObjectId
 
 
+class APIResponse(BaseModel):
+    """기본 API 응답 모델"""
+    success: bool = Field(..., description="요청 성공 여부")
+    message: str = Field(..., description="응답 메시지")
+    error_code: Optional[str] = Field(None, description="오류 코드")
+    timestamp: datetime = Field(default_factory=datetime.utcnow, description="응답 시간")
+    
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "success": True,
+                "message": "요청이 성공적으로 처리되었습니다.",
+                "error_code": None,
+                "timestamp": "2024-03-15T10:30:00Z"
+            }
+        }
+    }
+
+
 class PyObjectId(ObjectId):
     @classmethod
     def __get_pydantic_core_schema__(cls, source_type, handler):

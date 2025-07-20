@@ -43,16 +43,26 @@ class AnnouncementService:
                         # 공공데이터 응답을 우리 모델에 맞게 변환
                         announcement_data = self._transform_api_data(item)
                         
-                        # 중복 체크
+                        # 중복 체크 - business_id 또는 business_name으로 중복 확인
                         business_id = announcement_data.get("business_id")
+                        business_name = announcement_data.get("business_name")
+                        
+                        # business_id가 있으면 우선적으로 체크
                         if business_id:
                             existing = self.collection.find_one({
                                 "announcement_data.business_id": business_id
                             })
+                        # business_id가 없으면 business_name으로 체크
+                        elif business_name:
+                            existing = self.collection.find_one({
+                                "announcement_data.business_name": business_name
+                            })
+                        else:
+                            existing = None
                             
-                            if existing:
-                                logger.info(f"기존 사업공고 스킵: {announcement_data.get('business_name')}")
-                                continue
+                        if existing:
+                            logger.info(f"기존 사업공고 스킵: {announcement_data.get('business_name')}")
+                            continue
                         
                         # 새 공고 저장
                         announcement = Announcement(
@@ -79,18 +89,41 @@ class AnnouncementService:
     def _transform_api_data(self, api_item: dict) -> dict:
         """공공데이터 API 응답을 내부 모델로 변환"""
         # XML에서 파싱된 실제 필드명에 맞게 매핑
+        # 로그에서 확인한 실제 응답 필드를 기반으로 매핑
+        
+        business_name = (api_item.get("intg_pbanc_biz_nm") or 
+                        api_item.get("biz_pbanc_nm") or 
+                        api_item.get("biz_nm"))
+        
+        # 지원대상 정보 통합
+        support_target = (api_item.get("aply_trgt") or 
+                         api_item.get("aply_trgt_ctnt") or 
+                         api_item.get("sprt_trgt"))
+        
+        # 신청 방법 통합
+        application_method = (api_item.get("aply_mthd_onli_rcpt_istc") or 
+                             api_item.get("biz_gdnc_url") or 
+                             api_item.get("biz_aply_url") or "온라인 접수")
+        
+        # 모집기간 설정
+        start_date = api_item.get("pbanc_rcpt_bgng_dt", "")
+        end_date = api_item.get("pbanc_rcpt_end_dt", "")
+        recruitment_period = ""
+        if start_date or end_date:
+            recruitment_period = f"{start_date} ~ {end_date}".strip(' ~')
+        
         return {
-            "business_id": api_item.get("pbanc_no") or api_item.get("biz_no"),
-            "business_name": api_item.get("intg_pbanc_biz_nm") or api_item.get("biz_nm"),
-            "business_type": api_item.get("biz_clsf") or "창업지원",
-            "business_overview": api_item.get("biz_cn") or api_item.get("intg_pbanc_biz_nm"),
-            "support_target": api_item.get("sprt_trgt") or api_item.get("aply_trgt"),
-            "recruitment_period": f"{api_item.get('aply_bgng_dt', '')} ~ {api_item.get('aply_end_dt', '')}".strip(' ~'),
-            "application_method": api_item.get("aply_mthd_onli_rcpt_istc") or "온라인 접수",
+            "business_id": api_item.get("pbanc_sn") or api_item.get("id"),  # 사업공고 일련번호 사용
+            "business_name": business_name,
+            "business_type": api_item.get("supt_biz_clsfc") or "창업지원",  # 지원사업분류
+            "business_overview": api_item.get("pbanc_ctnt") or business_name,  # 공고내용
+            "support_target": support_target,
+            "recruitment_period": recruitment_period,
+            "application_method": application_method,
             "contact_info": api_item.get("pbanc_ntrp_nm") or api_item.get("biz_prch_dprt_nm"),
-            "announcement_date": self._parse_date(api_item.get("pbanc_dt")),
-            "deadline": self._parse_date(api_item.get("aply_end_dt")),
-            "status": api_item.get("pbanc_sttus") or "모집중"
+            "announcement_date": self._parse_date(api_item.get("pbanc_rcpt_bgng_dt")),
+            "deadline": self._parse_date(api_item.get("pbanc_rcpt_end_dt")),
+            "status": "모집중" if api_item.get("rcrt_prgs_yn") == "Y" else "모집종료"
         }
     
     def _parse_date(self, date_str):
