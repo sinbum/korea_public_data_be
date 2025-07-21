@@ -256,8 +256,8 @@ class DataSourceService:
                 "key_value": "dZPAMSikx/yXGzz01oPffs614BnJw5g1h8H7GGJ905JdAbCZsLsQaAfA8bMtLtsNrmYL1dNMvb+j1o4aoaNu1w=="
             },
             default_params={
-                "page": 0,
-                "perPage": 100
+                "page": 1,
+                "perPage": 10
             },
             field_mappings=[
                 FieldMapping(

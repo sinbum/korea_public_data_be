@@ -47,22 +47,8 @@ class AnnouncementService:
                         business_id = announcement_data.get("business_id")
                         business_name = announcement_data.get("business_name")
                         
-                        # business_id가 있으면 우선적으로 체크
-                        if business_id:
-                            existing = self.collection.find_one({
-                                "announcement_data.business_id": business_id
-                            })
-                        # business_id가 없으면 business_name으로 체크
-                        elif business_name:
-                            existing = self.collection.find_one({
-                                "announcement_data.business_name": business_name
-                            })
-                        else:
-                            existing = None
-                            
-                        if existing:
-                            logger.info(f"기존 사업공고 스킵: {announcement_data.get('business_name')}")
-                            continue
+                        # 중복 체크 임시 비활성화 - 강제 저장
+                        logger.info(f"강제 저장 시도: {announcement_data.get('business_name')}")
                         
                         # 새 공고 저장
                         announcement = Announcement(
@@ -70,7 +56,9 @@ class AnnouncementService:
                             source_url=f"공공데이터포털-사업공고-{business_id or 'unknown'}"
                         )
                         
-                        result = self.collection.insert_one(announcement.dict(by_alias=True))
+                        # dict()로 변환 시 _id 필드 제거 (MongoDB가 자동 생성하도록)
+                        announcement_dict = announcement.dict(by_alias=True, exclude={"id"})
+                        result = self.collection.insert_one(announcement_dict)
                         announcement.id = str(result.inserted_id)
                         announcements.append(announcement)
                         
@@ -154,9 +142,11 @@ class AnnouncementService:
         cursor = self.collection.find({"is_active": is_active}).skip(skip).limit(limit)
         announcements = []
         for doc in cursor:
-            # ObjectId를 문자열로 변환
+            # ObjectId를 문자열로 변환하고 id 필드로 설정
             if "_id" in doc:
-                doc["_id"] = str(doc["_id"])
+                doc["id"] = str(doc["_id"])
+                # _id 필드는 제거하여 중복 방지
+                del doc["_id"]
             announcements.append(Announcement(**doc))
         return announcements
     
@@ -165,7 +155,10 @@ class AnnouncementService:
         try:
             doc = self.collection.find_one({"_id": ObjectId(announcement_id)})
             if doc:
-                doc["_id"] = str(doc["_id"])
+                # ObjectId를 문자열로 변환하고 id 필드로 설정
+                doc["id"] = str(doc["_id"])
+                # _id 필드는 제거하여 중복 방지
+                del doc["_id"]
                 return Announcement(**doc)
             return None
         except Exception:
@@ -174,7 +167,9 @@ class AnnouncementService:
     def create_announcement(self, announcement_data: AnnouncementCreate) -> Announcement:
         """새 사업공고 생성"""
         announcement = Announcement(**announcement_data.dict())
-        result = self.collection.insert_one(announcement.dict(by_alias=True))
+        # dict()로 변환 시 _id 필드 제거 (MongoDB가 자동 생성하도록)
+        announcement_dict = announcement.dict(by_alias=True, exclude={"id"})
+        result = self.collection.insert_one(announcement_dict)
         announcement.id = str(result.inserted_id)
         return announcement
     

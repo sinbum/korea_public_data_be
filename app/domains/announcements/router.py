@@ -91,7 +91,7 @@ def fetch_announcements(
             status_code=500, 
             detail=f"데이터 수집 중 오류가 발생했습니다: {str(e)}"
         )
-
+ 
 
 @router.get(
     "/",
