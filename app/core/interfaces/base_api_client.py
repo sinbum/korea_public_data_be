@@ -128,9 +128,9 @@ class BaseAPIClient(ABC, Generic[T]):
         async with httpx.AsyncClient(
             timeout=self.timeout,
             limits=httpx.Limits(max_keepalive_connections=5, max_connections=10)
-        ) as client:
+        ) as async_client:
             old_client = self.client
-            self.client = client
+            self.client = async_client
             try:
                 yield self
             finally:
@@ -175,10 +175,13 @@ class BaseAPIClient(ABC, Generic[T]):
             
         except Exception as e:
             logger.error(f"API request failed: {e}")
+            status_code = getattr(e, 'status_code', None)
+            if status_code is None:
+                status_code = 500
             return APIResponse[T](
                 success=False,
                 error=str(e),
-                status_code=getattr(e, 'status_code', 500)
+                status_code=status_code
             )
     
     def _preprocess_request(
@@ -300,10 +303,13 @@ class BaseAPIClient(ABC, Generic[T]):
             
         except Exception as e:
             logger.error(f"Async API request failed: {e}")
+            status_code = getattr(e, 'status_code', None)
+            if status_code is None:
+                status_code = 500
             return APIResponse[T](
                 success=False,
                 error=str(e),
-                status_code=getattr(e, 'status_code', 500)
+                status_code=status_code
             )
     
     async def _make_async_request_with_retry(self, request_params: Dict[str, Any]) -> httpx.Response:
@@ -315,7 +321,7 @@ class BaseAPIClient(ABC, Generic[T]):
                     raise APIClientError("Client not initialized. Use async context manager.")
                 
                 # Use the async client for async requests
-                if hasattr(self.client, 'request'):
+                if hasattr(self.client, 'arequest') or isinstance(self.client, httpx.AsyncClient):
                     response = await self.client.request(**request_params)
                 else:
                     # Fallback to sync if not async client

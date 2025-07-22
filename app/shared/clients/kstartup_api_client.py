@@ -197,7 +197,7 @@ class KStartupAPIClient(BaseAPIClient[PublicDataResponse]):
                     original_data=response_data
                 )
     
-    def _parse_response_data(self, content: str) -> List[Dict[str, Any]]:
+    def _parse_response_data(self, content: str) -> Dict[str, Any]:
         """Parse XML response content to structured data"""
         try:
             root = ET.fromstring(content)
@@ -222,8 +222,15 @@ class KStartupAPIClient(BaseAPIClient[PublicDataResponse]):
                         item_data[name] = value
                     data_items.append(item_data)
             
-            # Return only the data items to match the List[Dict[str, Any]] signature
-            return data_items
+            # Return structured response data including metadata and items
+            return {
+                "currentCount": current_count,
+                "matchCount": match_count,
+                "totalCount": total_count,
+                "page": page,
+                "perPage": per_page,
+                "data": data_items
+            }
             
         except ET.ParseError as e:
             logger.error(f"XML parsing error: {e}")
