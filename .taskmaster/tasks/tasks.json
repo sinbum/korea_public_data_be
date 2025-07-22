@@ -149,7 +149,7 @@
         "dependencies": [
           1
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -157,7 +157,7 @@
             "description": "MongoDB 데이터 접근을 위한 기본 Repository 추상 클래스를 설계하고 구현합니다. 공통 CRUD 연산, 페이징, 정렬, 필터링 기능을 포함한 베이스 인터페이스를 정의합니다.",
             "dependencies": [],
             "details": "app/repositories/base.py 파일에 BaseRepository 추상 클래스 구현. Motor 비동기 MongoDB 클라이언트를 활용한 기본 CRUD 메서드(create, get_by_id, update, delete, find_many) 정의. 페이징을 위한 PaginationParams 클래스와 SortParams 클래스 구현. 제네릭 타입을 활용하여 다양한 모델에 대응할 수 있도록 설계.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "BaseRepository의 각 메서드에 대한 단위 테스트 작성, MongoDB 인메모리 테스트 환경 구축"
           },
           {
@@ -168,7 +168,7 @@
               "3.1"
             ],
             "details": "BaseRepository에 with_transaction 데코레이터 또는 컨텍스트 매니저 구현. 데이터 검증을 위한 validate_data 메서드 구현. Pydantic 모델과 MongoDB 문서 간 변환을 위한 to_dict, from_dict 메서드 구현. 에러 핸들링 및 롤백 로직 포함.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "트랜잭션 커밋/롤백 테스트, 데이터 검증 실패 시나리오 테스트, 동시성 테스트"
           },
           {
@@ -179,7 +179,7 @@
               "3.2"
             ],
             "details": "app/repositories/announcement.py에 AnnouncementRepository 구현. 공고 검색, 카테고리별 필터링, 날짜 범위 검색 메서드 구현. app/repositories/data_source.py에 DataSourceRepository 구현. 데이터 소스 상태별 조회, API 키 검증, 엔드포인트 유효성 검사 메서드 구현.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "각 Repository의 도메인 특화 메서드 테스트, 실제 데이터를 활용한 통합 테스트"
           },
           {
@@ -190,7 +190,7 @@
               "3.3"
             ],
             "details": "BaseRepository에 aggregate 메서드 구현으로 복잡한 집계 쿼리 지원. 전문 검색을 위한 text_search 메서드 구현. 다중 조건 필터링을 위한 build_filter_query 헬퍼 메서드 구현. 검색 성능 최적화를 위한 인덱스 힌트 및 explain 기능 추가.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "복잡한 집계 쿼리 테스트, 텍스트 검색 정확도 테스트, 다중 필터 조합 테스트"
           },
           {
@@ -201,7 +201,7 @@
               "3.4"
             ],
             "details": "app/dependencies/database.py에 MongoDB 연결 관리 및 Repository 인스턴스 생성 함수 구현. FastAPI Depends를 활용한 의존성 주입 설정. 데이터베이스 연결 풀 관리 및 헬스체크 엔드포인트 구현. 기존 서비스 파일들을 Repository 패턴으로 리팩토링.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "의존성 주입 테스트, 데이터베이스 연결 라이프사이클 테스트, 서비스 계층 통합 테스트"
           }
         ]
@@ -218,7 +218,7 @@
           2,
           3
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -226,7 +226,7 @@
             "description": "dependency-injector와 FastAPI Depends 중 프로젝트에 적합한 의존성 주입 방식을 선택하고 기본 컨테이너 구조를 설정합니다.",
             "dependencies": [],
             "details": "dependency-injector 라이브러리 설치 및 설정, Container 클래스 구현, 기본 의존성 바인딩 설정. pyproject.toml에 의존성 추가하고 app/core/container.py 파일에 DI 컨테이너 구현. Configuration, Database 등 핵심 의존성들을 컨테이너에 등록.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "컨테이너 인스턴스화 테스트, 기본 의존성 바인딩 검증"
           },
           {
@@ -237,7 +237,7 @@
               "4.1"
             ],
             "details": "BaseRepository, BaseService 클래스들을 DI 컨테이너에 등록, 생성자 기반 의존성 주입 구현. 서비스 클래스에서 리포지토리를 직접 인스턴스화하지 않고 컨테이너를 통해 주입받도록 수정. app/services와 app/repositories 패키지의 모든 클래스를 DI 시스템에 통합.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "서비스-리포지토리 간 의존성 주입 테스트, 순환 의존성 검증"
           },
           {
@@ -248,7 +248,7 @@
               "4.2"
             ],
             "details": "app/api/dependencies.py 파일 생성, get_container() 함수 구현하여 FastAPI Depends와 DI 컨테이너 연결. API 라우터에서 Depends를 통해 서비스 인스턴스를 주입받도록 수정. 각 API 엔드포인트 함수의 매개변수로 서비스 의존성을 Depends로 선언.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "API 엔드포인트 의존성 주입 테스트, FastAPI 테스트 클라이언트를 통한 통합 테스트"
           },
           {
@@ -259,7 +259,7 @@
               "4.3"
             ],
             "details": "config/environments 디렉토리에 환경별 설정 파일 생성, Environment enum 클래스 구현. 환경 변수에 따라 다른 DI 설정을 로드하는 ContainerFactory 구현. 데이터베이스, 캐시, 외부 API 클라이언트 등의 환경별 구성을 컨테이너에서 관리.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "환경별 컨테이너 설정 테스트, 설정 파일 로딩 검증"
           },
           {
@@ -270,7 +270,7 @@
               "4.4"
             ],
             "details": "tests/conftest.py에 테스트용 컨테이너 설정, MockRepository, MockService 클래스들을 테스트 컨테이너에 바인딩. pytest fixture를 통해 테스트별로 다른 Mock 객체를 주입할 수 있도록 구현. unittest.mock과 연동하여 동적 Mock 생성 지원.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Mock 객체 주입 테스트, 테스트 격리성 검증, Mock과 실제 객체 간 인터페이스 일관성 테스트"
           }
         ]
@@ -286,7 +286,7 @@
           3,
           4
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -294,7 +294,7 @@
             "description": "데이터 소스의 메타데이터와 설정 정보를 저장하기 위한 DataSource 모델과 MongoDB 스키마를 설계하고 구현",
             "dependencies": [],
             "details": "DataSource 모델에 name, type, endpoint_url, api_key, auth_type, status, created_at, updated_at, config(JSON) 필드 포함. BaseDocument를 상속받아 구현하고, 인덱스 설정으로 name과 type에 대한 복합 인덱스 생성. auth_type은 enum으로 API_KEY, OAUTH, BASIC_AUTH 등 지원.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "모델 필드 검증 테스트, 스키마 제약조건 테스트, 인덱스 성능 테스트"
           },
           {
@@ -305,7 +305,7 @@
               "5.1"
             ],
             "details": "BaseRepository를 상속받아 DataSourceRepository 구현. create, read, update, delete, find_by_type, find_active_sources, update_status 메서드 구현. 페이징 및 정렬 기능 포함. 데이터 소스 설정 검증 로직 추가.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "CRUD 연산 테스트, 검색 및 필터링 기능 테스트, 예외 처리 테스트"
           },
           {
@@ -316,7 +316,7 @@
               "5.1"
             ],
             "details": "DataSourceClientFactory 클래스 구현으로 데이터 소스 타입에 따라 적절한 클라이언트 인스턴스를 생성. AbstractFactory 패턴을 활용하여 확장 가능한 구조 구축. 클라이언트 타입별 설정 검증 및 초기화 로직 포함.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Factory 패턴 테스트, 클라이언트 생성 테스트, 타입별 설정 검증 테스트"
           },
           {
@@ -328,7 +328,7 @@
               "5.3"
             ],
             "details": "DataSourceMonitor 클래스로 주기적인 헬스체크 수행. asyncio를 활용한 비동기 상태 확인, 응답시간 측정, 연결 실패 시 재시도 로직. 상태 변경 시 로깅 및 알림 기능. Celery를 활용한 백그라운드 태스크로 구현.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "헬스체크 테스트, 상태 업데이트 테스트, 모니터링 스케줄링 테스트"
           },
           {
@@ -341,7 +341,7 @@
               "5.4"
             ],
             "details": "DataSourceService 클래스로 비즈니스 로직 구현. 데이터 소스 등록 시 설정 검증, 중복 체크, 테스트 연결 수행. 활성화/비활성화 시 의존성 확인. 설정 변경 시 관련 캐시 무효화. 트랜잭션 처리로 데이터 일관성 보장.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "서비스 메서드 단위 테스트, 비즈니스 로직 검증 테스트, 트랜잭션 테스트"
           }
         ]
@@ -357,7 +357,7 @@
           2,
           5
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -365,7 +365,7 @@
             "description": "다양한 데이터 소스별 API 클라이언트를 생성하고 관리하는 팩토리 패턴과 레지스트리 시스템 구현",
             "dependencies": [],
             "details": "APIClientFactory 클래스를 구현하여 데이터 소스 타입에 따른 적절한 클라이언트 인스턴스 생성. 클라이언트 레지스트리를 통한 싱글톤 패턴 적용으로 인스턴스 재사용. 설정 기반 클라이언트 초기화 및 동적 클라이언트 등록 기능. typing 모듈을 활용한 제네릭 타입 지원.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "팩토리 패턴 테스트, 클라이언트 레지스트리 테스트, 동적 등록 기능 테스트"
           },
           {
@@ -376,7 +376,7 @@
               "6.1"
             ],
             "details": "API Key, OAuth2, JWT 등 다양한 인증 방식 지원하는 AuthenticationManager 구현. 자격 증명 보안 저장 및 관리, 토큰 자동 갱신 로직. 환경 변수 및 설정 파일 기반 인증 정보 관리. 인증 실패 시 재시도 및 오류 처리 로직.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "다양한 인증 방식 테스트, 토큰 갱신 테스트, 인증 실패 시나리오 테스트"
           },
           {
@@ -387,7 +387,7 @@
               "6.2"
             ],
             "details": "Token Bucket 알고리즘 기반 Rate Limiter 구현, API별 호출 제한 설정. Circuit Breaker 패턴으로 연속 실패 시 자동 차단 및 복구 로직. 백오프 전략과 jitter 적용한 재시도 메커니즘. 상태 모니터링 및 메트릭 수집 기능.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Rate Limiting 동작 테스트, Circuit Breaker 상태 전환 테스트, 복구 로직 테스트"
           },
           {
@@ -398,7 +398,7 @@
               "6.3"
             ],
             "details": "Redis 기반 응답 캐싱 시스템 구현, TTL 및 캐시 키 전략 설정. 지수 백오프와 최대 재시도 횟수 제한하는 재시도 로직. 캐시 미스 시 API 호출 및 결과 캐싱, 캐시 무효화 전략. 응답 데이터 압축 및 직렬화 최적화.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "캐싱 히트/미스 테스트, 재시도 로직 테스트, 캐시 무효화 테스트"
           },
           {
@@ -409,7 +409,7 @@
               "6.4"
             ],
             "details": "asyncio와 aiohttp를 활용한 비동기 API 클라이언트 구현. 동시 호출 제한 및 세마포어 기반 동시성 제어. 표준화된 예외 클래스 정의 및 에러 코드 매핑. 구조화된 로깅과 에러 추적, 타임아웃 처리 및 연결 풀 관리.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "비동기 호출 테스트, 동시성 제어 테스트, 에러 처리 시나리오 테스트, 타임아웃 테스트"
           }
         ]
@@ -424,7 +424,7 @@
         "dependencies": [
           6
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -432,7 +432,7 @@
             "description": "Pydantic 기반 데이터 모델을 정의하고 입력 데이터의 검증 및 정규화를 수행하는 모듈을 구현합니다.",
             "dependencies": [],
             "details": "Pydantic BaseModel을 상속받은 데이터 스키마 클래스들을 정의합니다. 필드 검증 규칙, 타입 변환, 기본값 설정을 포함합니다. 데이터 정규화를 위한 validator 함수들을 구현하고, 잘못된 데이터 형식에 대한 예외 처리를 추가합니다. src/pipeline/validation.py와 src/models/pipeline.py 파일을 생성합니다.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "다양한 입력 데이터 형식에 대한 검증 테스트, 정규화 결과 검증, 예외 상황 처리 테스트"
           },
           {
@@ -443,7 +443,7 @@
               "7.1"
             ],
             "details": "해시 기반 중복 감지 알고리즘을 구현하고, 필드별 유사도 검사 로직을 추가합니다. 데이터 완성도, 일관성, 정확성을 검증하는 품질 검사 함수들을 구현합니다. 품질 점수 계산 및 임계값 기반 필터링 기능을 포함합니다. src/pipeline/quality.py 파일을 생성합니다.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "중복 데이터 감지 정확도 테스트, 품질 점수 계산 검증, 필터링 로직 테스트"
           },
           {
@@ -454,7 +454,7 @@
               "7.2"
             ],
             "details": "다양한 데이터 형식 간 변환 함수들을 구현합니다. 외부 API나 참조 데이터를 활용한 데이터 보강 로직을 추가합니다. 지리 정보 표준화, 날짜 형식 통일, 카테고리 매핑 등의 변환 규칙을 구현합니다. src/pipeline/enrichment.py 파일을 생성합니다.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "데이터 변환 결과 검증, enrichment 정확도 테스트, 외부 의존성 Mock 테스트"
           },
           {
@@ -467,7 +467,7 @@
               "7.3"
             ],
             "details": "Pipeline, PipelineStep 추상 클래스를 정의하고, 각 처리 단계를 체인으로 연결하는 구조를 구현합니다. 단계별 에러 처리, 롤백 메커니즘, 처리 결과 로깅을 포함합니다. 설정 기반으로 파이프라인 구성을 변경할 수 있도록 합니다. src/pipeline/engine.py 파일을 생성합니다.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "파이프라인 실행 흐름 테스트, 에러 처리 및 롤백 테스트, 설정 기반 구성 테스트"
           },
           {
@@ -478,7 +478,7 @@
               "7.4"
             ],
             "details": "asyncio를 활용한 비동기 파이프라인 실행기를 구현합니다. 배치 처리, 병렬 처리, 백프레셔 제어 기능을 추가합니다. 처리 진행률 모니터링, 메트릭 수집, 알림 기능을 포함합니다. Celery 또는 asyncio.Queue를 활용한 작업 큐 시스템을 구축합니다. src/pipeline/async_processor.py 파일을 생성합니다.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "비동기 처리 성능 테스트, 동시성 테스트, 메모리 사용량 모니터링 테스트"
           }
         ]
@@ -1040,7 +1040,7 @@
     ],
     "metadata": {
       "created": "2025-07-21T23:49:16.210Z",
-      "updated": "2025-07-22T02:33:28.357Z",
+      "updated": "2025-07-22T05:10:32.761Z",
       "description": "Tasks for master context"
     }
   }
