@@ -13,14 +13,23 @@ import logging
 from contextlib import asynccontextmanager
 from pydantic import BaseModel
 
+from ...shared.exceptions import (
+    APIClientError,
+    create_api_exception_from_response,
+    create_network_exception_from_httpx_error
+)
+from .retry_strategies import (
+    RetryStrategy,
+    ExponentialBackoffStrategy,
+    RetryExecutor
+)
+
 logger = logging.getLogger(__name__)
 
 T = TypeVar('T')
 
 
-class APIClientError(Exception):
-    """Base exception for API client errors"""
-    pass
+# APIClientError is now imported from shared.exceptions
 
 
 class AuthenticationStrategy(ABC):
@@ -88,12 +97,19 @@ class BaseAPIClient(ABC, Generic[T]):
         base_url: str,
         auth_strategy: AuthenticationStrategy,
         timeout: int = 30,
-        max_retries: int = 3
+        max_retries: int = 3,
+        retry_strategy: Optional[RetryStrategy] = None
     ):
         self.base_url = base_url.rstrip('/')
         self.auth_strategy = auth_strategy
         self.timeout = timeout
         self.max_retries = max_retries
+        self.retry_strategy = retry_strategy or ExponentialBackoffStrategy(
+            max_attempts=max_retries + 1,
+            base_delay=1.0,
+            max_delay=30.0
+        )
+        self.retry_executor = RetryExecutor(self.retry_strategy)
         self.client: Optional[httpx.Client] = None
     
     def __enter__(self):
@@ -193,31 +209,27 @@ class BaseAPIClient(ABC, Generic[T]):
         return request_params
     
     def _make_request_with_retry(self, request_params: Dict[str, Any]) -> httpx.Response:
-        """Make HTTP request with retry logic"""
-        last_exception = None
+        """Make HTTP request with advanced retry logic"""
         
-        for attempt in range(self.max_retries + 1):
+        def make_single_request() -> httpx.Response:
             try:
                 if not self.client:
                     raise APIClientError("Client not initialized. Use context manager.")
                 
                 response = self.client.request(**request_params)
                 
-                # Check for HTTP errors
+                # Convert HTTP errors to appropriate exceptions
                 if response.status_code >= 400:
-                    logger.warning(f"HTTP {response.status_code}: {response.text}")
-                    if response.status_code >= 500 and attempt < self.max_retries:
-                        continue  # Retry on server errors
+                    raise create_api_exception_from_response(response)
                 
                 return response
                 
-            except Exception as e:
-                last_exception = e
-                if attempt < self.max_retries:
-                    logger.warning(f"Request failed (attempt {attempt + 1}): {e}")
-                    continue
+            except httpx.HTTPError as e:
+                # Convert httpx errors to our custom exceptions
+                raise create_network_exception_from_httpx_error(e)
         
-        raise APIClientError(f"Request failed after {self.max_retries + 1} attempts: {last_exception}")
+        operation_name = f"{request_params.get('method', 'REQUEST')} {request_params.get('url', 'unknown')}"
+        return self.retry_executor.execute_sync(make_single_request, operation_name)
     
     def _postprocess_response(self, response: httpx.Response) -> Dict[str, Any]:
         """Hook method for response post-processing"""
@@ -295,10 +307,9 @@ class BaseAPIClient(ABC, Generic[T]):
             )
     
     async def _make_async_request_with_retry(self, request_params: Dict[str, Any]) -> httpx.Response:
-        """Make async HTTP request with retry logic"""
-        last_exception = None
+        """Make async HTTP request with advanced retry logic"""
         
-        for attempt in range(self.max_retries + 1):
+        async def make_single_async_request() -> httpx.Response:
             try:
                 if not self.client:
                     raise APIClientError("Client not initialized. Use async context manager.")
@@ -310,23 +321,18 @@ class BaseAPIClient(ABC, Generic[T]):
                     # Fallback to sync if not async client
                     response = self.client.request(**request_params)
                 
-                # Check for HTTP errors
+                # Convert HTTP errors to appropriate exceptions
                 if response.status_code >= 400:
-                    logger.warning(f"HTTP {response.status_code}: {response.text}")
-                    if response.status_code >= 500 and attempt < self.max_retries:
-                        await asyncio.sleep(2 ** attempt)  # Exponential backoff
-                        continue  # Retry on server errors
+                    raise create_api_exception_from_response(response)
                 
                 return response
                 
-            except Exception as e:
-                last_exception = e
-                if attempt < self.max_retries:
-                    logger.warning(f"Async request failed (attempt {attempt + 1}): {e}")
-                    await asyncio.sleep(2 ** attempt)
-                    continue
+            except httpx.HTTPError as e:
+                # Convert httpx errors to our custom exceptions
+                raise create_network_exception_from_httpx_error(e)
         
-        raise APIClientError(f"Async request failed after {self.max_retries + 1} attempts: {last_exception}")
+        operation_name = f"ASYNC {request_params.get('method', 'REQUEST')} {request_params.get('url', 'unknown')}"
+        return await self.retry_executor.execute_async(make_single_async_request, operation_name)
     
     async def async_get(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> APIResponse[T]:
         """Async GET request convenience method"""

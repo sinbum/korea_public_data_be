@@ -14,9 +14,18 @@ from ...core.interfaces.base_api_client import (
     APIResponse, 
     RequestMethod
 )
+from ...core.interfaces.retry_strategies import (
+    ExponentialBackoffStrategy,
+    RetryCondition
+)
 from .strategies import GovernmentAPIKeyStrategy
 from ...core.config import settings
 from ..models.base import PublicDataResponse
+from ..exceptions import (
+    DataParsingError,
+    DataTransformationError,
+    APIResponseError
+)
 
 logger = logging.getLogger(__name__)
 
@@ -33,16 +42,47 @@ class KStartupAPIClient(BaseAPIClient[KStartupAPIResponse]):
     Handles XML/JSON responses and K-Startup specific data formats.
     """
     
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(
+        self, 
+        api_key: Optional[str] = None,
+        use_aggressive_retry: bool = False
+    ):
         auth_strategy = GovernmentAPIKeyStrategy(
             api_key or settings.public_data_api_key
         )
+        
+        # Configure retry strategy for K-Startup API specifics
+        if use_aggressive_retry:
+            retry_strategy = ExponentialBackoffStrategy(
+                max_attempts=5,
+                base_delay=1.0,
+                max_delay=60.0,
+                multiplier=2.0,
+                retry_conditions=[
+                    RetryCondition.ON_SERVER_ERROR,
+                    RetryCondition.ON_TIMEOUT,
+                    RetryCondition.ON_NETWORK_ERROR,
+                    RetryCondition.ON_RATE_LIMIT
+                ]
+            )
+        else:
+            retry_strategy = ExponentialBackoffStrategy(
+                max_attempts=3,
+                base_delay=1.0,
+                max_delay=30.0,
+                retry_conditions=[
+                    RetryCondition.ON_SERVER_ERROR,
+                    RetryCondition.ON_TIMEOUT,
+                    RetryCondition.ON_NETWORK_ERROR
+                ]
+            )
         
         super().__init__(
             base_url=settings.api_base_url,
             auth_strategy=auth_strategy,
             timeout=30,
-            max_retries=3
+            max_retries=3,
+            retry_strategy=retry_strategy
         )
     
     def _preprocess_request(
@@ -129,11 +169,24 @@ class KStartupAPIClient(BaseAPIClient[KStartupAPIResponse]):
             
         except Exception as e:
             logger.error(f"Response transformation failed: {e}")
-            return APIResponse[KStartupAPIResponse](
-                success=False,
-                error=f"Response transformation failed: {str(e)}",
-                status_code=response_data.get("status_code", 500)
-            )
+            
+            # Create specific exception based on error type
+            if "json" in str(e).lower() or "xml" in str(e).lower():
+                error_msg = f"Data parsing failed: {str(e)}"
+                raise DataParsingError(
+                    error_msg,
+                    data_format="json/xml",
+                    parser_type="KStartupAPIClient",
+                    raw_content=response_data.get("content", "")
+                )
+            else:
+                error_msg = f"Response transformation failed: {str(e)}"
+                raise DataTransformationError(
+                    error_msg,
+                    source_format="http_response",
+                    target_format="KStartupAPIResponse",
+                    original_data=response_data
+                )
     
     def _parse_response_data(self, content: str) -> List[Dict[str, Any]]:
         """Parse XML response content to structured data"""
@@ -165,8 +218,12 @@ class KStartupAPIClient(BaseAPIClient[KStartupAPIResponse]):
             
         except ET.ParseError as e:
             logger.error(f"XML parsing error: {e}")
-            # Return empty structure for malformed XML
-            return []
+            raise DataParsingError(
+                f"XML parsing failed: {str(e)}",
+                data_format="xml",
+                parser_type="ElementTree",
+                raw_content=content
+            )
     
     def _process_json_response(self, json_data: Dict[str, Any]) -> Dict[str, Any]:
         """Process JSON response data"""
