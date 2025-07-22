@@ -21,6 +21,13 @@ from ...core.interfaces.retry_strategies import (
 from .strategies import GovernmentAPIKeyStrategy
 from ...core.config import settings
 from ..models.base import PublicDataResponse
+from ..models.kstartup import (
+    KStartupAnnouncementResponse,
+    KStartupBusinessResponse,
+    KStartupContentResponse,
+    KStartupStatisticsResponse,
+    validate_kstartup_response_data
+)
 from ..exceptions import (
     DataParsingError,
     DataTransformationError,
@@ -30,12 +37,10 @@ from ..exceptions import (
 logger = logging.getLogger(__name__)
 
 
-class KStartupAPIResponse(PublicDataResponse):
-    """K-Startup specific API response model"""
-    pass
+# KStartupAPIResponse is now imported from models.kstartup
 
 
-class KStartupAPIClient(BaseAPIClient[KStartupAPIResponse]):
+class KStartupAPIClient(BaseAPIClient[PublicDataResponse]):
     """
     K-Startup API client implementing BaseAPIClient.
     
@@ -156,12 +161,16 @@ class KStartupAPIClient(BaseAPIClient[KStartupAPIResponse]):
                 # Fall back to XML parsing
                 parsed_data = self._parse_response_data(content)
             
-            # Create KStartupAPIResponse
-            api_response_data = KStartupAPIResponse(**parsed_data)
+            # Create appropriate KStartup response based on endpoint
+            endpoint_name = getattr(self, '_current_endpoint', 'unknown')
+            response_type = self._determine_response_type(endpoint_name)
             
-            return APIResponse[KStartupAPIResponse](
+            # Validate and create typed response
+            validated_response = validate_kstartup_response_data(parsed_data, response_type)
+            
+            return APIResponse[PublicDataResponse](
                 success=True,
-                data=api_response_data,
+                data=validated_response,
                 status_code=status_code,
                 total_count=parsed_data.get("totalCount"),
                 current_count=parsed_data.get("currentCount")
@@ -254,6 +263,19 @@ class KStartupAPIClient(BaseAPIClient[KStartupAPIResponse]):
                 return default
         return default
     
+    def _determine_response_type(self, endpoint: str) -> str:
+        """Determine response type based on endpoint"""
+        if "announcement" in endpoint.lower() or "Announcement" in endpoint:
+            return "announcements"
+        elif "business" in endpoint.lower() or "Business" in endpoint:
+            return "business"
+        elif "content" in endpoint.lower() or "Content" in endpoint:
+            return "content"
+        elif "statistical" in endpoint.lower() or "Statistical" in endpoint:
+            return "statistics"
+        else:
+            return "announcements"  # Default fallback
+    
     # Async methods for better performance
     async def async_get_announcement_information(
         self, 
@@ -261,7 +283,7 @@ class KStartupAPIClient(BaseAPIClient[KStartupAPIResponse]):
         num_of_rows: int = 10,
         business_name: Optional[str] = None,
         business_type: Optional[str] = None
-    ) -> APIResponse[KStartupAPIResponse]:
+    ) -> APIResponse[KStartupAnnouncementResponse]:
         """사업공고 정보 조회 (비동기)"""
         params = {
             "page_no": page_no,
@@ -270,6 +292,7 @@ class KStartupAPIClient(BaseAPIClient[KStartupAPIResponse]):
             "business_type": business_type
         }
         
+        self._current_endpoint = "getAnnouncementInformation01"
         async with self.async_client() as client:
             return await client.async_get("getAnnouncementInformation01", params)
     
@@ -280,7 +303,7 @@ class KStartupAPIClient(BaseAPIClient[KStartupAPIResponse]):
         num_of_rows: int = 10,
         business_name: Optional[str] = None,
         business_type: Optional[str] = None
-    ) -> APIResponse[KStartupAPIResponse]:
+    ) -> APIResponse[KStartupAnnouncementResponse]:
         """사업공고 정보 조회"""
         params = {
             "page_no": page_no,
@@ -289,6 +312,7 @@ class KStartupAPIClient(BaseAPIClient[KStartupAPIResponse]):
             "business_type": business_type
         }
         
+        self._current_endpoint = "getAnnouncementInformation01"
         return self.get("getAnnouncementInformation01", params)
     
     async def async_get_content_information(
@@ -297,7 +321,7 @@ class KStartupAPIClient(BaseAPIClient[KStartupAPIResponse]):
         num_of_rows: int = 10,
         content_type: Optional[str] = None,
         category: Optional[str] = None
-    ) -> APIResponse[KStartupAPIResponse]:
+    ) -> APIResponse[KStartupContentResponse]:
         """콘텐츠 정보 조회 (비동기)"""
         params = {
             "page_no": page_no,
@@ -306,6 +330,7 @@ class KStartupAPIClient(BaseAPIClient[KStartupAPIResponse]):
             "category": category
         }
         
+        self._current_endpoint = "getContentInformation01"
         async with self.async_client() as client:
             return await client.async_get("getContentInformation01", params)
     
@@ -315,7 +340,7 @@ class KStartupAPIClient(BaseAPIClient[KStartupAPIResponse]):
         num_of_rows: int = 10,
         year: Optional[int] = None,
         month: Optional[int] = None
-    ) -> APIResponse[KStartupAPIResponse]:
+    ) -> APIResponse[KStartupStatisticsResponse]:
         """통계 정보 조회 (비동기)"""
         params = {
             "page_no": page_no,
@@ -324,6 +349,7 @@ class KStartupAPIClient(BaseAPIClient[KStartupAPIResponse]):
             "month": month
         }
         
+        self._current_endpoint = "getStatisticalInformation01"
         async with self.async_client() as client:
             return await client.async_get("getStatisticalInformation01", params)
     
@@ -333,7 +359,7 @@ class KStartupAPIClient(BaseAPIClient[KStartupAPIResponse]):
         num_of_rows: int = 10,
         business_field: Optional[str] = None,
         organization: Optional[str] = None
-    ) -> APIResponse[KStartupAPIResponse]:
+    ) -> APIResponse[KStartupBusinessResponse]:
         """사업 정보 조회 (비동기)"""
         params = {
             "page_no": page_no,
@@ -342,6 +368,7 @@ class KStartupAPIClient(BaseAPIClient[KStartupAPIResponse]):
             "organization": organization
         }
         
+        self._current_endpoint = "getBusinessInformation01"
         async with self.async_client() as client:
             return await client.async_get("getBusinessInformation01", params)
     
@@ -351,7 +378,7 @@ class KStartupAPIClient(BaseAPIClient[KStartupAPIResponse]):
         num_of_rows: int = 10,
         content_type: Optional[str] = None,
         category: Optional[str] = None
-    ) -> APIResponse[KStartupAPIResponse]:
+    ) -> APIResponse[KStartupContentResponse]:
         """콘텐츠 정보 조회"""
         params = {
             "page_no": page_no,
@@ -360,6 +387,7 @@ class KStartupAPIClient(BaseAPIClient[KStartupAPIResponse]):
             "category": category
         }
         
+        self._current_endpoint = "getContentInformation01"
         return self.get("getContentInformation01", params)
     
     def get_statistical_information(
@@ -368,7 +396,7 @@ class KStartupAPIClient(BaseAPIClient[KStartupAPIResponse]):
         num_of_rows: int = 10,
         year: Optional[int] = None,
         month: Optional[int] = None
-    ) -> APIResponse[KStartupAPIResponse]:
+    ) -> APIResponse[KStartupStatisticsResponse]:
         """통계 정보 조회"""
         params = {
             "page_no": page_no,
@@ -377,6 +405,7 @@ class KStartupAPIClient(BaseAPIClient[KStartupAPIResponse]):
             "month": month
         }
         
+        self._current_endpoint = "getStatisticalInformation01"
         return self.get("getStatisticalInformation01", params)
     
     def get_business_information(
@@ -385,7 +414,7 @@ class KStartupAPIClient(BaseAPIClient[KStartupAPIResponse]):
         num_of_rows: int = 10,
         business_field: Optional[str] = None,
         organization: Optional[str] = None
-    ) -> APIResponse[KStartupAPIResponse]:
+    ) -> APIResponse[KStartupBusinessResponse]:
         """사업 정보 조회"""
         params = {
             "page_no": page_no,
@@ -394,6 +423,7 @@ class KStartupAPIClient(BaseAPIClient[KStartupAPIResponse]):
             "organization": organization
         }
         
+        self._current_endpoint = "getBusinessInformation01"
         return self.get("getBusinessInformation01", params)
     
     # Batch processing method for improved performance
@@ -401,14 +431,19 @@ class KStartupAPIClient(BaseAPIClient[KStartupAPIResponse]):
         self,
         endpoints: List[str],
         params_list: List[Dict[str, Any]]
-    ) -> List[APIResponse[KStartupAPIResponse]]:
+    ) -> List[APIResponse[PublicDataResponse]]:
         """배치로 여러 API 엔드포인트에서 데이터 조회"""
         if len(endpoints) != len(params_list):
             raise ValueError("Endpoints and params lists must have same length")
         
         async with self.async_client() as client:
-            tasks = [
-                client.async_get(endpoint, params)
-                for endpoint, params in zip(endpoints, params_list)
-            ]
+            # Set endpoint context for each request
+            tasks = []
+            for endpoint, params in zip(endpoints, params_list):
+                # Create a task that sets endpoint context
+                async def make_request(ep=endpoint, p=params):
+                    self._current_endpoint = ep
+                    return await client.async_get(ep, p)
+                tasks.append(make_request())
+            
             return await asyncio.gather(*tasks, return_exceptions=True)

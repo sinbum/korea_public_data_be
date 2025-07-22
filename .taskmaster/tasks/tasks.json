@@ -120,7 +120,7 @@
               "2.3"
             ],
             "details": "K-Startup API 응답 스키마에 맞는 pydantic 모델 정의. 응답 데이터 타입 검증, 필수 필드 체크, 데이터 변환 로직 구현. BaseResponse 모델을 상속받는 구조로 일관성 유지. 응답 데이터 정규화 및 null 값 처리.",
-            "status": "in-progress",
+            "status": "done",
             "testStrategy": "응답 데이터 검증 테스트, 스키마 일치성 검증, 데이터 변환 로직 테스트"
           },
           {
@@ -1040,7 +1040,7 @@
     ],
     "metadata": {
       "created": "2025-07-21T23:49:16.210Z",
-      "updated": "2025-07-22T02:25:15.800Z",
+      "updated": "2025-07-22T02:32:00.626Z",
       "description": "Tasks for master context"
     }
   }

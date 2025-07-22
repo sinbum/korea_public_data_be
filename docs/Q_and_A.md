@@ -133,6 +133,23 @@
 - **Jitter 적용**: 동시 요청 집중 방지를 위한 랜덤 지연
 - **최대 재시도 횟수**: 안정성과 성능의 균형을 위한 제한
 
+### Q17: API 응답 데이터 검증 시스템의 특징은?
+**A:**
+- **타입별 전용 모델**: AnnouncementItem, BusinessItem, ContentItem, StatisticalItem
+- **자동 데이터 정제**: 빈 문자열 → None, URL 형식 정규화, 날짜 형식 표준화
+- **Enum 기반 분류**: BusinessCategoryCode, ContentTypeCode로 타입 안전성 확보
+- **검증 단계별 처리**: 필드 수준 → 모델 수준 → 응답 수준 검증
+- **유연한 에러 처리**: 개별 아이템 검증 실패 시에도 전체 처리는 계속 진행
+- **도메인별 응답 타입**: KStartupAnnouncementResponse, KStartupBusinessResponse 등
+
+### Q18: pydantic 모델의 검증 규칙은?
+**A:**
+- **날짜 검증**: YYYYMMDD → YYYY-MM-DD 자동 변환, 유효 범위 확인
+- **URL 검증**: http/https 스키마 자동 추가, 기본 형식 검증
+- **숫자 검증**: 년도(2000-2050), 월(1-12) 범위 검증
+- **문자열 정제**: 앞뒤 공백 제거, null/NULL → None 변환
+- **추가 필드 허용**: API 응답 구조 변경에 유연하게 대응
+
 ---
 
 *이 문서는 개발 진행에 따라 지속적으로 업데이트됩니다.*
