@@ -1,0 +1,133 @@
+{
+	"meta": {
+		"generatedAt": "2025-07-21T23:53:00.616Z",
+		"tasksAnalyzed": 15,
+		"totalTasks": 15,
+		"analysisCount": 15,
+		"thresholdScore": 5,
+		"projectName": "Taskmaster",
+		"usedResearch": false
+	},
+	"complexityAnalysis": [
+		{
+			"taskId": 1,
+			"taskTitle": "공통 인터페이스 및 추상화 계층 설계",
+			"complexityScore": 8,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "공통 인터페이스와 추상화 계층 설계를 위해 BaseAPIClient, BaseRepository, BaseService 추상 클래스 정의, Protocol 및 Generic 타입 설계, 디자인 패턴 적용, 타입 힌트 시스템 구축 등의 세부 작업으로 분할하여 구현",
+			"reasoning": "아키텍처의 핵심 기반이 되는 복잡한 설계 작업으로, 여러 디자인 패턴과 타입 시스템을 포함하는 고도의 추상화가 필요"
+		},
+		{
+			"taskId": 2,
+			"taskTitle": "K-Startup API 클라이언트 리팩토링",
+			"complexityScore": 7,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "기존 K-Startup API 클라이언트를 BaseAPIClient 상속 구조로 리팩토링, 비동기 HTTP 클라이언트 구현, 에러 처리 및 재시도 로직 강화, 응답 데이터 표준화 및 검증 시스템 구축으로 세분화",
+			"reasoning": "기존 코드 리팩토링과 새로운 아키텍처 적용이 필요한 복잡한 작업으로, 비동기 처리와 견고한 에러 처리가 포함됨"
+		},
+		{
+			"taskId": 3,
+			"taskTitle": "Repository 패턴 적용 및 데이터 접근 계층 구현",
+			"complexityScore": 7,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "BaseRepository 추상 클래스 설계, 도메인별 Repository 구현, Motor 기반 비동기 MongoDB 연산 구현, 트랜잭션 처리 시스템, 페이징 및 필터링 공통 기능 구현으로 분할",
+			"reasoning": "데이터베이스 추상화 계층 구현으로 비동기 처리, 트랜잭션, 공통 기능 구현 등 다양한 기술적 요소가 복합적으로 필요"
+		},
+		{
+			"taskId": 4,
+			"taskTitle": "의존성 주입 시스템 구축",
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Container 패턴 기반 의존성 주입 설계, FastAPI Depends 시스템 통합, 설정 기반 의존성 관리 구현, 테스트용 Mock 객체 주입 시스템 구축으로 세분화",
+			"reasoning": "의존성 주입 패턴 적용과 FastAPI 통합이 필요하지만, 상대적으로 명확한 패턴과 프레임워크가 존재하여 중간 복잡도"
+		},
+		{
+			"taskId": 5,
+			"taskTitle": "데이터 소스 관리 시스템 구현",
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "DataSource 모델 설계, DataSourceRepository 구현, 데이터 소스 설정 관리 시스템, Factory Pattern 기반 클라이언트 생성 시스템으로 분할하여 구현",
+			"reasoning": "모델 설계와 Factory 패턴 적용이 필요하지만, 명확한 요구사항과 패턴이 있어 중간 복잡도의 작업"
+		},
+		{
+			"taskId": 6,
+			"taskTitle": "통합 API 클라이언트 프레임워크 구현",
+			"complexityScore": 8,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "APIClientFactory 구현, 공통 인증 시스템, Rate Limiting 및 Circuit Breaker 패턴 적용, 응답 캐싱 시스템, 재시도 로직 및 에러 처리 표준화, 비동기 처리 최적화로 세분화",
+			"reasoning": "다양한 디자인 패턴(Circuit Breaker, Rate Limiting)과 고급 기능들이 복합적으로 필요한 복잡한 프레임워크 구현"
+		},
+		{
+			"taskId": 7,
+			"taskTitle": "데이터 처리 파이프라인 구현",
+			"complexityScore": 7,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Pipeline Pattern 설계, 데이터 정규화 및 검증 모듈, 중복 제거 알고리즘, 데이터 enrichment 처리, 비동기 파이프라인 최적화로 세분화하여 구현",
+			"reasoning": "Pipeline 패턴과 복잡한 데이터 처리 로직이 필요하며, 비동기 처리와 데이터 품질 관리가 포함된 복잡한 작업"
+		},
+		{
+			"taskId": 8,
+			"taskTitle": "비즈니스 로직 서비스 계층 개선",
+			"complexityScore": 7,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "도메인별 서비스 클래스 리팩토링, 비즈니스 로직과 데이터 접근 계층 분리, Command/Query 패턴 적용, 크로스 도메인 서비스 구현, 이벤트 기반 아키텍처 설계로 분할",
+			"reasoning": "SOLID 원칙 적용과 여러 아키텍처 패턴이 필요한 복잡한 비즈니스 로직 리팩토링 작업"
+		},
+		{
+			"taskId": 9,
+			"taskTitle": "지원사업 구분코드 및 카테고리 시스템 구현",
+			"complexityScore": 5,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "분류 코드 문서 분석 및 모델링, Enum 클래스 기반 코드 시스템 구현, 계층형 카테고리 구조 설계, 검색 필터링 연동 기능 구현으로 세분화",
+			"reasoning": "명확한 요구사항과 문서가 있어 상대적으로 단순하지만, 계층형 구조와 검색 연동이 필요한 중간 복잡도"
+		},
+		{
+			"taskId": 10,
+			"taskTitle": "Celery 태스크 및 스케줄링 시스템 개선",
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "데이터 소스별 수집 태스크 모듈화, Celery Beat 스케줄링 설정, 태스크 모니터링 및 에러 처리 시스템, 병렬 처리 최적화 및 재시도 로직 개선으로 분할",
+			"reasoning": "기존 Celery 시스템 개선으로 명확한 프레임워크가 있지만, 모니터링과 최적화가 필요한 중간 복잡도"
+		},
+		{
+			"taskId": 11,
+			"taskTitle": "RESTful API 엔드포인트 완성 및 표준화",
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "도메인별 RESTful API 엔드포인트 구현, HTTP 상태 코드 표준화, 페이징 및 정렬 시스템 통일, API 버저닝 전략 적용으로 세분화하여 구현",
+			"reasoning": "RESTful 표준을 따르는 명확한 패턴이 있어 중간 복잡도이지만, 다양한 도메인의 일관성 유지가 필요"
+		},
+		{
+			"taskId": 12,
+			"taskTitle": "완전한 OpenAPI(Swagger) 문서화",
+			"complexityScore": 4,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "FastAPI 자동 문서화 설정 및 최적화, 상세한 API 스키마 및 예제 데이터 작성, 태그 기반 그룹핑 및 인증 방식 문서화로 분할하여 작업",
+			"reasoning": "FastAPI의 자동 문서화 기능을 활용하므로 상대적으로 단순하지만, 완전한 문서화를 위한 세심한 작업이 필요"
+		},
+		{
+			"taskId": 13,
+			"taskTitle": "통합 검색 및 고급 필터링 기능 구현",
+			"complexityScore": 7,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "검색 엔진 선택 및 인덱스 설계, 다중 조건 필터링 시스템 구현, 검색 성능 최적화, 자동완성 및 하이라이팅 기능, 검색 분석 및 로깅 시스템으로 세분화",
+			"reasoning": "검색 엔진 통합과 복잡한 필터링 로직, 성능 최적화가 필요한 고도의 기술적 작업"
+		},
+		{
+			"taskId": 14,
+			"taskTitle": "캐싱 및 성능 최적화 시스템 구현",
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Redis 다층 캐싱 아키텍처 설계, API 및 DB 쿼리 캐싱 구현, TTL 기반 캐시 관리 및 무효화 전략, 성능 모니터링 및 최적화 시스템으로 분할",
+			"reasoning": "Redis를 활용한 캐싱 전략 구현으로 명확한 기술 스택이 있지만, 다층 캐싱과 성능 최적화가 필요한 중간 복잡도"
+		},
+		{
+			"taskId": 15,
+			"taskTitle": "종합 테스트 및 문서화 완성",
+			"complexityScore": 5,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "pytest 기반 테스트 스위트 구축, 단위/통합/E2E 테스트 구현, 코드 커버리지 80% 달성, 개발 문서 정리 및 배포 가이드 작성으로 세분화",
+			"reasoning": "테스트 프레임워크가 명확하고 문서화 작업이 포함되어 있어 중간 복잡도이지만, 전체 시스템 검증이 필요"
+		}
+	]
+}
