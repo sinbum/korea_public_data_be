@@ -95,14 +95,14 @@ def fetch_announcements(
 
 @router.get(
     "/",
-    response_model=List[AnnouncementResponse],
+    response_model=PaginatedResponse[AnnouncementResponse],
     status_code=status.HTTP_200_OK,
     summary="사업공고 목록 조회",
     description="""
     저장된 사업공고 목록을 페이지네이션과 함께 조회합니다.
     
     **주요 기능:**
-    - 페이지네이션 지원 (skip/limit)
+    - 페이지네이션 지원 (page/page_size)
     - 활성/비활성 상태 필터링
     - 최신 데이터 우선 정렬
     
@@ -111,20 +111,20 @@ def fetch_announcements(
     - 관리자 페이지 데이터 관리
     - 모바일 앱 목록 화면
     """,
-    response_description="사업공고 목록"
+    response_description="페이지네이션된 사업공고 목록"
 )
 def get_announcements(
-    skip: int = Query(
-        0, 
-        ge=0, 
-        description="건너뛸 데이터 수 (페이지네이션용)",
-        example=0
+    page: int = Query(
+        1, 
+        ge=1, 
+        description="페이지 번호 (1부터 시작)",
+        example=1
     ),
-    limit: int = Query(
+    page_size: int = Query(
         20, 
         ge=1, 
         le=100, 
-        description="조회할 데이터 수 (최대 100개)",
+        description="페이지당 데이터 수 (최대 100개)",
         example=20
     ),
     is_active: bool = Query(
@@ -139,15 +139,26 @@ def get_announcements(
     
     페이지네이션을 지원하며, 활성 상태에 따른 필터링이 가능합니다.
     """
-    announcements = service.get_announcements(skip=skip, limit=limit, is_active=is_active)
-    return [AnnouncementResponse(
+    result = service.get_announcements(page=page, page_size=page_size, is_active=is_active)
+    
+    items = [AnnouncementResponse(
         id=str(a.id),
         announcement_data=a.announcement_data,
         source_url=a.source_url,
         is_active=a.is_active,
         created_at=a.created_at,
         updated_at=a.updated_at
-    ) for a in announcements]
+    ) for a in result.items]
+    
+    return PaginatedResponse(
+        items=items,
+        total_count=result.total_count,
+        page=result.page,
+        page_size=result.page_size,
+        total_pages=result.total_pages,
+        has_next=result.has_next,
+        has_previous=result.has_previous
+    )
 
 
 @router.get(
@@ -255,3 +266,62 @@ def delete_announcement(
         raise HTTPException(status_code=404, detail="사업공고를 찾을 수 없습니다")
     
     return {"message": "사업공고가 삭제되었습니다"}
+
+
+@router.get("/search/{search_term}", response_model=List[AnnouncementResponse])
+def search_announcements(
+    search_term: str = Path(..., description="검색어"),
+    service: AnnouncementService = Depends(get_announcement_service)
+):
+    """사업공고 검색"""
+    announcements = service.search_announcements(search_term)
+    return [AnnouncementResponse(
+        id=str(a.id),
+        announcement_data=a.announcement_data,
+        source_url=a.source_url,
+        is_active=a.is_active,
+        created_at=a.created_at,
+        updated_at=a.updated_at
+    ) for a in announcements]
+
+
+@router.get("/type/{business_type}", response_model=List[AnnouncementResponse])
+def get_announcements_by_type(
+    business_type: str = Path(..., description="사업 유형"),
+    service: AnnouncementService = Depends(get_announcement_service)
+):
+    """사업 유형별 공고 조회"""
+    announcements = service.get_announcements_by_type(business_type)
+    return [AnnouncementResponse(
+        id=str(a.id),
+        announcement_data=a.announcement_data,
+        source_url=a.source_url,
+        is_active=a.is_active,
+        created_at=a.created_at,
+        updated_at=a.updated_at
+    ) for a in announcements]
+
+
+@router.get("/recent", response_model=List[AnnouncementResponse])
+def get_recent_announcements(
+    limit: int = Query(10, ge=1, le=50, description="조회할 최근 공고 수"),
+    service: AnnouncementService = Depends(get_announcement_service)
+):
+    """최근 공고 조회"""
+    announcements = service.get_recent_announcements(limit)
+    return [AnnouncementResponse(
+        id=str(a.id),
+        announcement_data=a.announcement_data,
+        source_url=a.source_url,
+        is_active=a.is_active,
+        created_at=a.created_at,
+        updated_at=a.updated_at
+    ) for a in announcements]
+
+
+@router.get("/statistics", response_model=dict)
+def get_announcement_statistics(
+    service: AnnouncementService = Depends(get_announcement_service)
+):
+    """공고 통계 조회"""
+    return service.get_announcement_statistics()

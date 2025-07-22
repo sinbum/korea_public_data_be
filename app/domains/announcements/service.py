@@ -1,8 +1,8 @@
 from typing import List, Optional
 from .models import Announcement, AnnouncementCreate, AnnouncementUpdate
+from .repository import AnnouncementRepository
 from ...shared.clients.public_data_client import PublicDataAPIClient
-from ...core.database import get_database
-from bson import ObjectId
+from ...core.interfaces.base_repository import QueryFilter, PaginationResult
 import logging
 
 logger = logging.getLogger(__name__)
@@ -11,9 +11,8 @@ logger = logging.getLogger(__name__)
 class AnnouncementService:
     """사업공고 서비스"""
     
-    def __init__(self, db=None):
-        self.db = db or get_database()
-        self.collection = self.db.announcements
+    def __init__(self, repository: Optional[AnnouncementRepository] = None):
+        self.repository = repository or AnnouncementRepository()
     
     def fetch_and_save_announcements(
         self, 
@@ -43,26 +42,31 @@ class AnnouncementService:
                         # 공공데이터 응답을 우리 모델에 맞게 변환
                         announcement_data = self._transform_api_data(item)
                         
-                        # 중복 체크 - business_id 또는 business_name으로 중복 확인
+                        # 중복 체크
                         business_id = announcement_data.get("business_id")
                         business_name = announcement_data.get("business_name")
                         
-                        # 중복 체크 임시 비활성화 - 강제 저장
-                        logger.info(f"강제 저장 시도: {announcement_data.get('business_name')}")
+                        # 중복 체크 수행
+                        is_duplicate = self.repository.check_duplicate(
+                            business_id=business_id,
+                            business_name=business_name
+                        )
                         
-                        # 새 공고 저장
-                        announcement = Announcement(
+                        if is_duplicate:
+                            logger.info(f"중복 데이터 스킵: {business_name}")
+                            continue
+                        
+                        # 새 공고 생성
+                        announcement_create = AnnouncementCreate(
                             announcement_data=announcement_data,
                             source_url=f"공공데이터포털-사업공고-{business_id or 'unknown'}"
                         )
                         
-                        # dict()로 변환 시 _id 필드 제거 (MongoDB가 자동 생성하도록)
-                        announcement_dict = announcement.dict(by_alias=True, exclude={"id"})
-                        result = self.collection.insert_one(announcement_dict)
-                        announcement.id = str(result.inserted_id)
+                        # Repository를 통해 저장
+                        announcement = self.repository.create(announcement_create)
                         announcements.append(announcement)
                         
-                        logger.info(f"새로운 사업공고 저장: {announcement_data.get('business_name')}")
+                        logger.info(f"새로운 사업공고 저장: {business_name}")
                         
                     except Exception as e:
                         logger.error(f"데이터 변환/저장 오류: {e}, 데이터: {item}")
@@ -134,44 +138,43 @@ class AnnouncementService:
     
     def get_announcements(
         self, 
-        skip: int = 0, 
-        limit: int = 20,
+        page: int = 1, 
+        page_size: int = 20,
         is_active: bool = True
-    ) -> List[Announcement]:
-        """저장된 사업공고 목록 조회"""
-        cursor = self.collection.find({"is_active": is_active}).skip(skip).limit(limit)
-        announcements = []
-        for doc in cursor:
-            # ObjectId를 문자열로 변환하고 id 필드로 설정
-            if "_id" in doc:
-                doc["id"] = str(doc["_id"])
-                # _id 필드는 제거하여 중복 방지
-                del doc["_id"]
-            announcements.append(Announcement(**doc))
-        return announcements
+    ) -> PaginationResult[Announcement]:
+        """저장된 사업공고 목록 조회 (페이지네이션)"""
+        try:
+            if is_active:
+                return self.repository.find_active_announcements(page=page, page_size=page_size)
+            else:
+                filters = QueryFilter().eq("is_active", False)
+                return self.repository.get_paginated(page=page, page_size=page_size, filters=filters)
+        except Exception as e:
+            logger.error(f"공고 목록 조회 오류: {e}")
+            return PaginationResult(
+                items=[],
+                total_count=0,
+                page=page,
+                page_size=page_size,
+                has_next=False,
+                has_previous=False
+            )
     
     def get_announcement_by_id(self, announcement_id: str) -> Optional[Announcement]:
         """ID로 사업공고 조회"""
         try:
-            doc = self.collection.find_one({"_id": ObjectId(announcement_id)})
-            if doc:
-                # ObjectId를 문자열로 변환하고 id 필드로 설정
-                doc["id"] = str(doc["_id"])
-                # _id 필드는 제거하여 중복 방지
-                del doc["_id"]
-                return Announcement(**doc)
-            return None
-        except Exception:
+            return self.repository.get_by_id(announcement_id)
+        except Exception as e:
+            logger.error(f"공고 조회 오류: {e}")
             return None
     
     def create_announcement(self, announcement_data: AnnouncementCreate) -> Announcement:
         """새 사업공고 생성"""
-        announcement = Announcement(**announcement_data.dict())
-        # dict()로 변환 시 _id 필드 제거 (MongoDB가 자동 생성하도록)
-        announcement_dict = announcement.dict(by_alias=True, exclude={"id"})
-        result = self.collection.insert_one(announcement_dict)
-        announcement.id = str(result.inserted_id)
-        return announcement
+        try:
+            return self.repository.create(announcement_data)
+        except Exception as e:
+            logger.error(f"공고 생성 오류: {e}")
+            raise
     
     def update_announcement(
         self, 
@@ -179,26 +182,49 @@ class AnnouncementService:
         update_data: AnnouncementUpdate
     ) -> Optional[Announcement]:
         """사업공고 수정"""
-        update_dict = {k: v for k, v in update_data.dict().items() if v is not None}
-        if not update_dict:
-            return None
-            
         try:
-            self.collection.update_one(
-                {"_id": ObjectId(announcement_id)},
-                {"$set": update_dict}
-            )
-            return self.get_announcement_by_id(announcement_id)
-        except Exception:
+            return self.repository.update_by_id(announcement_id, update_data)
+        except Exception as e:
+            logger.error(f"공고 수정 오류: {e}")
             return None
     
     def delete_announcement(self, announcement_id: str) -> bool:
         """사업공고 삭제 (비활성화)"""
         try:
-            result = self.collection.update_one(
-                {"_id": ObjectId(announcement_id)},
-                {"$set": {"is_active": False}}
-            )
-            return result.modified_count > 0
-        except Exception:
+            return self.repository.delete_by_id(announcement_id, soft_delete=True)
+        except Exception as e:
+            logger.error(f"공고 삭제 오류: {e}")
             return False
+    
+    # 추가 비즈니스 로직 메서드들
+    def search_announcements(self, search_term: str) -> List[Announcement]:
+        """공고 검색"""
+        try:
+            return self.repository.search_announcements(search_term)
+        except Exception as e:
+            logger.error(f"공고 검색 오류: {e}")
+            return []
+    
+    def get_announcements_by_type(self, business_type: str) -> List[Announcement]:
+        """사업 유형별 공고 조회"""
+        try:
+            return self.repository.find_by_business_type(business_type)
+        except Exception as e:
+            logger.error(f"유형별 공고 조회 오류: {e}")
+            return []
+    
+    def get_recent_announcements(self, limit: int = 10) -> List[Announcement]:
+        """최근 공고 조회"""
+        try:
+            return self.repository.get_recent_announcements(limit)
+        except Exception as e:
+            logger.error(f"최근 공고 조회 오류: {e}")
+            return []
+    
+    def get_announcement_statistics(self) -> dict:
+        """공고 통계 조회"""
+        try:
+            return self.repository.get_statistics()
+        except Exception as e:
+            logger.error(f"공고 통계 조회 오류: {e}")
+            return {}
