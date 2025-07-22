@@ -6,6 +6,7 @@ Implements Repository pattern for content data access with MongoDB.
 
 from typing import Dict, Any, List, Optional
 from datetime import datetime
+from pymongo.database import Database
 
 from ...core.interfaces.base_repository import BaseRepository, QueryFilter, SortOption, PaginationResult
 from .models import Content, ContentCreate, ContentUpdate
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 class ContentRepository(BaseRepository[Content, ContentCreate, ContentUpdate]):
     """Repository for content data access operations"""
     
-    def __init__(self, db=None):
+    def __init__(self, db: Optional[Database] = None):
         """Initialize content repository"""
         super().__init__(db or get_database(), "contents")
     

@@ -6,7 +6,7 @@ Implements Repository pattern for announcement data access with MongoDB.
 
 from typing import Dict, Any, List, Optional
 from datetime import datetime
-
+from pymongo.database import Database
 from ...core.interfaces.base_repository import BaseRepository, QueryFilter, SortOption, PaginationResult
 from .models import Announcement, AnnouncementCreate, AnnouncementUpdate
 from ...core.database import get_database
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class AnnouncementRepository(BaseRepository[Announcement, AnnouncementCreate, AnnouncementUpdate]):
     """Repository for announcement data access operations"""
     
-    def __init__(self, db=None):
+    def __init__(self, db: Optional[Database] = None):
         """Initialize announcement repository"""
         super().__init__(db or get_database(), "announcements")
     

@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 class BusinessService:
     """사업정보 서비스"""
     
-    def __init__(self, repository: Optional[BusinessRepository] = None):
-        self.repository = repository or BusinessRepository()
+    def __init__(self, repository: BusinessRepository):
+        self.repository = repository
     
     def fetch_and_save_businesses(
         self, 

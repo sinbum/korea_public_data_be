@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 class ContentService:
     """콘텐츠 서비스"""
     
-    def __init__(self, repository: Optional[ContentRepository] = None):
-        self.repository = repository or ContentRepository()
+    def __init__(self, repository: ContentRepository):
+        self.repository = repository
     
     def fetch_and_save_contents(
         self, 

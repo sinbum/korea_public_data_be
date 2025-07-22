@@ -10,6 +10,7 @@ from datetime import datetime
 from .service import ContentService
 from .models import ContentResponse, ContentCreate, ContentUpdate
 from ...shared.schemas import PaginatedResponse
+from ...core.dependencies import get_content_service
 
 router = APIRouter(
     prefix="/contents",
@@ -22,8 +23,7 @@ router = APIRouter(
 )
 
 
-def get_content_service() -> ContentService:
-    return ContentService()
+# DI function is imported from dependencies module
 
 
 @router.post(

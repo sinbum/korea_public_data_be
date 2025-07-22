@@ -6,6 +6,7 @@ Implements Repository pattern for business data access with MongoDB.
 
 from typing import Dict, Any, List, Optional
 from datetime import datetime
+from pymongo.database import Database
 
 from ...core.interfaces.base_repository import BaseRepository, QueryFilter, SortOption, PaginationResult
 from .models import Business, BusinessCreate, BusinessUpdate
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 class BusinessRepository(BaseRepository[Business, BusinessCreate, BusinessUpdate]):
     """Repository for business data access operations"""
     
-    def __init__(self, db=None):
+    def __init__(self, db: Optional[Database] = None):
         """Initialize business repository"""
         super().__init__(db or get_database(), "businesses")
     

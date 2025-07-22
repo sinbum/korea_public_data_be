@@ -8,7 +8,12 @@ import uvicorn
 
 from .core.config import settings
 from .core.database import connect_to_mongo, close_mongo_connection
+from .core.di_config import configure_dependencies, validate_container_setup
+from .core.container import setup_container
 from .domains.announcements.router import router as announcements_router
+from .domains.businesses.router import router as businesses_router
+from .domains.contents.router import router as contents_router
+from .domains.statistics.router import router as statistics_router
 # from .domains.data_sources.router import router as data_sources_router
 from .shared.exceptions import (
     http_exception_handler,
@@ -31,11 +36,35 @@ async def lifespan(app: FastAPI):
     """애플리케이션 생명주기 관리"""
     # 시작시 실행
     logger.info("애플리케이션 시작 중...")
+    
     try:
+        # MongoDB 연결
         connect_to_mongo()
         logger.info("MongoDB 연결 성공")
+        
+        # DI 컨테이너 설정
+        logger.info("의존성 주입 컨테이너 설정 중...")
+        container = configure_dependencies()
+        setup_container(container)
+        logger.info("의존성 주입 컨테이너 설정 완료")
+        
+        # 의존성 검증 (선택적)
+        if settings.debug:
+            logger.info("의존성 검증 중...")
+            validation_results = validate_container_setup(container)
+            failed_validations = [name for name, result in validation_results.items() if result["status"] == "error"]
+            
+            if failed_validations:
+                logger.warning(f"의존성 검증 실패: {failed_validations}")
+                for name in failed_validations:
+                    logger.error(f"{name}: {validation_results[name]['error']}")
+            else:
+                logger.info("모든 의존성 검증 성공")
+        
     except Exception as e:
-        logger.warning(f"MongoDB 연결 실패, 나중에 재시도: {e}")
+        logger.error(f"애플리케이션 초기화 실패: {e}")
+        raise
+    
     logger.info("애플리케이션 시작 완료")
     
     yield
@@ -116,12 +145,10 @@ app.add_exception_handler(Exception, general_exception_handler)
 
 # 라우터 등록
 app.include_router(announcements_router, prefix="/api/v1")
+app.include_router(businesses_router, prefix="/api/v1")
+app.include_router(contents_router, prefix="/api/v1")
+app.include_router(statistics_router, prefix="/api/v1")
 # app.include_router(data_sources_router, prefix="/api/v1")
-
-# TODO: 다른 도메인 라우터들도 추가
-# app.include_router(contents_router, prefix="/api/v1")
-# app.include_router(statistics_router, prefix="/api/v1")
-# app.include_router(businesses_router, prefix="/api/v1")
 
 
 @app.get(

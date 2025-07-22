@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 class StatisticsService:
     """통계 서비스"""
     
-    def __init__(self, repository: Optional[StatisticsRepository] = None):
-        self.repository = repository or StatisticsRepository()
+    def __init__(self, repository: StatisticsRepository):
+        self.repository = repository
     
     def fetch_and_save_statistics(
         self, 

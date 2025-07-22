@@ -5,7 +5,7 @@ Implements Factory and Abstract Factory patterns for flexible object creation.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Type, TypeVar, Generic, Optional, Any
+from typing import Dict, Type, TypeVar, Generic, Optional, Any, List
 from enum import Enum
 import logging
 

@@ -37,7 +37,7 @@ from ..exceptions import (
 logger = logging.getLogger(__name__)
 
 
-# KStartupAPIResponse is now imported from models.kstartup
+# Using PublicDataResponse from models.base
 
 
 class KStartupAPIClient(BaseAPIClient[PublicDataResponse]):
@@ -139,14 +139,14 @@ class KStartupAPIClient(BaseAPIClient[PublicDataResponse]):
         
         return converted
     
-    def _transform_response(self, response_data: Dict[str, Any]) -> APIResponse[KStartupAPIResponse]:
+    def _transform_response(self, response_data: Dict[str, Any]) -> APIResponse[PublicDataResponse]:
         """Transform raw response to domain model"""
         try:
             content = response_data.get("content", "")
             status_code = response_data.get("status_code", 200)
             
             if status_code != 200:
-                return APIResponse[KStartupAPIResponse](
+                return APIResponse[PublicDataResponse](
                     success=False,
                     error=f"HTTP {status_code}",
                     status_code=status_code
@@ -193,7 +193,7 @@ class KStartupAPIClient(BaseAPIClient[PublicDataResponse]):
                 raise DataTransformationError(
                     error_msg,
                     source_format="http_response",
-                    target_format="KStartupAPIResponse",
+                    target_format="PublicDataResponse",
                     original_data=response_data
                 )
     

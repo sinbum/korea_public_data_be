@@ -9,6 +9,7 @@ from typing import List, Optional
 from .service import StatisticsService
 from .models import StatisticsResponse, StatisticsCreate, StatisticsUpdate
 from ...shared.schemas import PaginatedResponse
+from ...core.dependencies import get_statistics_service
 
 router = APIRouter(
     prefix="/statistics",
@@ -21,8 +22,7 @@ router = APIRouter(
 )
 
 
-def get_statistics_service() -> StatisticsService:
-    return StatisticsService()
+# DI function is imported from dependencies module
 
 
 @router.post(

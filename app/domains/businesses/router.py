@@ -9,6 +9,7 @@ from typing import List, Optional
 from .service import BusinessService
 from .models import BusinessResponse, BusinessCreate, BusinessUpdate
 from ...shared.schemas import PaginatedResponse
+from ...core.dependencies import get_business_service
 
 router = APIRouter(
     prefix="/businesses",
@@ -21,8 +22,7 @@ router = APIRouter(
 )
 
 
-def get_business_service() -> BusinessService:
-    return BusinessService()
+# DI function is imported from dependencies module
 
 
 @router.post(

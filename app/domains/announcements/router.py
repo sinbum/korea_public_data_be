@@ -3,6 +3,7 @@ from typing import List, Optional
 from .service import AnnouncementService
 from .models import AnnouncementResponse, AnnouncementCreate, AnnouncementUpdate
 from ...shared.schemas import APIResponse, ErrorResponse, DataCollectionResult, PaginatedResponse
+from ...core.dependencies import get_announcement_service
 
 router = APIRouter(
     prefix="/announcements",
@@ -15,8 +16,7 @@ router = APIRouter(
 )
 
 
-def get_announcement_service() -> AnnouncementService:
-    return AnnouncementService()
+# DI function is imported from dependencies module
 
 
 @router.post(

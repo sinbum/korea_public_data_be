@@ -11,8 +11,8 @@ logger = logging.getLogger(__name__)
 class AnnouncementService:
     """사업공고 서비스"""
     
-    def __init__(self, repository: Optional[AnnouncementRepository] = None):
-        self.repository = repository or AnnouncementRepository()
+    def __init__(self, repository: AnnouncementRepository):
+        self.repository = repository
     
     def fetch_and_save_announcements(
         self, 
