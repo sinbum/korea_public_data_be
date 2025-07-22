@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, TypeVar, Generic, List
 from enum import Enum
 import httpx
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from pydantic import BaseModel
@@ -108,9 +109,16 @@ class BaseAPIClient(ABC, Generic[T]):
     @asynccontextmanager
     async def async_client(self):
         """Async context manager for httpx.AsyncClient"""
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
+        async with httpx.AsyncClient(
+            timeout=self.timeout,
+            limits=httpx.Limits(max_keepalive_connections=5, max_connections=10)
+        ) as client:
+            old_client = self.client
             self.client = client
-            yield self
+            try:
+                yield self
+            finally:
+                self.client = old_client
     
     # Template method pattern implementation
     def request(
@@ -245,3 +253,93 @@ class BaseAPIClient(ABC, Generic[T]):
     def delete(self, endpoint: str) -> APIResponse[T]:
         """DELETE request convenience method"""
         return self.request(endpoint, RequestMethod.DELETE)
+    
+    # Async versions of convenience methods
+    async def async_request(
+        self,
+        endpoint: str,
+        method: RequestMethod = RequestMethod.GET,
+        params: Optional[Dict[str, Any]] = None,
+        data: Optional[Dict[str, Any]] = None,
+        headers: Optional[Dict[str, Any]] = None
+    ) -> APIResponse[T]:
+        """
+        Async template method for making API requests.
+        
+        Similar to request() but uses async HTTP client.
+        """
+        try:
+            # Step 1: Pre-process request (hook method)
+            request_params = self._preprocess_request(
+                endpoint, method, params, data, headers
+            )
+            
+            # Step 2: Apply authentication strategy
+            request_params = self.auth_strategy.apply_auth(request_params)
+            
+            # Step 3: Make async HTTP request with retry logic
+            response = await self._make_async_request_with_retry(request_params)
+            
+            # Step 4: Post-process response (hook method)
+            processed_response = self._postprocess_response(response)
+            
+            # Step 5: Transform to domain model (hook method)
+            return self._transform_response(processed_response)
+            
+        except Exception as e:
+            logger.error(f"Async API request failed: {e}")
+            return APIResponse[T](
+                success=False,
+                error=str(e),
+                status_code=getattr(e, 'status_code', 500)
+            )
+    
+    async def _make_async_request_with_retry(self, request_params: Dict[str, Any]) -> httpx.Response:
+        """Make async HTTP request with retry logic"""
+        last_exception = None
+        
+        for attempt in range(self.max_retries + 1):
+            try:
+                if not self.client:
+                    raise APIClientError("Client not initialized. Use async context manager.")
+                
+                # Use the async client for async requests
+                if hasattr(self.client, 'request'):
+                    response = await self.client.request(**request_params)
+                else:
+                    # Fallback to sync if not async client
+                    response = self.client.request(**request_params)
+                
+                # Check for HTTP errors
+                if response.status_code >= 400:
+                    logger.warning(f"HTTP {response.status_code}: {response.text}")
+                    if response.status_code >= 500 and attempt < self.max_retries:
+                        await asyncio.sleep(2 ** attempt)  # Exponential backoff
+                        continue  # Retry on server errors
+                
+                return response
+                
+            except Exception as e:
+                last_exception = e
+                if attempt < self.max_retries:
+                    logger.warning(f"Async request failed (attempt {attempt + 1}): {e}")
+                    await asyncio.sleep(2 ** attempt)
+                    continue
+        
+        raise APIClientError(f"Async request failed after {self.max_retries + 1} attempts: {last_exception}")
+    
+    async def async_get(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> APIResponse[T]:
+        """Async GET request convenience method"""
+        return await self.async_request(endpoint, RequestMethod.GET, params=params)
+    
+    async def async_post(self, endpoint: str, data: Optional[Dict[str, Any]] = None) -> APIResponse[T]:
+        """Async POST request convenience method"""
+        return await self.async_request(endpoint, RequestMethod.POST, data=data)
+    
+    async def async_put(self, endpoint: str, data: Optional[Dict[str, Any]] = None) -> APIResponse[T]:
+        """Async PUT request convenience method"""
+        return await self.async_request(endpoint, RequestMethod.PUT, data=data)
+    
+    async def async_delete(self, endpoint: str) -> APIResponse[T]:
+        """Async DELETE request convenience method"""
+        return await self.async_request(endpoint, RequestMethod.DELETE)
