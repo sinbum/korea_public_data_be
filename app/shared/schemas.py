@@ -1,6 +1,8 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List, Any, Dict
+from typing import Optional, List, Any, Dict, Generic, TypeVar
 from datetime import datetime
+
+T = TypeVar('T')
 
 
 class APIResponse(BaseModel):
@@ -61,11 +63,11 @@ class PaginationMeta(BaseModel):
         }
 
 
-class PaginatedResponse(BaseModel):
+class PaginatedResponse(BaseModel, Generic[T]):
     """페이지네이션 응답 모델"""
     success: bool = Field(True, description="요청 성공 여부")
     message: str = Field("성공", description="응답 메시지")
-    data: List[Any] = Field(description="응답 데이터 목록")
+    data: List[T] = Field(description="응답 데이터 목록")
     meta: PaginationMeta = Field(description="페이지네이션 정보")
     
     class Config:

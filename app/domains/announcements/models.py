@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 from ...shared.models.base import BaseDocument
@@ -60,8 +60,11 @@ class AnnouncementData(BaseModel):
         example="모집중"
     )
     
-    model_config = {
-        "json_schema_extra": {
+    model_config = ConfigDict(
+        json_encoders={
+            datetime: lambda v: v.isoformat() + "Z" if v else None
+        },
+        json_schema_extra={
             "example": {
                 "business_id": "KISED-2024-001",
                 "business_name": "창업도약패키지",
@@ -76,7 +79,7 @@ class AnnouncementData(BaseModel):
                 "status": "모집중"
             }
         }
-    }
+    )
 
 
 class Announcement(BaseModel):
@@ -88,10 +91,12 @@ class Announcement(BaseModel):
     created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
     
-    model_config = {
-        "populate_by_name": True,
-        "collection": "announcements"
-    }
+    model_config = ConfigDict(
+        populate_by_name=True,
+        json_encoders={
+            datetime: lambda v: v.isoformat() + "Z" if v else None
+        }
+    )
 
 
 class AnnouncementCreate(BaseModel):
@@ -105,8 +110,8 @@ class AnnouncementCreate(BaseModel):
         example="https://www.data.go.kr/dataset/15121654"
     )
     
-    model_config = {
-        "json_schema_extra": {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "announcement_data": {
                     "business_id": "KISED-2024-001",
@@ -119,7 +124,7 @@ class AnnouncementCreate(BaseModel):
                 "source_url": "https://www.data.go.kr/dataset/15121654"
             }
         }
-    }
+    )
 
 
 class AnnouncementUpdate(BaseModel):
@@ -137,8 +142,8 @@ class AnnouncementUpdate(BaseModel):
         description="활성 상태 변경 (True: 활성, False: 비활성)"
     )
     
-    model_config = {
-        "json_schema_extra": {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "announcement_data": {
                     "status": "마감"
@@ -146,7 +151,7 @@ class AnnouncementUpdate(BaseModel):
                 "is_active": False
             }
         }
-    }
+    )
 
 
 class AnnouncementResponse(BaseModel):
@@ -175,8 +180,11 @@ class AnnouncementResponse(BaseModel):
         example="2024-03-01T09:00:00Z"
     )
     
-    model_config = {
-        "json_schema_extra": {
+    model_config = ConfigDict(
+        json_encoders={
+            datetime: lambda v: v.isoformat() + "Z" if v else None
+        },
+        json_schema_extra={
             "example": {
                 "id": "65f1a2b3c4d5e6f7a8b9c0d1",
                 "announcement_data": {
@@ -198,4 +206,4 @@ class AnnouncementResponse(BaseModel):
                 "updated_at": "2024-03-01T09:00:00Z"
             }
         }
-    }
+    )

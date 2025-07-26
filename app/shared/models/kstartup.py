@@ -14,23 +14,26 @@ from ..exceptions import DataValidationError
 
 
 class BusinessCategoryCode(str, Enum):
-    """K-Startup 사업 구분 코드"""
-    CMRCZN_TAB1 = "cmrczn_Tab1"  # R&D
-    CMRCZN_TAB2 = "cmrczn_Tab2"  # 창업교육
-    CMRCZN_TAB3 = "cmrczn_Tab3"  # 창업사업화
-    CMRCZN_TAB4 = "cmrczn_Tab4"  # 판로개척
-    CMRCZN_TAB5 = "cmrczn_Tab5"  # 창업인프라
-    CMRCZN_TAB6 = "cmrczn_Tab6"  # 창업정책자금
-    CMRCZN_TAB7 = "cmrczn_Tab7"  # 기타
+    """K-Startup 사업 구분 코드 (실제 API 응답 기반)"""
+    # 실제 supt_biz_clsfc 필드에서 사용되는 한글 값들
+    SAUPAHWA = "사업화"                              # 사업화 지원
+    MENTORING_CONSULTING_EDU = "멘토링ㆍ컨설팅ㆍ교육"    # 멘토링, 컨설팅, 교육
+    EVENT_NETWORK = "행사ㆍ네트워크"                   # 행사 및 네트워킹  
+    FACILITY_SPACE_INCUBATION = "시설ㆍ공간ㆍ보육"     # 시설, 공간, 보육
+    LOAN = "융자"                                    # 융자 지원
+    MARKET_GLOBAL = "판로ㆍ해외진출"                  # 판로 개척 및 해외진출
+    # 추가로 발견될 수 있는 분류들 (확장 가능)
+    RND = "기술개발ㆍR&D"                             # R&D (예상)
+    MANPOWER = "인력"                                # 인력 지원 (예상)
+    GLOBAL = "글로벌"                                # 글로벌 전용 (예상)
 
 
 class ContentTypeCode(str, Enum):
-    """K-Startup 콘텐츠 구분 코드"""
-    CONTENT_TAB1 = "content_Tab1"  # 뉴스
-    CONTENT_TAB2 = "content_Tab2"  # 정책정보
-    CONTENT_TAB3 = "content_Tab3"  # 교육정보
-    CONTENT_TAB4 = "content_Tab4"  # 행사정보
-    CONTENT_TAB5 = "content_Tab5"  # 기타정보
+    """K-Startup 콘텐츠 구분 코드 (실제 API clss_cd 기반)"""
+    # docs/content-category-codes.md 및 실제 API 응답 기준
+    NOTICE_MATR = "notice_matr"           # 정책 및 규제정보(공지사항)
+    FND_SCS_CASE = "fnd_scs_case"         # 창업우수사례
+    KSTARTUP_ISSE_TRD = "kstartup_isse_trd"  # 생태계 이슈, 동향
 
 
 class BaseKStartupItem(BaseModel):
@@ -52,34 +55,59 @@ class BaseKStartupItem(BaseModel):
 
 
 class AnnouncementItem(BaseKStartupItem):
-    """사업공고 정보 모델"""
+    """사업공고 정보 모델 (실제 API 응답 기반)"""
     
-    # 기본 정보
-    announcement_id: Optional[str] = Field(None, alias="pbanc_no", description="공고번호")
-    title: Optional[str] = Field(None, alias="pbanc_titl_nm", description="공고제목")
-    content: Optional[str] = Field(None, alias="pbanc_cn", description="공고내용")
+    # 기본 정보 (실제 XML 필드명으로 수정)
+    announcement_id: Optional[str] = Field(None, alias="pbanc_sn", description="공고번호")
+    title: Optional[str] = Field(None, alias="biz_pbanc_nm", description="사업공고명")
+    content: Optional[str] = Field(None, alias="pbanc_ctnt", description="공고내용")
     
-    # 일정 정보
-    announcement_date: Optional[str] = Field(None, alias="pbanc_de", description="공고일자")
-    start_date: Optional[str] = Field(None, alias="reqst_bgng_ymd", description="신청시작일")
-    end_date: Optional[str] = Field(None, alias="reqst_end_ymd", description="신청종료일")
+    # 일정 정보 (실제 필드명으로 수정)
+    start_date: Optional[str] = Field(None, alias="pbanc_rcpt_bgng_dt", description="공고접수시작일")
+    end_date: Optional[str] = Field(None, alias="pbanc_rcpt_end_dt", description="공고접수종료일")
     
-    # 사업 정보
-    business_category: Optional[str] = Field(None, alias="biz_category_cd", description="사업구분코드")
-    business_name: Optional[str] = Field(None, alias="supt_biz_titl_nm", description="지원사업명")
-    support_target: Optional[str] = Field(None, alias="biz_supt_trgt_info", description="지원대상")
+    # 사업 정보 (실제 필드명으로 수정)
+    business_category: Optional[str] = Field(None, alias="supt_biz_clsfc", description="지원사업구분")
+    integrated_business_name: Optional[str] = Field(None, alias="intg_pbanc_biz_nm", description="통합공고사업명")
     
-    # 기관 정보
-    organization: Optional[str] = Field(None, alias="excutr_instt_nm", description="수행기관명")
-    contact_info: Optional[str] = Field(None, alias="qustnr_info", description="문의처정보")
+    # 대상 정보 (새로 추가된 실제 필드들)
+    application_target: Optional[str] = Field(None, alias="aply_trgt", description="신청대상")
+    application_target_content: Optional[str] = Field(None, alias="aply_trgt_ctnt", description="신청대상내용")
+    application_exclusion_content: Optional[str] = Field(None, alias="aply_excl_trgt_ctnt", description="신청제외대상내용")
+    business_entry: Optional[str] = Field(None, alias="biz_enyy", description="사업참여년수")
+    business_target_age: Optional[str] = Field(None, alias="biz_trgt_age", description="사업대상연령")
+    support_region: Optional[str] = Field(None, alias="supt_regin", description="지원지역")
     
-    # 기타
-    url: Optional[str] = Field(None, alias="relm_url", description="관련URL")
-    attachment: Optional[str] = Field(None, alias="atch_file_nm", description="첨부파일명")
+    # 기관 정보 (실제 필드명으로 수정)
+    organization: Optional[str] = Field(None, alias="pbanc_ntrp_nm", description="공고기업명")
+    supervising_institution: Optional[str] = Field(None, alias="sprv_inst", description="감독기관")
+    contact_department: Optional[str] = Field(None, alias="biz_prch_dprt_nm", description="사업추진부서명")
+    contact_number: Optional[str] = Field(None, alias="prch_cnpl_no", description="추진연락처번호")
     
-    @validator('announcement_date', 'start_date', 'end_date', pre=True)
+    # URL 정보 (새로 추가된 실제 필드들)
+    detail_page_url: Optional[str] = Field(None, alias="detl_pg_url", description="상세페이지URL")
+    business_guidance_url: Optional[str] = Field(None, alias="biz_gdnc_url", description="사업안내URL") 
+    business_application_url: Optional[str] = Field(None, alias="biz_aply_url", description="사업신청URL")
+    
+    # 신청방법 정보 (새로 추가)
+    online_reception: Optional[str] = Field(None, alias="aply_mthd_onli_rcpt_istc", description="온라인접수처")
+    visit_reception: Optional[str] = Field(None, alias="aply_mthd_vst_rcpt_istc", description="방문접수처")
+    email_reception: Optional[str] = Field(None, alias="aply_mthd_eml_rcpt_istc", description="이메일접수처")
+    fax_reception: Optional[str] = Field(None, alias="aply_mthd_fax_rcpt_istc", description="팩스접수처")
+    postal_reception: Optional[str] = Field(None, alias="aply_mthd_pssr_rcpt_istc", description="우편접수처")
+    other_reception: Optional[str] = Field(None, alias="aply_mthd_etc_istc", description="기타접수처")
+    
+    # 상태 정보 (새로 추가)
+    integrated_announcement: Optional[str] = Field(None, alias="intg_pbanc_yn", description="통합공고여부")
+    recruitment_progress: Optional[str] = Field(None, alias="rcrt_prgs_yn", description="모집진행여부")
+    performance_material: Optional[str] = Field(None, alias="prfn_matr", description="수행자료")
+    
+    # ID 정보 (API 응답에 포함)
+    id: Optional[str] = Field(None, alias="id", description="ID")
+    
+    @validator('start_date', 'end_date', pre=True)
     def validate_date_format(cls, v):
-        """날짜 형식 검증"""
+        """날짜 형식 검증 (YYYYMMDD → YYYY-MM-DD)"""
         if v and isinstance(v, str):
             # Remove common invalid characters
             v = v.replace('/', '-').replace('.', '-')
@@ -89,121 +117,135 @@ class AnnouncementItem(BaseKStartupItem):
                 return f"{v[:4]}-{v[4:6]}-{v[6:8]}"
         return v
     
-    @validator('url', pre=True)
-    def validate_url(cls, v):
-        """URL 형식 기본 검증"""
+    @validator('detail_page_url', 'business_guidance_url', 'business_application_url', 
+               'online_reception', pre=True)
+    def validate_url_fields(cls, v):
+        """URL 필드 형식 기본 검증"""
         if v and isinstance(v, str):
-            if not (v.startswith('http://') or v.startswith('https://')):
-                return f"http://{v}" if v else None
+            # Skip if already has protocol
+            if v.startswith(('http://', 'https://')):
+                return v
+            # Skip if it's just a domain without protocol
+            if v.startswith('www.') or '.' in v:
+                return f"https://{v}" if v else None
         return v
 
 
 class BusinessItem(BaseKStartupItem):
-    """사업정보 모델"""
+    """사업정보 모델 (실제 API 응답 기반)"""
     
-    # 기본 정보
-    business_id: Optional[str] = Field(None, alias="biz_no", description="사업번호")
-    business_name: Optional[str] = Field(None, alias="supt_biz_titl_nm", description="지원사업명")
-    business_content: Optional[str] = Field(None, alias="biz_cn", description="사업내용")
+    # 기본 정보 (실제 XML 필드명으로 수정)
+    business_category: Optional[str] = Field(None, alias="biz_category_cd", description="사업구분코드")
+    business_name: Optional[str] = Field(None, alias="supt_biz_titl_nm", description="지원사업제목명")
+    support_target: Optional[str] = Field(None, alias="biz_supt_trgt_info", description="사업지원대상정보")
+    support_budget: Optional[str] = Field(None, alias="biz_supt_bdgt_info", description="사업지원예산정보")
+    support_content: Optional[str] = Field(None, alias="biz_supt_ctnt", description="사업지원내용")
+    business_feature: Optional[str] = Field(None, alias="supt_biz_chrct", description="지원사업특징")
+    business_intro: Optional[str] = Field(None, alias="supt_biz_intrd_info", description="지원사업소개정보")
+    business_year: Optional[str] = Field(None, alias="biz_yr", description="사업연도")
+    detail_page_url: Optional[str] = Field(None, alias="Detl_pg_url", description="상세페이지URL")
     
-    # 분류 정보
-    business_category: Optional[BusinessCategoryCode] = Field(None, alias="biz_category_cd", description="사업구분코드")
-    business_field: Optional[str] = Field(None, alias="biz_field_nm", description="사업분야명")
+    # ID 정보
+    id: Optional[str] = Field(None, alias="id", description="ID")
     
-    # 지원 정보
-    support_target: Optional[str] = Field(None, alias="biz_supt_trgt_info", description="지원대상정보")
-    support_content: Optional[str] = Field(None, alias="supt_cn", description="지원내용")
-    support_scale: Optional[str] = Field(None, alias="supt_scl_info", description="지원규모정보")
+    @validator('business_year', pre=True)
+    def validate_year(cls, v):
+        """사업연도 검증"""
+        if v and isinstance(v, str) and v.isdigit():
+            year = int(v)
+            if 2000 <= year <= 2050:
+                return v
+        return v
     
-    # 기관 정보
-    organization: Optional[str] = Field(None, alias="excutr_instt_nm", description="수행기관명")
-    organization_type: Optional[str] = Field(None, alias="excutr_instt_se_nm", description="수행기관구분명")
-    contact_info: Optional[str] = Field(None, alias="qustnr_info", description="문의처정보")
-    
-    # 기타
-    homepage_url: Optional[str] = Field(None, alias="hmpg_url", description="홈페이지URL")
-    related_url: Optional[str] = Field(None, alias="relm_url", description="관련URL")
-    
-    @validator('homepage_url', 'related_url', pre=True)
-    def validate_urls(cls, v):
-        """URL 형식 검증"""
+    @validator('detail_page_url', pre=True)
+    def validate_url(cls, v):
+        """URL 형식 기본 검증"""
         if v and isinstance(v, str):
-            if not (v.startswith('http://') or v.startswith('https://')):
-                return f"http://{v}" if v else None
+            if v.startswith(('http://', 'https://')):
+                return v
+            if v.startswith('www.') or '.' in v:
+                return f"https://{v}" if v else None
         return v
 
 
 class ContentItem(BaseKStartupItem):
-    """콘텐츠 정보 모델"""
+    """콘텐츠 정보 모델 (실제 API 응답 기반)"""
     
-    # 기본 정보
-    content_id: Optional[str] = Field(None, alias="cn_no", description="콘텐츠번호")
-    title: Optional[str] = Field(None, alias="cn_titl_nm", description="콘텐츠제목")
-    content: Optional[str] = Field(None, alias="cn_cn", description="콘텐츠내용")
-    summary: Optional[str] = Field(None, alias="cn_smry", description="콘텐츠요약")
+    # 기본 정보 (실제 XML 필드명으로 수정)
+    content_type: Optional[str] = Field(None, alias="clss_cd", description="콘텐츠구분코드")
+    title: Optional[str] = Field(None, alias="titl_nm", description="제목명")
+    register_date: Optional[str] = Field(None, alias="fstm_reg_dt", description="최초등록일시")
+    view_count: Optional[int] = Field(None, alias="view_cnt", description="조회수")
+    detail_page_url: Optional[str] = Field(None, alias="detl_pg_url", description="상세페이지URL")
+    file_name: Optional[str] = Field(None, alias="file_nm", description="파일명")
     
-    # 분류 정보
-    content_type: Optional[ContentTypeCode] = Field(None, alias="cn_se_cd", description="콘텐츠구분코드")
-    category: Optional[str] = Field(None, alias="ctgry_nm", description="카테고리명")
+    # ID 정보
+    id: Optional[str] = Field(None, alias="id", description="ID")
     
-    # 일정 정보
-    publish_date: Optional[str] = Field(None, alias="pblnt_de", description="발행일자")
-    update_date: Optional[str] = Field(None, alias="updt_de", description="수정일자")
-    
-    # 기타
-    author: Optional[str] = Field(None, alias="author_nm", description="작성자명")
-    source: Optional[str] = Field(None, alias="source_nm", description="출처명")
-    url: Optional[str] = Field(None, alias="relm_url", description="관련URL")
-    thumbnail_url: Optional[str] = Field(None, alias="thmbnl_url", description="썸네일URL")
-    
-    @validator('publish_date', 'update_date', pre=True)
+    @validator('register_date', pre=True)
     def validate_date_format(cls, v):
-        """날짜 형식 검증"""
+        """날짜시간 형식 검증 (YYYY-MM-DD HH:MM:SS)"""
         if v and isinstance(v, str):
-            v = v.replace('/', '-').replace('.', '-')
+            # 이미 올바른 형식인 경우 그대로 반환
+            if ' ' in v and ':' in v:
+                return v
+            # YYYYMMDD 형식인 경우 변환
             if len(v) == 8 and v.isdigit():
-                return f"{v[:4]}-{v[4:6]}-{v[6:8]}"
+                return f"{v[:4]}-{v[4:6]}-{v[6:8]} 00:00:00"
+        return v
+    
+    @validator('view_count', pre=True)
+    def validate_view_count(cls, v):
+        """조회수 검증"""
+        if v and isinstance(v, str) and v.isdigit():
+            return int(v)
+        return v if isinstance(v, int) else None
+    
+    @validator('detail_page_url', pre=True)
+    def validate_url(cls, v):
+        """URL 형식 기본 검증"""
+        if v and isinstance(v, str):
+            if v.startswith(('http://', 'https://')):
+                return v
+            if v.startswith('www.') or '.' in v:
+                return f"https://{v}" if v else None
         return v
 
 
 class StatisticalItem(BaseKStartupItem):
-    """통계 정보 모델"""
+    """통계 정보 모델 (실제 API 응답 기반)"""
     
-    # 기본 정보
-    statistics_id: Optional[str] = Field(None, alias="stats_no", description="통계번호")
-    title: Optional[str] = Field(None, alias="stats_titl_nm", description="통계제목")
-    description: Optional[str] = Field(None, alias="stats_cn", description="통계내용")
+    # 기본 정보 (실제 XML 필드명으로 수정)
+    title: Optional[str] = Field(None, alias="titl_nm", description="통계자료명")
+    content: Optional[str] = Field(None, alias="ctnt", description="통계자료내용")
+    register_date: Optional[str] = Field(None, alias="fstm_reg_dt", description="최초등록일시")
+    modify_date: Optional[str] = Field(None, alias="last_mdfcn_dt", description="최종수정일시")
+    detail_page_url: Optional[str] = Field(None, alias="detl_pg_url", description="상세페이지URL")
+    file_name: Optional[str] = Field(None, alias="file_nm", description="다운로드파일명")
     
-    # 통계 데이터
-    target_year: Optional[int] = Field(None, alias="trgt_year", description="대상년도")
-    target_month: Optional[int] = Field(None, alias="trgt_month", description="대상월")
-    statistics_value: Optional[str] = Field(None, alias="stats_vl", description="통계값")
-    unit: Optional[str] = Field(None, alias="unt_nm", description="단위명")
+    # ID 정보
+    id: Optional[str] = Field(None, alias="id", description="ID")
     
-    # 분류 정보
-    category: Optional[str] = Field(None, alias="ctgry_nm", description="카테고리명")
-    subcategory: Optional[str] = Field(None, alias="subctgry_nm", description="하위카테고리명")
-    
-    # 기타
-    source: Optional[str] = Field(None, alias="source_nm", description="출처명")
-    reference_date: Optional[str] = Field(None, alias="ref_de", description="기준일자")
-    
-    @validator('target_year', pre=True)
-    def validate_year(cls, v):
-        """년도 검증"""
-        if v and isinstance(v, str) and v.isdigit():
-            year = int(v)
-            if 2000 <= year <= 2050:
-                return year
+    @validator('register_date', 'modify_date', pre=True)
+    def validate_date_format(cls, v):
+        """날짜시간 형식 검증 (YYYY-MM-DD HH:MM:SS)"""
+        if v and isinstance(v, str):
+            # 이미 올바른 형식인 경우 그대로 반환
+            if ' ' in v and ':' in v:
+                return v
+            # YYYYMMDD 형식인 경우 변환
+            if len(v) == 8 and v.isdigit():
+                return f"{v[:4]}-{v[4:6]}-{v[6:8]} 00:00:00"
         return v
     
-    @validator('target_month', pre=True)
-    def validate_month(cls, v):
-        """월 검증"""
-        if v and isinstance(v, str) and v.isdigit():
-            month = int(v)
-            if 1 <= month <= 12:
-                return month
+    @validator('detail_page_url', pre=True)
+    def validate_url(cls, v):
+        """URL 형식 기본 검증"""
+        if v and isinstance(v, str):
+            if v.startswith(('http://', 'https://')):
+                return v
+            if v.startswith('www.') or '.' in v:
+                return f"https://{v}" if v else None
         return v
 
 
