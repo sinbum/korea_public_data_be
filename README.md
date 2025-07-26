@@ -711,7 +711,7 @@ git push origin feature/새로운기능
 
 ### 3️⃣ 이슈 및 버그 리포트
 
-[GitHub Issues](https://github.com/your-repo/issues)에서 다음 템플릿으로 제출:
+[GitHub Issues](https://github.com/sinbum/korea_public_data_be/issues)에서 다음 템플릿으로 제출:
 
 - 🐛 **버그 리포트**: 재현 단계 포함
 - 💡 **기능 제안**: 사용 사례 및 예상 효과
@@ -854,8 +854,8 @@ docker-compose exec celery-worker bash
 
 ### 📧 연락처
 
-- **이슈 및 버그 리포트**: [GitHub Issues](https://github.com/your-repo/issues)
-- **기능 제안**: [GitHub Discussions](https://github.com/your-repo/discussions)
+- **이슈 및 버그 리포트**: [GitHub Issues](https://github.com/sinbum/korea_public_data_be/issues)
+- **기능 제안**: [GitHub Discussions](https://github.com/sinbum/korea_public_data_be/issues/1)
 - **기술 질문**: Stack Overflow에서 `korea-public-api` 태그 사용
 
 ---
