@@ -2,16 +2,31 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Path, status
 from typing import List, Optional
 from .service import AnnouncementService
 from .models import AnnouncementResponse, AnnouncementCreate, AnnouncementUpdate
-from ...shared.schemas import APIResponse, ErrorResponse, DataCollectionResult, PaginatedResponse
+from .schemas import AnnouncementResponse as AnnouncementResponseSchema
+from ...shared.responses import (
+    BaseResponse,
+    PaginatedResponse, 
+    CreatedResponse,
+    success_response,
+    created_response,
+    error_response
+)
+from ...shared.pagination import PaginationParams, FilterParams
+from ...shared.exceptions.custom_exceptions import (
+    NotFoundException,
+    ValidationException,
+    BusinessLogicException
+)
 from ...core.dependencies import get_announcement_service
 
 router = APIRouter(
     prefix="/announcements",
     tags=["사업공고"],
     responses={
-        400: {"model": ErrorResponse, "description": "잘못된 요청"},
-        404: {"model": ErrorResponse, "description": "리소스를 찾을 수 없음"},
-        500: {"model": ErrorResponse, "description": "서버 내부 오류"}
+        400: {"description": "잘못된 요청"},
+        404: {"description": "리소스를 찾을 수 없음"}, 
+        422: {"description": "입력 데이터 검증 오류"},
+        500: {"description": "서버 내부 오류"}
     }
 )
 
@@ -21,7 +36,7 @@ router = APIRouter(
 
 @router.post(
     "/fetch",
-    response_model=List[AnnouncementResponse],
+    response_model=BaseResponse[List[AnnouncementResponseSchema]],
     status_code=status.HTTP_200_OK,
     summary="공공데이터에서 사업공고 수집",
     description="""
@@ -40,7 +55,7 @@ router = APIRouter(
     """,
     response_description="성공적으로 수집된 사업공고 목록"
 )
-def fetch_announcements(
+async def fetch_announcements(
     page_no: int = Query(
         1, 
         ge=1, 
@@ -48,11 +63,11 @@ def fetch_announcements(
         example=1
     ),
     num_of_rows: int = Query(
-        10, 
+        100, 
         ge=1, 
         le=100, 
         description="한 페이지당 결과 수 (최대 100개)",
-        example=10
+        example=100
     ),
     business_name: Optional[str] = Query(
         None, 
@@ -72,20 +87,46 @@ def fetch_announcements(
     중복된 데이터는 자동으로 스킵되며, 새로운 데이터만 데이터베이스에 저장됩니다.
     """
     try:
-        announcements = service.fetch_and_save_announcements(
+        announcements = await service.fetch_and_save_announcements(
             page_no=page_no,
             num_of_rows=num_of_rows,
             business_name=business_name,
             business_type=business_type
         )
-        return [AnnouncementResponse(
-            id=str(a.id),
-            announcement_data=a.announcement_data,
-            source_url=a.source_url,
-            is_active=a.is_active,
-            created_at=a.created_at,
-            updated_at=a.updated_at
-        ) for a in announcements]
+        
+        response_data = []
+        for a in announcements:
+            # Convert Announcement model to response schema manually to handle datetime serialization
+            if hasattr(a.announcement_data, 'model_dump'):
+                announcement_data_dict = a.announcement_data.model_dump(mode='json')
+            elif hasattr(a.announcement_data, 'dict'):
+                announcement_data_dict = a.announcement_data.dict()
+            else:
+                announcement_data_dict = dict(a.announcement_data)
+            
+            # Convert datetime objects to strings in the announcement_data_dict
+            for key, value in announcement_data_dict.items():
+                if hasattr(value, 'isoformat'):  # datetime object
+                    announcement_data_dict[key] = value.isoformat() + "Z"
+            
+            response_item = AnnouncementResponseSchema(
+                id=str(a.id),
+                announcement_data=announcement_data_dict,
+                source_url=a.source_url,
+                is_active=a.is_active,
+                created_at=a.created_at.isoformat() + "Z" if a.created_at else None,
+                updated_at=a.updated_at.isoformat() + "Z" if a.updated_at else None
+            )
+            response_data.append(response_item)
+        
+        return success_response(
+            data=response_data,
+            message=f"총 {len(response_data)}개의 사업공고가 성공적으로 수집되었습니다"
+        )
+    except ValidationException as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except BusinessLogicException as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(
             status_code=500, 
@@ -95,16 +136,15 @@ def fetch_announcements(
 
 @router.get(
     "/",
-    response_model=PaginatedResponse[AnnouncementResponse],
-    status_code=status.HTTP_200_OK,
+    response_model=PaginatedResponse[AnnouncementResponseSchema],
     summary="사업공고 목록 조회",
     description="""
     저장된 사업공고 목록을 페이지네이션과 함께 조회합니다.
     
     **주요 기능:**
-    - 페이지네이션 지원 (page/page_size)
-    - 활성/비활성 상태 필터링
-    - 최신 데이터 우선 정렬
+    - 표준 페이지네이션 지원 (page, size, sort, order)
+    - 다양한 필터링 옵션 (검색, 상태, 카테고리, 날짜)
+    - 정렬 옵션 지원
     
     **사용 시나리오:**
     - 웹사이트 메인 페이지 공고 목록
@@ -113,58 +153,80 @@ def fetch_announcements(
     """,
     response_description="페이지네이션된 사업공고 목록"
 )
-def get_announcements(
-    page: int = Query(
-        1, 
-        ge=1, 
-        description="페이지 번호 (1부터 시작)",
-        example=1
-    ),
-    page_size: int = Query(
-        20, 
-        ge=1, 
-        le=100, 
-        description="페이지당 데이터 수 (최대 100개)",
-        example=20
-    ),
-    is_active: bool = Query(
-        True, 
-        description="활성 상태 필터 (True: 활성, False: 비활성)",
-        example=True
-    ),
+async def get_announcements(
+    pagination: PaginationParams = Depends(),
+    keyword: Optional[str] = Query(None, description="검색 키워드"),
+    business_type: Optional[str] = Query(None, description="사업 유형 필터"),
+    status: Optional[str] = Query(None, description="상태 필터"),
+    is_active: Optional[bool] = Query(None, description="활성 상태 필터"),
     service: AnnouncementService = Depends(get_announcement_service)
 ):
     """
     저장된 사업공고 목록을 조회합니다.
     
-    페이지네이션을 지원하며, 활성 상태에 따른 필터링이 가능합니다.
+    표준 페이지네이션과 필터링을 지원합니다.
     """
-    result = service.get_announcements(page=page, page_size=page_size, is_active=is_active)
-    
-    items = [AnnouncementResponse(
-        id=str(a.id),
-        announcement_data=a.announcement_data,
-        source_url=a.source_url,
-        is_active=a.is_active,
-        created_at=a.created_at,
-        updated_at=a.updated_at
-    ) for a in result.items]
-    
-    return PaginatedResponse(
-        items=items,
-        total_count=result.total_count,
-        page=result.page,
-        page_size=result.page_size,
-        total_pages=result.total_pages,
-        has_next=result.has_next,
-        has_previous=result.has_previous
-    )
+    try:
+        # Use the simpler get_announcements method for now
+        result = service.get_announcements(
+            page=pagination.page,
+            page_size=pagination.size,
+            is_active=is_active if is_active is not None else True
+        )
+        
+        items = []
+        for a in result.items:
+            # Convert Announcement model to response schema manually to handle datetime serialization
+            if hasattr(a.announcement_data, 'model_dump'):
+                announcement_data_dict = a.announcement_data.model_dump(mode='json')
+            elif hasattr(a.announcement_data, 'dict'):
+                announcement_data_dict = a.announcement_data.dict()
+            else:
+                announcement_data_dict = dict(a.announcement_data)
+            
+            # Convert datetime objects to strings in the announcement_data_dict
+            for key, value in announcement_data_dict.items():
+                if hasattr(value, 'isoformat'):  # datetime object
+                    announcement_data_dict[key] = value.isoformat() + "Z"
+            
+            response_item = AnnouncementResponseSchema(
+                id=str(a.id),
+                announcement_data=announcement_data_dict,
+                source_url=a.source_url,
+                is_active=a.is_active,
+                created_at=a.created_at.isoformat() + "Z" if a.created_at else None,
+                updated_at=a.updated_at.isoformat() + "Z" if a.updated_at else None
+            )
+            items.append(response_item)
+        
+        import math
+        total_pages = math.ceil(result.total_count / pagination.size) if result.total_count > 0 else 1
+        
+        return PaginatedResponse(
+            success=True,
+            items=items,
+            message="사업공고 목록 조회 성공",
+            pagination={
+                "page": result.page,
+                "size": pagination.size,
+                "total": result.total_count,
+                "total_pages": total_pages,
+                "has_next": result.has_next,
+                "has_previous": result.has_previous
+            }
+        )
+    except ValidationException as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"사업공고 목록 조회 중 오류가 발생했습니다: {str(e)}"
+        )
 
 
 @router.get(
     "/{announcement_id}",
-    response_model=AnnouncementResponse,
-    status_code=status.HTTP_200_OK,
+    response_model=BaseResponse[AnnouncementResponseSchema],
     summary="특정 사업공고 상세 조회",
     description="""
     MongoDB ObjectId를 사용하여 특정 사업공고의 상세 정보를 조회합니다.
@@ -172,22 +234,16 @@ def get_announcements(
     **주요 기능:**
     - 고유 ID로 정확한 데이터 조회
     - 전체 공고 상세 정보 반환
-    - 404 에러 자동 처리
+    - 표준 에러 응답 포맷
     
     **사용 시나리오:**
     - 공고 상세 페이지 조회
     - 특정 공고 정보 확인
     - 관리 시스템에서 개별 데이터 조회
     """,
-    response_description="사업공고 상세 정보",
-    responses={
-        404: {
-            "model": ErrorResponse,
-            "description": "해당 ID의 사업공고를 찾을 수 없음"
-        }
-    }
+    response_description="사업공고 상세 정보"
 )
-def get_announcement(
+async def get_announcement(
     announcement_id: str = Path(
         ...,
         description="조회할 사업공고의 고유 ID (MongoDB ObjectId)",
@@ -200,128 +256,206 @@ def get_announcement(
     
     MongoDB ObjectId를 사용하여 정확한 데이터를 반환합니다.
     """
-    announcement = service.get_announcement_by_id(announcement_id)
-    if not announcement:
-        raise HTTPException(
-            status_code=404, 
-            detail="해당 ID의 사업공고를 찾을 수 없습니다"
+    try:
+        announcement = await service.get_announcement_by_id(announcement_id)
+        if not announcement:
+            raise NotFoundException("announcement", announcement_id, f"ID {announcement_id}에 해당하는 사업공고를 찾을 수 없습니다")
+        
+        data = AnnouncementResponseSchema(
+            id=str(announcement.id),
+            announcement_data=announcement.announcement_data,
+            source_url=announcement.source_url,
+            is_active=announcement.is_active,
+            created_at=announcement.created_at,
+            updated_at=announcement.updated_at
         )
-    
-    return AnnouncementResponse(
-        id=str(announcement.id),
-        announcement_data=announcement.announcement_data,
-        source_url=announcement.source_url,
-        is_active=announcement.is_active,
-        created_at=announcement.created_at,
-        updated_at=announcement.updated_at
-    )
+        
+        return success_response(
+            data=data,
+            message="사업공고 상세 정보 조회 성공"
+        )
+    except NotFoundException:
+        raise HTTPException(status_code=404, detail=f"ID {announcement_id}에 해당하는 사업공고를 찾을 수 없습니다")
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"사업공고 조회 중 오류가 발생했습니다: {str(e)}"
+        )
 
 
-@router.post("/", response_model=AnnouncementResponse)
-def create_announcement(
+@router.post(
+    "/",
+    response_model=CreatedResponse[AnnouncementResponseSchema],
+    status_code=status.HTTP_201_CREATED,
+    summary="새 사업공고 생성",
+    description="새로운 사업공고를 생성합니다.",
+    response_description="생성된 사업공고 정보"
+)
+async def create_announcement(
     announcement_data: AnnouncementCreate,
     service: AnnouncementService = Depends(get_announcement_service)
 ):
     """새 사업공고 생성"""
-    announcement = service.create_announcement(announcement_data)
-    return AnnouncementResponse(
-        id=str(announcement.id),
-        announcement_data=announcement.announcement_data,
-        source_url=announcement.source_url,
-        is_active=announcement.is_active,
-        created_at=announcement.created_at,
-        updated_at=announcement.updated_at
-    )
+    try:
+        announcement = await service.create_announcement(announcement_data)
+        
+        data = AnnouncementResponseSchema(
+            id=str(announcement.id),
+            announcement_data=announcement.announcement_data,
+            source_url=announcement.source_url,
+            is_active=announcement.is_active,
+            created_at=announcement.created_at,
+            updated_at=announcement.updated_at
+        )
+        
+        return CreatedResponse(
+            success=True,
+            data=data,
+            message="사업공고가 성공적으로 생성되었습니다",
+            resource_id=str(announcement.id)
+        )
+    except ValidationException as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except BusinessLogicException as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"사업공고 생성 중 오류가 발생했습니다: {str(e)}"
+        )
 
 
-@router.put("/{announcement_id}", response_model=AnnouncementResponse)
-def update_announcement(
-    announcement_id: str,
-    update_data: AnnouncementUpdate,
+@router.put(
+    "/{announcement_id}",
+    response_model=BaseResponse[AnnouncementResponseSchema],
+    summary="사업공고 수정",
+    description="기존 사업공고를 수정합니다.",
+    response_description="수정된 사업공고 정보"
+)
+async def update_announcement(
+    announcement_id: str = Path(..., description="수정할 사업공고 ID"),
+    update_data: AnnouncementUpdate = ...,
     service: AnnouncementService = Depends(get_announcement_service)
 ):
     """사업공고 수정"""
-    announcement = service.update_announcement(announcement_id, update_data)
-    if not announcement:
-        raise HTTPException(status_code=404, detail="사업공고를 찾을 수 없습니다")
-    
-    return AnnouncementResponse(
-        id=str(announcement.id),
-        announcement_data=announcement.announcement_data,
-        source_url=announcement.source_url,
-        is_active=announcement.is_active,
-        created_at=announcement.created_at,
-        updated_at=announcement.updated_at
-    )
+    try:
+        announcement = await service.update_announcement(announcement_id, update_data)
+        if not announcement:
+            raise NotFoundException("announcement", announcement_id, f"ID {announcement_id}에 해당하는 사업공고를 찾을 수 없습니다")
+        
+        data = AnnouncementResponseSchema(
+            id=str(announcement.id),
+            announcement_data=announcement.announcement_data,
+            source_url=announcement.source_url,
+            is_active=announcement.is_active,
+            created_at=announcement.created_at,
+            updated_at=announcement.updated_at
+        )
+        
+        return success_response(
+            data=data,
+            message="사업공고가 성공적으로 수정되었습니다"
+        )
+    except NotFoundException:
+        raise HTTPException(status_code=404, detail=f"ID {announcement_id}에 해당하는 사업공고를 찾을 수 없습니다")
+    except ValidationException as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except BusinessLogicException as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"사업공고 수정 중 오류가 발생했습니다: {str(e)}"
+        )
 
 
-@router.delete("/{announcement_id}")
-def delete_announcement(
-    announcement_id: str,
+@router.delete(
+    "/{announcement_id}",
+    response_model=BaseResponse[dict],
+    status_code=status.HTTP_200_OK,
+    summary="사업공고 삭제",
+    description="사업공고를 삭제(비활성화)합니다.",
+    response_description="삭제 성공 메시지"
+)
+async def delete_announcement(
+    announcement_id: str = Path(..., description="삭제할 사업공고 ID"),
     service: AnnouncementService = Depends(get_announcement_service)
 ):
     """사업공고 삭제 (비활성화)"""
-    success = service.delete_announcement(announcement_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="사업공고를 찾을 수 없습니다")
-    
-    return {"message": "사업공고가 삭제되었습니다"}
+    try:
+        success = await service.delete_announcement(announcement_id)
+        if not success:
+            raise NotFoundException("announcement", announcement_id, f"ID {announcement_id}에 해당하는 사업공고를 찾을 수 없습니다")
+        
+        return success_response(
+            data={"announcement_id": announcement_id, "deleted": True},
+            message="사업공고가 성공적으로 삭제되었습니다"
+        )
+    except NotFoundException:
+        raise HTTPException(status_code=404, detail=f"ID {announcement_id}에 해당하는 사업공고를 찾을 수 없습니다")
+    except BusinessLogicException as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"사업공고 삭제 중 오류가 발생했습니다: {str(e)}"
+        )
 
 
-@router.get("/search/{search_term}", response_model=List[AnnouncementResponse])
-def search_announcements(
-    search_term: str = Path(..., description="검색어"),
-    service: AnnouncementService = Depends(get_announcement_service)
-):
-    """사업공고 검색"""
-    announcements = service.search_announcements(search_term)
-    return [AnnouncementResponse(
-        id=str(a.id),
-        announcement_data=a.announcement_data,
-        source_url=a.source_url,
-        is_active=a.is_active,
-        created_at=a.created_at,
-        updated_at=a.updated_at
-    ) for a in announcements]
+# 검색은 메인 GET / 엔드포인트의 keyword 파라미터로 통합됨
 
-
-@router.get("/type/{business_type}", response_model=List[AnnouncementResponse])
-def get_announcements_by_type(
-    business_type: str = Path(..., description="사업 유형"),
-    service: AnnouncementService = Depends(get_announcement_service)
-):
-    """사업 유형별 공고 조회"""
-    announcements = service.get_announcements_by_type(business_type)
-    return [AnnouncementResponse(
-        id=str(a.id),
-        announcement_data=a.announcement_data,
-        source_url=a.source_url,
-        is_active=a.is_active,
-        created_at=a.created_at,
-        updated_at=a.updated_at
-    ) for a in announcements]
-
-
-@router.get("/recent", response_model=List[AnnouncementResponse])
-def get_recent_announcements(
+@router.get(
+    "/recent",
+    response_model=BaseResponse[List[AnnouncementResponseSchema]],
+    summary="최근 사업공고 조회",
+    description="최근에 등록된 사업공고 목록을 조회합니다."
+)
+async def get_recent_announcements(
     limit: int = Query(10, ge=1, le=50, description="조회할 최근 공고 수"),
     service: AnnouncementService = Depends(get_announcement_service)
 ):
     """최근 공고 조회"""
-    announcements = service.get_recent_announcements(limit)
-    return [AnnouncementResponse(
-        id=str(a.id),
-        announcement_data=a.announcement_data,
-        source_url=a.source_url,
-        is_active=a.is_active,
-        created_at=a.created_at,
-        updated_at=a.updated_at
-    ) for a in announcements]
+    try:
+        announcements = await service.get_recent_announcements(limit)
+        
+        response_data = [AnnouncementResponseSchema(
+            id=str(a.id),
+            announcement_data=a.announcement_data,
+            source_url=a.source_url,
+            is_active=a.is_active,
+            created_at=a.created_at,
+            updated_at=a.updated_at
+        ) for a in announcements]
+        
+        return success_response(
+            data=response_data,
+            message=f"최근 {len(response_data)}개의 사업공고를 조회했습니다"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"최근 공고 조회 중 오류가 발생했습니다: {str(e)}"
+        )
 
 
-@router.get("/statistics", response_model=dict)
-def get_announcement_statistics(
+@router.get(
+    "/statistics",
+    response_model=BaseResponse[dict],
+    summary="사업공고 통계 조회",
+    description="사업공고에 대한 통계 정보를 조회합니다."
+)
+async def get_announcement_statistics(
     service: AnnouncementService = Depends(get_announcement_service)
 ):
     """공고 통계 조회"""
-    return service.get_announcement_statistics()
+    try:
+        stats = await service.get_announcement_statistics()
+        return success_response(
+            data=stats,
+            message="사업공고 통계 조회 성공"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"통계 조회 중 오류가 발생했습니다: {str(e)}"
+        )
