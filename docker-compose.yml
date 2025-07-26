@@ -128,7 +128,7 @@ services:
       - ./volumes/logs:/app/logs:rw
       # 임시 파일 공유
       - ./volumes/tmp:/app/tmp:rw
-    command: celery -A app.core.celery worker --loglevel=info --concurrency=2
+    command: celery -A app.core.celery_config worker --loglevel=info --concurrency=4 --queues=announcements,businesses,contents,statistics,classification,system,monitoring,default
     restart: unless-stopped
     networks:
       - korea_api_network
@@ -163,7 +163,7 @@ services:
       - ./volumes/logs:/app/logs:rw
       # Celery beat 스케줄 파일
       - ./volumes/tmp:/app/tmp:rw
-    command: celery -A app.core.celery beat --loglevel=info --schedule=/app/tmp/celerybeat-schedule
+    command: celery -A app.core.celery_config beat --loglevel=info --schedule=/app/tmp/celerybeat-schedule
     restart: unless-stopped
     networks:
       - korea_api_network
@@ -193,7 +193,7 @@ services:
         condition: service_healthy
     volumes:
       - ./app:/app/app:rw
-    command: celery -A app.core.celery flower --port=5555
+    command: celery -A app.core.celery_config flower --port=5555
     restart: unless-stopped
     networks:
       - korea_api_network
