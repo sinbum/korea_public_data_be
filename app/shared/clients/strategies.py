@@ -29,7 +29,11 @@ class GovernmentAPIKeyStrategy(AuthenticationStrategy):
         """Apply government API key authentication"""
         # Use decoded key if encoding key is provided
         auth_key = self.encoding_key or self.api_key
-        request_params["serviceKey"] = auth_key
+        
+        # Add serviceKey to params dictionary, not directly to request_params
+        if "params" not in request_params:
+            request_params["params"] = {}
+        request_params["params"]["serviceKey"] = auth_key
         return request_params
 
 

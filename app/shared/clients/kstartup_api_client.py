@@ -123,8 +123,8 @@ class KStartupAPIClient(BaseAPIClient[PublicDataResponse]):
     def _convert_param_names(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """Convert parameter names to K-Startup API format"""
         param_mapping = {
-            "page_no": "pageNo",
-            "num_of_rows": "numOfRows",
+            "page_no": "page",
+            "num_of_rows": "perPage", 
             "business_name": "businessName",
             "business_type": "businessType",
             "content_type": "contentType",
