@@ -4,22 +4,166 @@ Content Service implementation.
 Provides business logic for content-related operations using Repository pattern.
 """
 
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime
 from .models import Content, ContentCreate, ContentUpdate
 from .repository import ContentRepository
 from ...shared.clients.kstartup_api_client import KStartupAPIClient
+from ...shared.models.kstartup import ContentItem
+from ...shared.interfaces.base_service import BaseService
+from ...shared.interfaces.domain_services import IContentService
+from ...shared.schemas import PaginatedResponse, DataCollectionResult
 from ...core.interfaces.base_repository import QueryFilter, PaginationResult
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-class ContentService:
+class ContentService(BaseService[Content, ContentCreate, ContentUpdate, ContentItem]):
     """콘텐츠 서비스"""
     
-    def __init__(self, repository: ContentRepository):
+    def __init__(self, repository: ContentRepository, api_client: Optional[KStartupAPIClient] = None):
+        super().__init__(repository=repository, logger=logger)
         self.repository = repository
+        self.api_client = api_client or KStartupAPIClient()
+    
+    # BaseService 추상 메소드 구현
+    async def _fetch_by_id(self, item_id: str) -> Optional[Dict[str, Any]]:
+        """ID로 콘텐츠 데이터 조회"""
+        return await self.repository.get_by_id(item_id)
+    
+    async def _fetch_list(
+        self, 
+        page: int, 
+        limit: int, 
+        query_params: Dict[str, Any]
+    ) -> tuple[List[Dict[str, Any]], int]:
+        """페이지네이션된 콘텐츠 목록 조회"""
+        filters = query_params.get("filters", {})
+        sort_by = query_params.get("sort_by")
+        sort_order = query_params.get("sort_order", "desc")
+        
+        offset = (page - 1) * limit
+        return await self.repository.get_list(
+            offset=offset,
+            limit=limit,
+            filters=filters,
+            sort_by=sort_by,
+            sort_order=sort_order
+        )
+    
+    async def _save_new_item(self, domain_data: Content) -> Dict[str, Any]:
+        """새 콘텐츠 저장"""
+        return await self.repository.create(domain_data)
+    
+    async def _save_updated_item(self, item_id: str, domain_data: Content) -> Dict[str, Any]:
+        """콘텐츠 업데이트"""
+        return await self.repository.update(item_id, domain_data)
+    
+    async def _delete_item(self, item_id: str) -> bool:
+        """콘텐츠 삭제"""
+        return await self.repository.delete(item_id)
+    
+    async def _transform_to_response(self, raw_data: Dict[str, Any]) -> ContentItem:
+        """원본 데이터를 응답 모델로 변환"""
+        return ContentItem(**raw_data)
+    
+    async def _transform_to_domain(self, input_data) -> Content:
+        """입력 데이터를 도메인 모델로 변환"""
+        if isinstance(input_data, ContentCreate):
+            return Content(**input_data.model_dump())
+        elif isinstance(input_data, ContentUpdate):
+            return Content(**input_data.model_dump(exclude_unset=True))
+        else:
+            return Content(**input_data)
+    
+    # 도메인별 특화 메소드들
+    async def fetch_contents_from_api(
+        self,
+        page_no: int = 1,
+        num_of_rows: int = 10
+    ) -> DataCollectionResult:
+        """K-Startup API에서 콘텐츠 데이터 수집"""
+        start_time = datetime.utcnow()
+        result = DataCollectionResult(
+            total_fetched=0,
+            new_items=0,
+            updated_items=0,
+            skipped_items=0,
+            errors=[],
+            collection_time=0.0
+        )
+        
+        try:
+            contents = self.fetch_and_save_contents(page_no, num_of_rows)
+            result.total_fetched = len(contents)
+            result.new_items = len(contents)
+            
+        except Exception as e:
+            result.errors.append(str(e))
+            self._log_error(f"콘텐츠 데이터 수집 실패: {e}")
+        
+        end_time = datetime.utcnow()
+        result.collection_time = (end_time - start_time).total_seconds()
+        
+        return result
+    
+    async def get_contents_by_type(
+        self,
+        content_type_code: str,
+        page: int = 1,
+        limit: int = 20
+    ) -> PaginatedResponse[ContentItem]:
+        """콘텐츠 타입별 목록 조회"""
+        filters = {"content_type_code": content_type_code}
+        return await self.get_list(page=page, limit=limit, filters=filters)
+    
+    async def get_popular_contents(
+        self,
+        page: int = 1,
+        limit: int = 20
+    ) -> PaginatedResponse[ContentItem]:
+        """인기 콘텐츠 목록 조회"""
+        # 인기도 기준으로 정렬 (예: 좋아요 수, 조회수 등)
+        filters = {}
+        return await self.get_list(page=page, limit=limit, filters=filters, sort_by="like_count")
+    
+    async def like_content(self, content_id: str) -> bool:
+        """콘텐츠 좋아요"""
+        try:
+            # 좋아요 수 증가 로직
+            content = await self._fetch_by_id(content_id)
+            if content:
+                like_count = content.get("like_count", 0) + 1
+                await self.repository.update(content_id, {"like_count": like_count})
+                return True
+            return False
+        except Exception as e:
+            self._log_error(f"콘텐츠 좋아요 실패: {e}")
+            return False
+    
+    async def get_content_statistics(self) -> Dict[str, Any]:
+        """콘텐츠 통계 조회"""
+        total_count = await self.repository.count()
+        return {
+            "total_contents": total_count,
+            "content_types": {}  # 타입별 통계 등
+        }
+    
+    async def search_contents(
+        self,
+        query: str,
+        page: int = 1,
+        limit: int = 20
+    ) -> PaginatedResponse[ContentItem]:
+        """콘텐츠 텍스트 검색"""
+        filters = {
+            "$or": [
+                {"title": {"$regex": query, "$options": "i"}},
+                {"summary": {"$regex": query, "$options": "i"}}
+            ]
+        }
+        return await self.get_list(page=page, limit=limit, filters=filters)
     
     def fetch_and_save_contents(
         self, 

@@ -9,17 +9,222 @@ from datetime import datetime
 from .models import Statistics, StatisticsCreate, StatisticsUpdate
 from .repository import StatisticsRepository
 from ...shared.clients.kstartup_api_client import KStartupAPIClient
+from ...shared.models.kstartup import StatisticalItem
+from ...shared.interfaces.base_service import BaseService
+from ...shared.interfaces.domain_services import IStatisticsService
+from ...shared.schemas import PaginatedResponse, DataCollectionResult
 from ...core.interfaces.base_repository import QueryFilter, PaginationResult
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-class StatisticsService:
+class StatisticsService(BaseService[Statistics, StatisticsCreate, StatisticsUpdate, StatisticalItem]):
     """통계 서비스"""
     
-    def __init__(self, repository: StatisticsRepository):
+    def __init__(self, repository: StatisticsRepository, api_client: Optional[KStartupAPIClient] = None):
+        super().__init__(repository=repository, logger=logger)
         self.repository = repository
+        self.api_client = api_client or KStartupAPIClient()
+    
+    # BaseService 추상 메소드 구현
+    async def _fetch_by_id(self, item_id: str) -> Optional[Dict[str, Any]]:
+        """ID로 통계 데이터 조회"""
+        return await self.repository.get_by_id(item_id)
+    
+    async def _fetch_list(
+        self, 
+        page: int, 
+        limit: int, 
+        query_params: Dict[str, Any]
+    ) -> tuple[List[Dict[str, Any]], int]:
+        """페이지네이션된 통계 목록 조회"""
+        filters = query_params.get("filters", {})
+        sort_by = query_params.get("sort_by")
+        sort_order = query_params.get("sort_order", "desc")
+        
+        offset = (page - 1) * limit
+        return await self.repository.get_list(
+            offset=offset,
+            limit=limit,
+            filters=filters,
+            sort_by=sort_by,
+            sort_order=sort_order
+        )
+    
+    async def _save_new_item(self, domain_data: Statistics) -> Dict[str, Any]:
+        """새 통계 저장"""
+        return await self.repository.create(domain_data)
+    
+    async def _save_updated_item(self, item_id: str, domain_data: Statistics) -> Dict[str, Any]:
+        """통계 업데이트"""
+        return await self.repository.update(item_id, domain_data)
+    
+    async def _delete_item(self, item_id: str) -> bool:
+        """통계 삭제"""
+        return await self.repository.delete(item_id)
+    
+    async def _transform_to_response(self, raw_data: Dict[str, Any]) -> StatisticalItem:
+        """원본 데이터를 응답 모델로 변환"""
+        return StatisticalItem(**raw_data)
+    
+    async def _transform_to_domain(self, input_data) -> Statistics:
+        """입력 데이터를 도메인 모델로 변환"""
+        if isinstance(input_data, StatisticsCreate):
+            return Statistics(**input_data.model_dump())
+        elif isinstance(input_data, StatisticsUpdate):
+            return Statistics(**input_data.model_dump(exclude_unset=True))
+        else:
+            return Statistics(**input_data)
+    
+    # 도메인별 특화 메소드들
+    async def fetch_statistics_from_api(
+        self,
+        page_no: int = 1,
+        num_of_rows: int = 10
+    ) -> DataCollectionResult:
+        """K-Startup API에서 통계 데이터 수집"""
+        start_time = datetime.utcnow()
+        result = DataCollectionResult(
+            total_fetched=0,
+            new_items=0,
+            updated_items=0,
+            skipped_items=0,
+            errors=[],
+            collection_time=0.0
+        )
+        
+        try:
+            statistics = self.fetch_and_save_statistics(page_no, num_of_rows)
+            result.total_fetched = len(statistics)
+            result.new_items = len(statistics)
+            
+        except Exception as e:
+            result.errors.append(str(e))
+            self._log_error(f"통계 데이터 수집 실패: {e}")
+        
+        end_time = datetime.utcnow()
+        result.collection_time = (end_time - start_time).total_seconds()
+        
+        return result
+    
+    async def get_statistics_by_category(
+        self,
+        category: str,
+        page: int = 1,
+        limit: int = 20
+    ) -> PaginatedResponse[StatisticalItem]:
+        """카테고리별 통계 목록 조회"""
+        filters = {"category": category}
+        return await self.get_list(page=page, limit=limit, filters=filters)
+    
+    async def get_statistics_by_period(
+        self,
+        year: int,
+        month: Optional[int] = None,
+        page: int = 1,
+        limit: int = 20
+    ) -> PaginatedResponse[StatisticalItem]:
+        """기간별 통계 목록 조회"""
+        filters = {"year": year}
+        if month:
+            filters["month"] = month
+        return await self.get_list(page=page, limit=limit, filters=filters)
+    
+    async def get_trend_analysis(
+        self,
+        category: str,
+        start_year: int,
+        end_year: int
+    ) -> Dict[str, Any]:
+        """통계 트렌드 분석"""
+        filters = {
+            "category": category,
+            "year": {"$gte": start_year, "$lte": end_year}
+        }
+        stats_data, _ = await self._fetch_list(1, 1000, {"filters": filters})
+        
+        # 트렌드 분석 로직
+        trend_data = {}
+        for stat in stats_data:
+            year = stat.get("year")
+            value = stat.get("value", 0)
+            if year not in trend_data:
+                trend_data[year] = []
+            trend_data[year].append(value)
+        
+        # 연도별 평균 계산
+        yearly_averages = {}
+        for year, values in trend_data.items():
+            yearly_averages[year] = sum(values) / len(values) if values else 0
+        
+        return {
+            "category": category,
+            "period": f"{start_year}-{end_year}",
+            "yearly_averages": yearly_averages,
+            "total_data_points": len(stats_data)
+        }
+    
+    async def get_summary_statistics(self) -> Dict[str, Any]:
+        """요약 통계 조회"""
+        total_count = await self.repository.count()
+        
+        # 카테고리별 통계
+        categories = await self._get_categories_summary()
+        
+        return {
+            "total_statistics": total_count,
+            "categories": categories,
+            "last_updated": datetime.utcnow().isoformat()
+        }
+    
+    async def calculate_growth_rate(
+        self,
+        category: str,
+        year: int,
+        comparison_year: int
+    ) -> Dict[str, Any]:
+        """성장률 계산"""
+        # 두 연도의 데이터 조회
+        current_year_data = await self._get_year_average(category, year)
+        comparison_year_data = await self._get_year_average(category, comparison_year)
+        
+        if comparison_year_data == 0:
+            growth_rate = 0
+        else:
+            growth_rate = ((current_year_data - comparison_year_data) / comparison_year_data) * 100
+        
+        return {
+            "category": category,
+            "current_year": year,
+            "current_value": current_year_data,
+            "comparison_year": comparison_year,
+            "comparison_value": comparison_year_data,
+            "growth_rate": round(growth_rate, 2)
+        }
+    
+    async def _get_categories_summary(self) -> Dict[str, int]:
+        """카테고리별 요약 통계"""
+        # 간단한 구현 - 실제로는 aggregation 사용
+        categories = {}
+        all_stats, _ = await self._fetch_list(1, 1000, {})
+        
+        for stat in all_stats:
+            category = stat.get("category", "unknown")
+            categories[category] = categories.get(category, 0) + 1
+        
+        return categories
+    
+    async def _get_year_average(self, category: str, year: int) -> float:
+        """년도별 평균값 계산"""
+        filters = {"category": category, "year": year}
+        stats_data, _ = await self._fetch_list(1, 1000, {"filters": filters})
+        
+        if not stats_data:
+            return 0.0
+        
+        total_value = sum(stat.get("value", 0) for stat in stats_data)
+        return total_value / len(stats_data)
     
     def fetch_and_save_statistics(
         self, 

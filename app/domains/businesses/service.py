@@ -4,21 +4,154 @@ Business Service implementation.
 Provides business logic for business-related operations using Repository pattern.
 """
 
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
+from datetime import datetime
 from .models import Business, BusinessCreate, BusinessUpdate
 from .repository import BusinessRepository
 from ...shared.clients.kstartup_api_client import KStartupAPIClient
+from ...shared.models.kstartup import BusinessItem
+from ...shared.interfaces.base_service import BaseService
+from ...shared.interfaces.domain_services import IBusinessService
+from ...shared.schemas import PaginatedResponse, DataCollectionResult
 from ...core.interfaces.base_repository import QueryFilter, PaginationResult
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-class BusinessService:
+class BusinessService(BaseService[Business, BusinessCreate, BusinessUpdate, BusinessItem]):
     """사업정보 서비스"""
     
-    def __init__(self, repository: BusinessRepository):
+    def __init__(self, repository: BusinessRepository, api_client: Optional[KStartupAPIClient] = None):
+        super().__init__(repository=repository, logger=logger)
         self.repository = repository
+        self.api_client = api_client or KStartupAPIClient()
+    
+    # BaseService 추상 메소드 구현
+    async def _fetch_by_id(self, item_id: str) -> Optional[Dict[str, Any]]:
+        """ID로 사업정보 데이터 조회"""
+        return await self.repository.get_by_id(item_id)
+    
+    async def _fetch_list(
+        self, 
+        page: int, 
+        limit: int, 
+        query_params: Dict[str, Any]
+    ) -> tuple[List[Dict[str, Any]], int]:
+        """페이지네이션된 사업정보 목록 조회"""
+        filters = query_params.get("filters", {})
+        sort_by = query_params.get("sort_by")
+        sort_order = query_params.get("sort_order", "desc")
+        
+        offset = (page - 1) * limit
+        return await self.repository.get_list(
+            offset=offset,
+            limit=limit,
+            filters=filters,
+            sort_by=sort_by,
+            sort_order=sort_order
+        )
+    
+    async def _save_new_item(self, domain_data: Business) -> Dict[str, Any]:
+        """새 사업정보 저장"""
+        return await self.repository.create(domain_data)
+    
+    async def _save_updated_item(self, item_id: str, domain_data: Business) -> Dict[str, Any]:
+        """사업정보 업데이트"""
+        return await self.repository.update(item_id, domain_data)
+    
+    async def _delete_item(self, item_id: str) -> bool:
+        """사업정보 삭제"""
+        return await self.repository.delete(item_id)
+    
+    async def _transform_to_response(self, raw_data: Dict[str, Any]) -> BusinessItem:
+        """원본 데이터를 응답 모델로 변환"""
+        return BusinessItem(**raw_data)
+    
+    async def _transform_to_domain(self, input_data) -> Business:
+        """입력 데이터를 도메인 모델로 변환"""
+        if isinstance(input_data, BusinessCreate):
+            return Business(**input_data.model_dump())
+        elif isinstance(input_data, BusinessUpdate):
+            return Business(**input_data.model_dump(exclude_unset=True))
+        else:
+            return Business(**input_data)
+    
+    # 도메인별 특화 메소드들
+    async def fetch_businesses_from_api(
+        self,
+        page_no: int = 1,
+        num_of_rows: int = 10
+    ) -> DataCollectionResult:
+        """K-Startup API에서 사업정보 데이터 수집"""
+        start_time = datetime.utcnow()
+        result = DataCollectionResult(
+            total_fetched=0,
+            new_items=0,
+            updated_items=0,
+            skipped_items=0,
+            errors=[],
+            collection_time=0.0
+        )
+        
+        try:
+            # API 호출 로직 (기존 fetch_and_save_businesses 로직을 async로 변환)
+            businesses = self.fetch_and_save_businesses(page_no, num_of_rows)
+            result.total_fetched = len(businesses)
+            result.new_items = len(businesses)
+            
+        except Exception as e:
+            result.errors.append(str(e))
+            self._log_error(f"사업정보 데이터 수집 실패: {e}")
+        
+        end_time = datetime.utcnow()
+        result.collection_time = (end_time - start_time).total_seconds()
+        
+        return result
+    
+    async def get_businesses_by_category(
+        self,
+        category: str,
+        page: int = 1,
+        limit: int = 20
+    ) -> PaginatedResponse[BusinessItem]:
+        """사업 카테고리별 목록 조회"""
+        filters = {"business_category": category}
+        return await self.get_list(page=page, limit=limit, filters=filters)
+    
+    async def get_businesses_by_organization(
+        self,
+        organization_name: str,
+        page: int = 1,
+        limit: int = 20
+    ) -> PaginatedResponse[BusinessItem]:
+        """주관기관별 사업정보 목록 조회"""
+        filters = {"host_organization": organization_name}
+        return await self.get_list(page=page, limit=limit, filters=filters)
+    
+    async def get_business_statistics(self) -> Dict[str, Any]:
+        """사업정보 통계 조회"""
+        total_count = await self.repository.count()
+        # 추가 통계 계산 로직
+        return {
+            "total_businesses": total_count,
+            "categories": {}  # 카테고리별 통계 등
+        }
+    
+    async def search_businesses(
+        self,
+        query: str,
+        page: int = 1,
+        limit: int = 20
+    ) -> PaginatedResponse[BusinessItem]:
+        """사업정보 텍스트 검색"""
+        filters = {
+            "$or": [
+                {"business_name": {"$regex": query, "$options": "i"}},
+                {"host_organization": {"$regex": query, "$options": "i"}}
+            ]
+        }
+        return await self.get_list(page=page, limit=limit, filters=filters)
     
     def fetch_and_save_businesses(
         self, 

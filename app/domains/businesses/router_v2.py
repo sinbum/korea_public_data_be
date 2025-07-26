@@ -1,8 +1,8 @@
 """
-기업정보 라우터 구현.
+Standardized Business Router implementation.
 
-표준화된 응답, 페이지네이션, 에러 처리를 포함한 
-기업 관련 작업을 위한 완전한 RESTful API 엔드포인트를 제공합니다.
+Provides complete RESTful API endpoints for business-related operations
+with standardized responses, pagination, and error handling.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Path, status
