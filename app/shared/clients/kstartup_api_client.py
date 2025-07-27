@@ -325,7 +325,7 @@ class KStartupAPIClient(BaseAPIClient[PublicDataResponse]):
     async def async_get_content_information(
         self, 
         page_no: int = 1, 
-        num_of_rows: int = 10,
+        num_of_rows: int = 100,  # 콘텐츠는 총 1083건으로 적으므로 100건씩 효율적 수집
         content_type: Optional[str] = None,
         category: Optional[str] = None
     ) -> APIResponse[KStartupContentResponse]:
@@ -382,7 +382,7 @@ class KStartupAPIClient(BaseAPIClient[PublicDataResponse]):
     def get_content_information(
         self, 
         page_no: int = 1, 
-        num_of_rows: int = 10,
+        num_of_rows: int = 100,  # 콘텐츠는 총 1083건으로 적으므로 100건씩 효율적 수집
         content_type: Optional[str] = None,
         category: Optional[str] = None,
         order_by_latest: bool = True

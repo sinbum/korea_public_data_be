@@ -204,19 +204,27 @@ class ContentService(BaseService[Content, ContentCreate, ContentUpdate, ContentI
         contents = []
         
         try:
-            # K-Startup API 호출 - 최신순의 경우 높은 페이지 번호부터 시작
+            # K-Startup API 호출 - 최신순의 경우 마지막 페이지부터 역순으로 수집
             if order_by_latest and page_no == 1:
-                # 최신 데이터를 가져오기 위해 높은 페이지 번호부터 시작
-                # 총 페이지 수를 모르므로 큰 번호부터 시도
-                pages_to_try = [20, 15, 10, 5, 1]  # 큰 페이지부터 시도
+                # 총 데이터 수: 1083건 (API에서 확인)
+                # perPage=100으로 설정하면 약 11페이지
+                total_count = 1083
+                per_page = 100
+                total_pages = (total_count + per_page - 1) // per_page  # 약 11페이지
+                
+                # 최신 데이터를 위해 마지막 2-3페이지부터 시작
+                start_page = max(1, total_pages - 2)  # 9페이지부터
+                pages_to_try = list(range(total_pages, start_page - 1, -1))  # [11, 10, 9]
+                
+                logger.info(f"콘텐츠 최신 데이터 수집: 총 {total_pages}페이지 중 {pages_to_try} 페이지 시도")
                 response = None
                 
                 with KStartupAPIClient() as client:
                     for try_page in pages_to_try:
-                        logger.info(f"콘텐츠 페이지 {try_page}로 조회 시도 중...")
+                        logger.info(f"콘텐츠 페이지 {try_page}/{total_pages}로 조회 시도 중...")
                         temp_response = client.get_content_information(
                             page_no=try_page,
-                            num_of_rows=num_of_rows,
+                            num_of_rows=per_page,  # 100건씩 수집
                             content_type=content_type,
                             category=category,
                             order_by_latest=order_by_latest
@@ -226,11 +234,13 @@ class ContentService(BaseService[Content, ContentCreate, ContentUpdate, ContentI
                             logger.info(f"콘텐츠 페이지 {try_page}에서 {len(temp_response.data.data)}개 데이터 발견")
                             response = temp_response
                             break
+                        else:
+                            logger.warning(f"콘텐츠 페이지 {try_page}에서 데이터 없음 또는 오류")
                     
                     if not response:
-                        logger.warning("모든 페이지에서 콘텐츠 데이터를 찾을 수 없음")
+                        logger.warning("모든 최신 페이지에서 콘텐츠 데이터를 찾을 수 없음, 기본 페이지로 시도")
                         response = client.get_content_information(
-                            page_no=page_no,
+                            page_no=1,
                             num_of_rows=num_of_rows,
                             content_type=content_type,
                             category=category,
