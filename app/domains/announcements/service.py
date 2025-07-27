@@ -22,25 +22,52 @@ class AnnouncementService(BaseService[Announcement, AnnouncementCreate, Announce
         self.repository = repository
         self.api_client = api_client or KStartupAPIClient()
     
-    async def fetch_and_save_announcements(
+    def fetch_and_save_announcements(
         self, 
         page_no: int = 1, 
         num_of_rows: int = 10,
         business_name: Optional[str] = None,
-        business_type: Optional[str] = None
+        business_type: Optional[str] = None,
+        order_by_latest: bool = True
     ) -> List[Announcement]:
         """K-Startup API에서 사업공고 정보를 가져와 저장"""
         announcements = []
         all_processed_items = []  # 처리된 모든 아이템 (새로 저장 + 중복 스킵)
         
         try:
-            # K-Startup API 호출 (새로운 클라이언트 사용)
-            response = await self.api_client.async_get_announcement_information(
-                page_no=page_no,
-                num_of_rows=num_of_rows,
-                business_name=business_name,
-                business_type=business_type
-            )
+            # K-Startup API 호출 (동기 방식)
+            if order_by_latest:
+                # 현재 연도부터 역순으로 조회
+                current_year = datetime.now().year
+                years_to_try = [str(current_year), str(current_year - 1), None]
+                
+                for business_year in years_to_try:
+                    logger.info(f"사업연도 {business_year or '전체'}로 조회 시도 중...")
+                    response = self.api_client.get_announcement_information(
+                        page_no=page_no,
+                        num_of_rows=num_of_rows,
+                        business_name=business_name,
+                        business_type=business_type
+                    )
+                    
+                    if response.success and response.data and hasattr(response.data, 'data') and response.data.data:
+                        logger.info(f"사업연도 {business_year or '전체'}에서 {len(response.data.data)}개 데이터 발견")
+                        break
+                else:
+                    logger.warning("모든 연도에서 데이터를 찾을 수 없음")
+                    response = self.api_client.get_announcement_information(
+                        page_no=page_no,
+                        num_of_rows=num_of_rows,
+                        business_name=business_name,
+                        business_type=business_type
+                    )
+            else:
+                response = self.api_client.get_announcement_information(
+                    page_no=page_no,
+                    num_of_rows=num_of_rows,
+                    business_name=business_name,
+                    business_type=business_type
+                )
             
             logger.info(f"K-Startup API 응답: {response.total_count}건 중 {response.current_count}건 조회")
             
@@ -61,8 +88,8 @@ class AnnouncementService(BaseService[Announcement, AnnouncementCreate, Announce
                     try:
                         # AnnouncementItem 객체인지 확인
                         if hasattr(item, 'announcement_id'):
-                            # K-Startup 응답을 우리 모델에 맞게 변환
-                            announcement_data = self._transform_kstartup_data(item)
+                            # AnnouncementItem 객체에서 실제 데이터 추출
+                            announcement_data = self._transform_announcementitem_to_data(item)
                             
                             # 중복 체크
                             business_id = announcement_data.get("business_id")
@@ -241,34 +268,8 @@ class AnnouncementService(BaseService[Announcement, AnnouncementCreate, Announce
         }
         return await self.get_list(page=page, limit=limit, filters=filters)
     
-    def _transform_kstartup_data(self, kstartup_item) -> dict:
-        """K-Startup API 응답을 내부 모델로 변환"""
-        # AnnouncementItem 모델의 실제 필드명 사용
-        
-        # 모집기간 설정
-        recruitment_period = ""
-        if kstartup_item.start_date and kstartup_item.end_date:
-            recruitment_period = f"{kstartup_item.start_date} ~ {kstartup_item.end_date}"
-        elif kstartup_item.start_date:
-            recruitment_period = f"{kstartup_item.start_date} ~"
-        elif kstartup_item.end_date:
-            recruitment_period = f"~ {kstartup_item.end_date}"
-        
-        # 지원 대상 정보 구성
-        support_target = ""
-        if kstartup_item.application_target:
-            support_target = kstartup_item.application_target
-        elif kstartup_item.application_target_content:
-            support_target = kstartup_item.application_target_content
-        
-        # 신청 방법 정보 구성
-        application_method = ""
-        if kstartup_item.online_reception:
-            application_method = kstartup_item.online_reception
-        elif kstartup_item.business_guidance_url:
-            application_method = f"온라인 접수 - {kstartup_item.business_guidance_url}"
-        else:
-            application_method = "온라인 접수"
+    def _transform_announcementitem_to_data(self, announcement_item) -> dict:
+        """AnnouncementItem 객체를 내부 데이터 형식으로 변환 (완전한 필드 매핑)"""
         
         # 날짜 변환 헬퍼 함수
         def convert_date_to_datetime(date_str):
@@ -282,18 +283,57 @@ class AnnouncementService(BaseService[Announcement, AnnouncementCreate, Announce
                     pass
             return None
         
+        # 모집기간 설정
+        recruitment_period = ""
+        if announcement_item.application_start_date and announcement_item.application_end_date:
+            recruitment_period = f"{announcement_item.application_start_date} ~ {announcement_item.application_end_date}"
+        elif announcement_item.application_start_date:
+            recruitment_period = f"{announcement_item.application_start_date} ~"
+        elif announcement_item.application_end_date:
+            recruitment_period = f"~ {announcement_item.application_end_date}"
+        
+        # 지원 대상 정보 구성
+        support_target = ""
+        if announcement_item.application_target:
+            support_target = announcement_item.application_target
+        elif announcement_item.application_target_content:
+            support_target = announcement_item.application_target_content
+        
+        # 신청 방법 정보 구성
+        application_method = ""
+        if announcement_item.online_reception:
+            application_method = announcement_item.online_reception
+        elif announcement_item.business_guidance_url:
+            application_method = f"온라인 접수 - {announcement_item.business_guidance_url}"
+        else:
+            application_method = "온라인 접수"
+        
         return {
-            "business_id": kstartup_item.announcement_id or str(kstartup_item.id) if kstartup_item.id else None,
-            "business_name": kstartup_item.integrated_business_name or kstartup_item.title,
-            "business_type": kstartup_item.business_category or "창업지원",
-            "business_overview": kstartup_item.content or kstartup_item.integrated_business_name,
+            # 기본 공고 정보
+            "announcement_id": announcement_item.announcement_id or announcement_item.id,
+            "integrated_business_name": announcement_item.integrated_business_name,
+            "business_category": announcement_item.business_category,
+            "host_organization": announcement_item.host_organization,
+            "supervising_institution": announcement_item.supervising_institution,
+            "support_region": announcement_item.support_region,
+            "business_overview": announcement_item.business_overview,
+            "business_content": announcement_item.business_content,
             "support_target": support_target,
-            "recruitment_period": recruitment_period,
+            "support_content": announcement_item.support_content,
+            "support_amount": announcement_item.support_amount,
+            "application_condition": announcement_item.application_condition,
             "application_method": application_method,
-            "contact_info": kstartup_item.organization or kstartup_item.contact_department,
-            "announcement_date": convert_date_to_datetime(kstartup_item.start_date),
-            "deadline": convert_date_to_datetime(kstartup_item.end_date),
-            "status": "모집중" if kstartup_item.recruitment_progress == "Y" else "모집종료"
+            "application_start_date": convert_date_to_datetime(announcement_item.application_start_date),
+            "application_end_date": convert_date_to_datetime(announcement_item.application_end_date),
+            "announcement_date": convert_date_to_datetime(announcement_item.announcement_date),
+            "deadline": convert_date_to_datetime(announcement_item.application_end_date),
+            "contact_info": announcement_item.contact_department,
+            "contact_phone": announcement_item.contact_phone,
+            "reference_url": announcement_item.reference_url,
+            "business_guidance_url": announcement_item.business_guidance_url,
+            "etc": announcement_item.etc,
+            "recruitment_progress": announcement_item.recruitment_progress,
+            "status": "모집중" if announcement_item.recruitment_progress == "Y" else "모집종료"
         }
     
     # 이전 레거시 메서드들은 향후 제거 예정 (K-Startup 클라이언트로 완전 마이그레이션 후)
@@ -302,15 +342,28 @@ class AnnouncementService(BaseService[Announcement, AnnouncementCreate, Announce
         self, 
         page: int = 1, 
         page_size: int = 20,
-        is_active: bool = True
+        is_active: bool = True,
+        order_by_latest: bool = True
     ) -> PaginationResult[Announcement]:
-        """저장된 사업공고 목록 조회 (페이지네이션)"""
+        """저장된 사업공고 목록 조회 (페이지네이션, 기본 최신순)"""
         try:
+            # 기본 필터 설정
+            filters = QueryFilter()
             if is_active:
-                return self.repository.find_active_announcements(page=page, page_size=page_size)
+                filters.eq("is_active", True)
             else:
-                filters = QueryFilter().eq("is_active", False)
-                return self.repository.get_paginated(page=page, page_size=page_size, filters=filters)
+                filters.eq("is_active", False)
+            
+            # 최신순 정렬 설정 (공고일 기준)
+            from ...core.interfaces.base_repository import SortOption
+            sort = SortOption().desc("announcement_data.announcement_date") if order_by_latest else None
+            
+            return self.repository.get_paginated(
+                page=page, 
+                page_size=page_size, 
+                filters=filters,
+                sort=sort
+            )
         except Exception as e:
             logger.error(f"공고 목록 조회 오류: {e}")
             return PaginationResult(

@@ -108,6 +108,33 @@ class StatisticsService(BaseService[Statistics, StatisticsCreate, StatisticsUpda
         
         return result
     
+    async def get_statistics_paginated(
+        self,
+        pagination_params,
+        filters: Optional[Dict[str, Any]] = None
+    ):
+        """페이지네이션된 통계 목록 조회"""
+        try:
+            # Apply filters 
+            query_filter = QueryFilter()
+            if filters:
+                for key, value in filters.items():
+                    if value is not None:
+                        query_filter.eq(key, value)
+            
+            # Get paginated results using repository
+            result = self.repository.get_paginated(
+                page=pagination_params.page,
+                page_size=pagination_params.size,
+                filters=query_filter
+            )
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"통계 페이지네이션 조회 오류: {e}")
+            raise
+    
     async def get_statistics_by_category(
         self,
         category: str,
@@ -231,15 +258,41 @@ class StatisticsService(BaseService[Statistics, StatisticsCreate, StatisticsUpda
         page_no: int = 1, 
         num_of_rows: int = 10,
         year: Optional[int] = None,
-        month: Optional[int] = None
+        month: Optional[int] = None,
+        order_by_latest: bool = True
     ) -> List[Statistics]:
         """공공데이터에서 통계 정보를 가져와 저장"""
         statistics_list = []
         
         try:
-            # K-Startup API 호출
-            with KStartupAPIClient() as client:
-                response = client.get_statistical_information(
+            # K-Startup API 호출 (동기 방식)
+            if order_by_latest:
+                # 현재 연도부터 역순으로 조회
+                current_year = datetime.now().year
+                years_to_try = [current_year, current_year - 1, None] if year is None else [year]
+                
+                for try_year in years_to_try:
+                    logger.info(f"통계연도 {try_year or '전체'}로 조회 시도 중...")
+                    response = self.api_client.get_statistical_information(
+                        page_no=page_no,
+                        num_of_rows=num_of_rows,
+                        year=try_year,
+                        month=month
+                    )
+                    
+                    if response.success and response.data and hasattr(response.data, 'data') and response.data.data:
+                        logger.info(f"통계연도 {try_year or '전체'}에서 {len(response.data.data)}개 데이터 발견")
+                        break
+                else:
+                    logger.warning("모든 연도에서 데이터를 찾을 수 없음")
+                    response = self.api_client.get_statistical_information(
+                        page_no=page_no,
+                        num_of_rows=num_of_rows,
+                        year=year,
+                        month=month
+                    )
+            else:
+                response = self.api_client.get_statistical_information(
                     page_no=page_no,
                     num_of_rows=num_of_rows,
                     year=year,
@@ -255,8 +308,8 @@ class StatisticsService(BaseService[Statistics, StatisticsCreate, StatisticsUpda
                 # 응답 데이터 처리
                 for item in response.data.data:
                     try:
-                        # 공공데이터 응답을 우리 모델에 맞게 변환
-                        statistical_data = self._transform_api_data(item.dict())
+                        # StatisticalItem 객체에서 실제 데이터 추출
+                        statistical_data = self._transform_statisticalitem_to_data(item)
                         
                         # 중복 체크
                         stat_id = statistical_data.get("stat_id")
@@ -296,8 +349,46 @@ class StatisticsService(BaseService[Statistics, StatisticsCreate, StatisticsUpda
             
         return statistics_list
     
+    def _transform_statisticalitem_to_data(self, statistical_item) -> dict:
+        """StatisticalItem 객체를 내부 데이터 형식으로 변환 (완전한 필드 매핑)"""
+        
+        # 날짜 변환 헬퍼 함수
+        def convert_date_to_datetime(date_str):
+            if date_str and isinstance(date_str, str):
+                try:
+                    from datetime import datetime
+                    # YYYY-MM-DD 형식을 datetime으로 변환
+                    if len(date_str) == 10 and '-' in date_str:
+                        return datetime.strptime(date_str, "%Y-%m-%d")
+                except:
+                    pass
+            return None
+        
+        return {
+            # 기본 통계 정보 (실제 사용 가능한 필드들)
+            "stat_id": statistical_item.id,
+            "stat_name": statistical_item.title,
+            "stat_type": statistical_item.category,
+            "content": statistical_item.content,
+            "register_date": convert_date_to_datetime(statistical_item.register_date),
+            "modify_date": convert_date_to_datetime(statistical_item.modify_date),
+            "detail_page_url": statistical_item.detail_page_url,
+            "file_name": statistical_item.file_name,
+            
+            # 추가 정보 (실제 사용 가능한 필드들)
+            "statistics_year": statistical_item.statistics_year,
+            "organization": statistical_item.organization,
+            "contact_info": statistical_item.contact_info,
+            "data_type": statistical_item.data_type,
+            
+            # 메타데이터 (실제 사용 가능한 필드들)
+            "download_count": statistical_item.download_count,
+            "view_count": statistical_item.view_count,
+            "file_size": statistical_item.file_size
+        }
+    
     def _transform_api_data(self, api_item: dict) -> dict:
-        """K-Startup API 응답을 내부 모델로 변환"""
+        """K-Startup API 응답을 내부 모델로 변환 (레거시 메서드)"""
         return {
             "stat_id": api_item.get("stat_id"),
             "stat_name": api_item.get("stat_name"),
@@ -315,15 +406,28 @@ class StatisticsService(BaseService[Statistics, StatisticsCreate, StatisticsUpda
         self, 
         page: int = 1, 
         page_size: int = 20,
-        is_active: bool = True
+        is_active: bool = True,
+        order_by_latest: bool = True
     ) -> PaginationResult[Statistics]:
-        """저장된 통계 목록 조회 (페이지네이션)"""
+        """저장된 통계 목록 조회 (페이지네이션, 기본 최신순)"""
         try:
+            # 기본 필터 설정
+            filters = QueryFilter()
             if is_active:
-                return self.repository.find_active_statistics(page=page, page_size=page_size)
+                filters.eq("is_active", True)
             else:
-                filters = QueryFilter().eq("is_active", False)
-                return self.repository.get_paginated(page=page, page_size=page_size, filters=filters)
+                filters.eq("is_active", False)
+            
+            # 최신순 정렬 설정 (기본값)
+            from ...core.interfaces.base_repository import SortOption
+            sort = SortOption().desc("created_at") if order_by_latest else None
+            
+            return self.repository.get_paginated(
+                page=page, 
+                page_size=page_size, 
+                filters=filters,
+                sort=sort
+            )
         except Exception as e:
             logger.error(f"통계 목록 조회 오류: {e}")
             return PaginationResult(

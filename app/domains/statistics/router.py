@@ -90,6 +90,11 @@ async def fetch_statistics(
         description="월로 필터링",
         example=3
     ),
+    order_by_latest: bool = Query(
+        True,
+        description="최신순으로 데이터 조회 (최신 등록일시부터 조회)",
+        example=True
+    ),
     service: StatisticsService = Depends(get_statistics_service)
 ):
     """
@@ -98,21 +103,35 @@ async def fetch_statistics(
     중복된 데이터는 자동으로 스킵되며, 새로운 데이터만 데이터베이스에 저장됩니다.
     """
     try:
-        statistics_list = await service.fetch_and_save_statistics(
+        statistics_list = service.fetch_and_save_statistics(
             page_no=page_no,
             num_of_rows=num_of_rows,
             year=year,
-            month=month
+            month=month,
+            order_by_latest=order_by_latest
         )
         
-        response_data = [StatisticsResponse(
-            id=str(s.id),
-            statistical_data=s.statistical_data,
-            source_url=s.source_url,
-            is_active=s.is_active,
-            created_at=s.created_at,
-            updated_at=s.updated_at
-        ) for s in statistics_list]
+        response_data = []
+        for s in statistics_list:
+            # Ensure statistical_data is properly serialized
+            if hasattr(s.statistical_data, 'model_dump'):
+                statistical_data_dict = s.statistical_data.model_dump(mode='json')
+            elif isinstance(s.statistical_data, dict):
+                statistical_data_dict = s.statistical_data
+            else:
+                # Convert to dict if it's some other type
+                statistical_data_dict = dict(s.statistical_data) if s.statistical_data else {}
+            
+            # Create plain dictionary instead of Pydantic model
+            response_item = {
+                "id": str(s.id),
+                "statistical_data": statistical_data_dict,
+                "source_url": s.source_url,
+                "is_active": s.is_active,
+                "created_at": s.created_at.isoformat() if s.created_at else None,
+                "updated_at": s.updated_at.isoformat() if s.updated_at else None
+            }
+            response_data.append(response_item)
         
         return success_response(
             data=response_data,
@@ -156,6 +175,7 @@ async def get_statistics(
     year: Optional[int] = Query(None, description="연도 필터"),
     month: Optional[int] = Query(None, ge=1, le=12, description="월 필터"),
     is_active: Optional[bool] = Query(None, description="활성 상태 필터"),
+    order_by_latest: bool = Query(True, description="최신순 정렬 (기본값: True)"),
     service: StatisticsService = Depends(get_statistics_service)
 ):
     """
@@ -189,7 +209,7 @@ async def get_statistics(
         
         return PaginatedResponse(
             success=True,
-            data=items,
+            items=items,
             message="통계 목록 조회 성공",
             pagination=result.to_pagination_meta()
         )
@@ -235,7 +255,7 @@ async def get_statistics_by_id(
     MongoDB ObjectId를 사용하여 정확한 데이터를 반환합니다.
     """
     try:
-        statistics = await service.get_statistics_by_id(statistics_id)
+        statistics = service.get_statistics_by_id(statistics_id)
         if not statistics:
             raise NotFoundException("statistics", statistics_id, f"ID {statistics_id}에 해당하는 통계를 찾을 수 없습니다")
         
@@ -275,7 +295,7 @@ async def create_statistics(
 ):
     """새 통계 생성"""
     try:
-        statistics = await service.create_statistics(statistics_data)
+        statistics = service.create_statistics(statistics_data)
         
         data = StatisticsResponse(
             id=str(statistics.id),
@@ -317,7 +337,7 @@ async def update_statistics(
 ):
     """통계 수정"""
     try:
-        statistics = await service.update_statistics(statistics_id, update_data)
+        statistics = service.update_statistics(statistics_id, update_data)
         if not statistics:
             raise NotFoundException("statistics", statistics_id, f"ID {statistics_id}에 해당하는 통계를 찾을 수 없습니다")
         
@@ -361,7 +381,7 @@ async def delete_statistics(
 ):
     """통계 삭제 (비활성화)"""
     try:
-        success = await service.delete_statistics(statistics_id)
+        success = service.delete_statistics(statistics_id)
         if not success:
             raise NotFoundException("statistics", statistics_id, f"ID {statistics_id}에 해당하는 통계를 찾을 수 없습니다")
         
@@ -392,7 +412,7 @@ async def get_recent_statistics(
 ):
     """최근 통계 조회"""
     try:
-        statistics_list = await service.get_recent_statistics(limit)
+        statistics_list = service.get_recent_statistics(limit)
         
         response_data = [StatisticsResponse(
             id=str(s.id),
@@ -426,7 +446,7 @@ async def get_statistics_by_year(
 ):
     """연도별 통계 조회"""
     try:
-        statistics_list = await service.get_statistics_by_year(year)
+        statistics_list = service.get_statistics_by_year(year)
         
         response_data = [StatisticsResponse(
             id=str(s.id),

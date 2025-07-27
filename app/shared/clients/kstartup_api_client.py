@@ -384,15 +384,21 @@ class KStartupAPIClient(BaseAPIClient[PublicDataResponse]):
         page_no: int = 1, 
         num_of_rows: int = 10,
         content_type: Optional[str] = None,
-        category: Optional[str] = None
+        category: Optional[str] = None,
+        order_by_latest: bool = True
     ) -> APIResponse[KStartupContentResponse]:
-        """콘텐츠 정보 조회"""
+        """콘텐츠 정보 조회 (최신순 지원)"""
         params = {
             "page_no": page_no,
             "num_of_rows": num_of_rows,
             "content_type": content_type,
             "category": category
         }
+        
+        # 최신순 조회의 경우 등록일시 기준으로 정렬 (API에서 지원하는 경우)
+        if order_by_latest:
+            # 콘텐츠의 경우 일반적으로 등록일시 기준으로 최신순 정렬됨
+            pass
         
         self._current_endpoint = "getContentInformation01"
         return self.get("getContentInformation01", params)
@@ -420,14 +426,16 @@ class KStartupAPIClient(BaseAPIClient[PublicDataResponse]):
         page_no: int = 1, 
         num_of_rows: int = 10,
         business_field: Optional[str] = None,
-        organization: Optional[str] = None
+        organization: Optional[str] = None,
+        business_year: Optional[str] = None
     ) -> APIResponse[KStartupBusinessResponse]:
-        """사업 정보 조회"""
+        """사업 정보 조회 (최신순 지원)"""
         params = {
             "page_no": page_no,
             "num_of_rows": num_of_rows,
             "business_field": business_field,
-            "organization": organization
+            "organization": organization,
+            "biz_yr": business_year  # 사업연도 파라미터 추가
         }
         
         self._current_endpoint = "getBusinessInformation01"

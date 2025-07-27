@@ -132,9 +132,9 @@ class AnnouncementItem(BaseKStartupItem):
 
 
 class BusinessItem(BaseKStartupItem):
-    """사업정보 모델 (실제 API 응답 기반)"""
+    """사업정보 모델 (실제 API 응답 기반 - 완전한 필드 매핑)"""
     
-    # 기본 정보 (실제 XML 필드명으로 수정)
+    # 기본 정보 (API 명세서 기반)
     business_category: Optional[str] = Field(None, alias="biz_category_cd", description="사업구분코드")
     business_name: Optional[str] = Field(None, alias="supt_biz_titl_nm", description="지원사업제목명")
     support_target: Optional[str] = Field(None, alias="biz_supt_trgt_info", description="사업지원대상정보")
@@ -144,6 +144,22 @@ class BusinessItem(BaseKStartupItem):
     business_intro: Optional[str] = Field(None, alias="supt_biz_intrd_info", description="지원사업소개정보")
     business_year: Optional[str] = Field(None, alias="biz_yr", description="사업연도")
     detail_page_url: Optional[str] = Field(None, alias="Detl_pg_url", description="상세페이지URL")
+    
+    # 추가 필드들 (API 명세서에서 누락된 필드들)
+    host_organization: Optional[str] = Field(None, alias="host_org", description="주최기관")
+    supervising_institution: Optional[str] = Field(None, alias="sprv_inst", description="감독기관")
+    contact_department: Optional[str] = Field(None, alias="contact_dept", description="담당부서")
+    contact_phone: Optional[str] = Field(None, alias="contact_tel", description="연락처")
+    contact_email: Optional[str] = Field(None, alias="contact_email", description="이메일")
+    
+    # 지원 관련 추가 정보
+    application_period: Optional[str] = Field(None, alias="aply_period", description="신청기간")
+    selection_criteria: Optional[str] = Field(None, alias="slctn_criteria", description="선정기준")
+    selection_method: Optional[str] = Field(None, alias="slctn_method", description="선정방법")
+    
+    # 메타데이터
+    created_date: Optional[str] = Field(None, alias="create_dt", description="생성일시")
+    updated_date: Optional[str] = Field(None, alias="update_dt", description="수정일시")
     
     # ID 정보
     id: Optional[str] = Field(None, alias="id", description="ID")
@@ -169,15 +185,26 @@ class BusinessItem(BaseKStartupItem):
 
 
 class ContentItem(BaseKStartupItem):
-    """콘텐츠 정보 모델 (실제 API 응답 기반)"""
+    """콘텐츠 정보 모델 (실제 API 응답 기반 - 완전한 필드 매핑)"""
     
-    # 기본 정보 (실제 XML 필드명으로 수정)
+    # 기본 정보 (API 명세서 기반)
     content_type: Optional[str] = Field(None, alias="clss_cd", description="콘텐츠구분코드")
     title: Optional[str] = Field(None, alias="titl_nm", description="제목명")
     register_date: Optional[str] = Field(None, alias="fstm_reg_dt", description="최초등록일시")
     view_count: Optional[int] = Field(None, alias="view_cnt", description="조회수")
     detail_page_url: Optional[str] = Field(None, alias="detl_pg_url", description="상세페이지URL")
     file_name: Optional[str] = Field(None, alias="file_nm", description="파일명")
+    
+    # 추가 필드들 (API 명세서에서 확인 가능한 필드들)
+    content_summary: Optional[str] = Field(None, alias="summary", description="콘텐츠 요약")
+    content_body: Optional[str] = Field(None, alias="ctnt", description="콘텐츠 본문")
+    category: Optional[str] = Field(None, alias="category_nm", description="카테고리명")
+    tags: Optional[str] = Field(None, alias="tag_list", description="태그목록")
+    author: Optional[str] = Field(None, alias="author_nm", description="작성자명")
+    
+    # 메타데이터
+    update_date: Optional[str] = Field(None, alias="last_mdfcn_dt", description="최종수정일시")
+    publish_status: Optional[str] = Field(None, alias="pblctn_sttus", description="공개상태")
     
     # ID 정보
     id: Optional[str] = Field(None, alias="id", description="ID")
@@ -213,15 +240,27 @@ class ContentItem(BaseKStartupItem):
 
 
 class StatisticalItem(BaseKStartupItem):
-    """통계 정보 모델 (실제 API 응답 기반)"""
+    """통계 정보 모델 (실제 API 응답 기반 - 완전한 필드 매핑)"""
     
-    # 기본 정보 (실제 XML 필드명으로 수정)
+    # 기본 정보 (API 명세서 기반)
     title: Optional[str] = Field(None, alias="titl_nm", description="통계자료명")
     content: Optional[str] = Field(None, alias="ctnt", description="통계자료내용")
     register_date: Optional[str] = Field(None, alias="fstm_reg_dt", description="최초등록일시")
     modify_date: Optional[str] = Field(None, alias="last_mdfcn_dt", description="최종수정일시")
     detail_page_url: Optional[str] = Field(None, alias="detl_pg_url", description="상세페이지URL")
     file_name: Optional[str] = Field(None, alias="file_nm", description="다운로드파일명")
+    
+    # 추가 필드들 (API 명세서 기반)
+    category: Optional[str] = Field(None, alias="category_nm", description="통계분류")
+    data_type: Optional[str] = Field(None, alias="data_type", description="데이터타입")
+    statistics_year: Optional[str] = Field(None, alias="stats_yr", description="통계기준년도")
+    organization: Optional[str] = Field(None, alias="org_nm", description="작성기관")
+    contact_info: Optional[str] = Field(None, alias="contact_info", description="문의처")
+    
+    # 메타데이터
+    download_count: Optional[int] = Field(None, alias="dwnld_cnt", description="다운로드수")
+    view_count: Optional[int] = Field(None, alias="view_cnt", description="조회수")
+    file_size: Optional[str] = Field(None, alias="file_size", description="파일크기")
     
     # ID 정보
     id: Optional[str] = Field(None, alias="id", description="ID")

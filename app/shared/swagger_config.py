@@ -4,122 +4,52 @@
 swagger_ui_parameters = {
     "deepLinking": True,
     "displayRequestDuration": True,
-    "docExpansion": "list",
+    "docExpansion": "none",  # 기본적으로 모든 엔드포인트 접기 (성능 최적화)
     "operationsSorter": "method",
     "filter": True,
-    "showExtensions": True,
-    "showCommonExtensions": True,
-    "defaultModelsExpandDepth": 2,
-    "defaultModelExpandDepth": 2,
+    "showExtensions": False,  # 확장 정보 숨김 (성능 최적화)
+    "showCommonExtensions": False,  # 공통 확장 정보 숨김 (성능 최적화)
+    "defaultModelsExpandDepth": 0,  # 모델 기본 접힘 (성능 최적화)
+    "defaultModelExpandDepth": 0,  # 모델 상세 기본 접힘 (성능 최적화)
     "displayOperationId": False,
-    "tryItOutEnabled": True
+    "tryItOutEnabled": True,
+    "syntaxHighlight": False,  # 성능 최적화를 위해 syntax highlighting 비활성화
+    "persistAuthorization": True,  # 인증 정보 유지
+    "maxDisplayedTags": 10,  # 표시할 최대 태그 수 제한
+    "preauthorizeBasic": False,
+    "preauthorizeApiKey": False,
+    "withCredentials": False
 }
 
-# OpenAPI 태그 설명
+# OpenAPI 태그 설명 (간소화 - 성능 최적화)
 tags_metadata = [
     {
         "name": "기본",
-        "description": """
-        기본 서비스 정보 및 상태 확인 API
-        
-        **포함된 엔드포인트:**
-        - 서비스 정보 조회
-        - 헬스 체크
-        - API 버전 정보
-        """
+        "description": "기본 서비스 정보 및 상태 확인 API"
     },
     {
-        "name": "사업공고",
-        "description": """
-        창업진흥원 K-Startup 사업공고 관련 API
-        
-        **주요 기능:**
-        - 🔄 공공데이터에서 실시간 데이터 수집
-        - 📋 저장된 공고 목록 조회 및 관리
-        - 🔍 고급 검색 및 필터링 기능
-        - ✏️ 완전한 CRUD 작업 지원
-        - 📊 통계 및 요약 정보 제공
-        
-        **데이터 흐름:**
-        1. `/fetch` 엔드포인트로 공공데이터 수집
-        2. 수집된 데이터를 MongoDB에 저장 (중복 제거)
-        3. RESTful API를 통해 데이터 조회/관리
-        4. 고급 검색 및 페이지네이션 지원
-        
-        **데이터 출처:** K-Startup 공공데이터포털 (apis.data.go.kr)
-        """
+        "name": "사업공고", 
+        "description": "창업진흥원 K-Startup 사업공고 관련 API - 데이터 수집, 조회, 관리"
     },
     {
         "name": "콘텐츠",
-        "description": """
-        창업 관련 콘텐츠 및 자료 API
-        
-        **제공 콘텐츠:**
-        - 📚 정책 및 규제정보 (공지사항)
-        - 🏆 창업우수사례
-        - 📈 생태계 이슈 및 동향
-        
-        **개발 상태:** 모델 완성, API 개발 중
-        """,
-        "externalDocs": {
-            "description": "콘텐츠 분류 코드 상세 정보",
-            "url": "https://github.com/your-repo/docs/content-category-codes.md"
-        }
+        "description": "창업 관련 콘텐츠 및 자료 API"
     },
     {
         "name": "통계",
-        "description": """
-        창업 현황 및 성과 통계 데이터 API
-        
-        **제공 통계:**
-        - 📊 창업 지원 현황 통계
-        - 📈 성과 분석 데이터
-        - 🎯 트렌드 및 동향 분석
-        
-        **개발 상태:** 모델 완성, API 개발 중
-        """
+        "description": "창업 현황 및 성과 통계 데이터 API"
     },
     {
         "name": "사업정보",
-        "description": """
-        창업지원 사업 상세 정보 API
-        
-        **제공 정보:**
-        - 🏢 사업 기본 정보
-        - 💰 지원 내용 및 예산
-        - 🎯 대상 및 조건
-        - 📅 일정 및 절차
-        
-        **개발 상태:** 모델 완성, API 개발 중
-        """
+        "description": "창업지원 사업 상세 정보 API"
     },
     {
         "name": "분류 코드",
-        "description": """
-        시스템에서 사용하는 분류 코드 관리 API
-        
-        **제공 분류:**
-        - 🏷️ 사업 카테고리 코드
-        - 📁 콘텐츠 분류 코드
-        - 🔍 코드 검색 및 추천
-        - 📊 사용 통계
-        
-        **개발 상태:** 완성
-        """
+        "description": "시스템에서 사용하는 분류 코드 관리 API"
     },
     {
         "name": "작업 관리",
-        "description": """
-        데이터 수집 작업 관리 및 모니터링 API
-        
-        **관리 기능:**
-        - ⏰ Celery 작업 스케줄링
-        - 📋 작업 상태 모니터링
-        - 🔄 수동 작업 실행
-        - 📊 작업 성과 통계
-        
-        **개발 상태:** 완성
-        """
+        "description": "데이터 수집 작업 관리 및 모니터링 API"
     }
 ]
 

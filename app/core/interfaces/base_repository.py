@@ -125,6 +125,17 @@ class PaginationResult(Generic[T]):
     def total_pages(self) -> int:
         """Calculate total pages"""
         return (self.total_count + self.page_size - 1) // self.page_size
+    
+    def to_pagination_meta(self) -> Dict[str, Any]:
+        """Convert to pagination metadata dictionary"""
+        return {
+            "total": self.total_count,
+            "page": self.page,
+            "size": self.page_size,
+            "total_pages": self.total_pages,
+            "has_next": self.has_next,
+            "has_previous": self.has_previous
+        }
 
 
 class BaseRepository(ABC, Generic[T, CreateT, UpdateT]):

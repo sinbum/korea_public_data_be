@@ -85,6 +85,11 @@ async def fetch_businesses(
         description="주관기관으로 필터링",
         example="중소벤처기업부"
     ),
+    order_by_latest: bool = Query(
+        True,
+        description="최신순으로 데이터 조회 (최신 사업연도부터 조회)",
+        example=True
+    ),
     service: BusinessService = Depends(get_business_service)
 ):
     """
@@ -93,21 +98,35 @@ async def fetch_businesses(
     중복된 데이터는 자동으로 스킵되며, 새로운 데이터만 데이터베이스에 저장됩니다.
     """
     try:
-        businesses = await service.fetch_and_save_businesses(
+        businesses = service.fetch_and_save_businesses(
             page_no=page_no,
             num_of_rows=num_of_rows,
             business_field=business_field,
-            organization=organization
+            organization=organization,
+            order_by_latest=order_by_latest
         )
         
-        response_data = [BusinessResponse(
-            id=str(b.id),
-            business_data=b.business_data,
-            source_url=b.source_url,
-            is_active=b.is_active,
-            created_at=b.created_at,
-            updated_at=b.updated_at
-        ) for b in businesses]
+        response_data = []
+        for b in businesses:
+            # Ensure business_data is properly serialized
+            if hasattr(b.business_data, 'model_dump'):
+                business_data_dict = b.business_data.model_dump(mode='json')
+            elif isinstance(b.business_data, dict):
+                business_data_dict = b.business_data
+            else:
+                # Convert to dict if it's some other type
+                business_data_dict = dict(b.business_data) if b.business_data else {}
+            
+            # Create plain dictionary instead of Pydantic model
+            response_item = {
+                "id": str(b.id),
+                "business_data": business_data_dict,
+                "source_url": b.source_url,
+                "is_active": b.is_active,
+                "created_at": b.created_at.isoformat() if b.created_at else None,
+                "updated_at": b.updated_at.isoformat() if b.updated_at else None
+            }
+            response_data.append(response_item)
         
         return success_response(
             data=response_data,
@@ -121,6 +140,76 @@ async def fetch_businesses(
         raise HTTPException(
             status_code=500, 
             detail=f"데이터 수집 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@router.get(
+    "/recent",
+    response_model=BaseResponse[List[BusinessResponse]],
+    summary="최근 사업정보 조회",
+    description="최근에 등록된 사업정보 목록을 조회합니다."
+)
+async def get_recent_businesses(
+    limit: int = Query(10, ge=1, le=50, description="조회할 최근 사업정보 수"),
+    service: BusinessService = Depends(get_business_service)
+):
+    """최근 사업정보 조회"""
+    try:
+        businesses = service.get_recent_businesses(limit)
+        
+        response_data = []
+        for b in businesses:
+            # Ensure business_data is properly serialized
+            if hasattr(b.business_data, 'model_dump'):
+                business_data_dict = b.business_data.model_dump(mode='json')
+            elif isinstance(b.business_data, dict):
+                business_data_dict = b.business_data
+            else:
+                # Convert to dict if it's some other type
+                business_data_dict = dict(b.business_data) if b.business_data else {}
+            
+            # Create plain dictionary instead of Pydantic model
+            response_item = {
+                "id": str(b.id),
+                "business_data": business_data_dict,
+                "source_url": b.source_url,
+                "is_active": b.is_active,
+                "created_at": b.created_at.isoformat() if b.created_at else None,
+                "updated_at": b.updated_at.isoformat() if b.updated_at else None
+            }
+            response_data.append(response_item)
+        
+        return success_response(
+            data=response_data,
+            message=f"최근 {len(response_data)}개의 사업정보를 조회했습니다"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"최근 사업정보 조회 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@router.get(
+    "/statistics",
+    response_model=BaseResponse[BusinessStats],
+    summary="사업정보 통계 조회",
+    description="사업정보에 대한 통계 정보를 조회합니다."
+)
+async def get_business_statistics(
+    service: BusinessService = Depends(get_business_service)
+):
+    """사업정보 통계 조회"""
+    try:
+        stats = service.get_business_statistics()
+        return success_response(
+            data=stats,
+            message="사업정보 통계 조회 성공"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"통계 조회 중 오류가 발생했습니다: {str(e)}"
         )
 
 
@@ -150,6 +239,7 @@ async def get_businesses(
     organization: Optional[str] = Query(None, description="주관기관 필터"),
     startup_stage: Optional[str] = Query(None, description="창업단계 필터"),
     is_active: Optional[bool] = Query(None, description="활성 상태 필터"),
+    order_by_latest: bool = Query(True, description="최신순 정렬 (기본값: True)"),
     service: BusinessService = Depends(get_business_service)
 ):
     """
@@ -169,20 +259,39 @@ async def get_businesses(
         # None 값 제거
         filters = {k: v for k, v in filters.items() if v is not None}
         
-        result = await service.get_businesses_paginated(pagination, filters)
+        # Use the simpler get_businesses method for now
+        result = service.get_businesses(
+            page=pagination.page,
+            page_size=pagination.size,
+            is_active=is_active if is_active is not None else True,
+            order_by_latest=order_by_latest
+        )
         
-        items = [BusinessResponse(
-            id=str(b.id),
-            business_data=b.business_data,
-            source_url=b.source_url,
-            is_active=b.is_active,
-            created_at=b.created_at,
-            updated_at=b.updated_at
-        ) for b in result.items]
+        items = []
+        for b in result.items:
+            # Ensure business_data is properly serialized
+            if hasattr(b.business_data, 'model_dump'):
+                business_data_dict = b.business_data.model_dump(mode='json')
+            elif isinstance(b.business_data, dict):
+                business_data_dict = b.business_data
+            else:
+                # Convert to dict if it's some other type
+                business_data_dict = dict(b.business_data) if b.business_data else {}
+            
+            # Create plain dictionary instead of Pydantic model
+            item = {
+                "id": str(b.id),
+                "business_data": business_data_dict,
+                "source_url": b.source_url,
+                "is_active": b.is_active,
+                "created_at": b.created_at.isoformat() if b.created_at else None,
+                "updated_at": b.updated_at.isoformat() if b.updated_at else None
+            }
+            items.append(item)
         
         return PaginatedResponse(
             success=True,
-            data=items,
+            items=items,
             message="사업정보 목록 조회 성공",
             pagination=result.to_pagination_meta()
         )
@@ -228,18 +337,28 @@ async def get_business(
     MongoDB ObjectId를 사용하여 정확한 데이터를 반환합니다.
     """
     try:
-        business = await service.get_business_by_id(business_id)
+        business = service.get_business_by_id(business_id)
         if not business:
             raise NotFoundException("business", business_id, f"ID {business_id}에 해당하는 사업정보를 찾을 수 없습니다")
         
-        data = BusinessResponse(
-            id=str(business.id),
-            business_data=business.business_data,
-            source_url=business.source_url,
-            is_active=business.is_active,
-            created_at=business.created_at,
-            updated_at=business.updated_at
-        )
+        # Ensure business_data is properly serialized
+        if hasattr(business.business_data, 'model_dump'):
+            business_data_dict = business.business_data.model_dump(mode='json')
+        elif isinstance(business.business_data, dict):
+            business_data_dict = business.business_data
+        else:
+            # Convert to dict if it's some other type
+            business_data_dict = dict(business.business_data) if business.business_data else {}
+        
+        # Create plain dictionary instead of Pydantic model
+        data = {
+            "id": str(business.id),
+            "business_data": business_data_dict,
+            "source_url": business.source_url,
+            "is_active": business.is_active,
+            "created_at": business.created_at.isoformat() if business.created_at else None,
+            "updated_at": business.updated_at.isoformat() if business.updated_at else None
+        }
         
         return success_response(
             data=data,
@@ -268,16 +387,26 @@ async def create_business(
 ):
     """새 사업정보 생성"""
     try:
-        business = await service.create_business(business_data)
+        business = service.create_business(business_data)
         
-        data = BusinessResponse(
-            id=str(business.id),
-            business_data=business.business_data,
-            source_url=business.source_url,
-            is_active=business.is_active,
-            created_at=business.created_at,
-            updated_at=business.updated_at
-        )
+        # Ensure business_data is properly serialized
+        if hasattr(business.business_data, 'model_dump'):
+            business_data_dict = business.business_data.model_dump(mode='json')
+        elif isinstance(business.business_data, dict):
+            business_data_dict = business.business_data
+        else:
+            # Convert to dict if it's some other type
+            business_data_dict = dict(business.business_data) if business.business_data else {}
+        
+        # Create plain dictionary instead of Pydantic model
+        data = {
+            "id": str(business.id),
+            "business_data": business_data_dict,
+            "source_url": business.source_url,
+            "is_active": business.is_active,
+            "created_at": business.created_at.isoformat() if business.created_at else None,
+            "updated_at": business.updated_at.isoformat() if business.updated_at else None
+        }
         
         return CreatedResponse(
             success=True,
@@ -310,18 +439,28 @@ async def update_business(
 ):
     """사업정보 수정"""
     try:
-        business = await service.update_business(business_id, update_data)
+        business = service.update_business(business_id, update_data)
         if not business:
             raise NotFoundException("business", business_id, f"ID {business_id}에 해당하는 사업정보를 찾을 수 없습니다")
         
-        data = BusinessResponse(
-            id=str(business.id),
-            business_data=business.business_data,
-            source_url=business.source_url,
-            is_active=business.is_active,
-            created_at=business.created_at,
-            updated_at=business.updated_at
-        )
+        # Ensure business_data is properly serialized
+        if hasattr(business.business_data, 'model_dump'):
+            business_data_dict = business.business_data.model_dump(mode='json')
+        elif isinstance(business.business_data, dict):
+            business_data_dict = business.business_data
+        else:
+            # Convert to dict if it's some other type
+            business_data_dict = dict(business.business_data) if business.business_data else {}
+        
+        # Create plain dictionary instead of Pydantic model
+        data = {
+            "id": str(business.id),
+            "business_data": business_data_dict,
+            "source_url": business.source_url,
+            "is_active": business.is_active,
+            "created_at": business.created_at.isoformat() if business.created_at else None,
+            "updated_at": business.updated_at.isoformat() if business.updated_at else None
+        }
         
         return success_response(
             data=data,
@@ -354,7 +493,7 @@ async def delete_business(
 ):
     """사업정보 삭제 (비활성화)"""
     try:
-        success = await service.delete_business(business_id)
+        success = service.delete_business(business_id)
         if not success:
             raise NotFoundException("business", business_id, f"ID {business_id}에 해당하는 사업정보를 찾을 수 없습니다")
         
@@ -370,61 +509,4 @@ async def delete_business(
         raise HTTPException(
             status_code=500,
             detail=f"사업정보 삭제 중 오류가 발생했습니다: {str(e)}"
-        )
-
-
-@router.get(
-    "/recent",
-    response_model=BaseResponse[List[BusinessResponse]],
-    summary="최근 사업정보 조회",
-    description="최근에 등록된 사업정보 목록을 조회합니다."
-)
-async def get_recent_businesses(
-    limit: int = Query(10, ge=1, le=50, description="조회할 최근 사업정보 수"),
-    service: BusinessService = Depends(get_business_service)
-):
-    """최근 사업정보 조회"""
-    try:
-        businesses = await service.get_recent_businesses(limit)
-        
-        response_data = [BusinessResponse(
-            id=str(b.id),
-            business_data=b.business_data,
-            source_url=b.source_url,
-            is_active=b.is_active,
-            created_at=b.created_at,
-            updated_at=b.updated_at
-        ) for b in businesses]
-        
-        return success_response(
-            data=response_data,
-            message=f"최근 {len(response_data)}개의 사업정보를 조회했습니다"
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"최근 사업정보 조회 중 오류가 발생했습니다: {str(e)}"
-        )
-
-
-@router.get(
-    "/statistics",
-    response_model=BaseResponse[BusinessStats],
-    summary="사업정보 통계 조회",
-    description="사업정보에 대한 통계 정보를 조회합니다."
-)
-async def get_business_statistics(
-    service: BusinessService = Depends(get_business_service)
-):
-    """사업정보 통계 조회"""
-    try:
-        stats = await service.get_business_statistics()
-        return success_response(
-            data=stats,
-            message="사업정보 통계 조회 성공"
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"통계 조회 중 오류가 발생했습니다: {str(e)}"
         )

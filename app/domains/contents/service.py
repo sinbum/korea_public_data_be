@@ -108,6 +108,33 @@ class ContentService(BaseService[Content, ContentCreate, ContentUpdate, ContentI
         
         return result
     
+    async def get_contents_paginated(
+        self,
+        pagination_params,
+        filters: Optional[Dict[str, Any]] = None
+    ):
+        """페이지네이션된 콘텐츠 목록 조회"""
+        try:
+            # Apply filters 
+            query_filter = QueryFilter()
+            if filters:
+                for key, value in filters.items():
+                    if value is not None:
+                        query_filter.eq(key, value)
+            
+            # Get paginated results using repository
+            result = self.repository.get_paginated(
+                page=pagination_params.page,
+                page_size=pagination_params.size,
+                filters=query_filter
+            )
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"콘텐츠 페이지네이션 조회 오류: {e}")
+            raise
+    
     async def get_contents_by_type(
         self,
         content_type_code: str,
@@ -170,20 +197,55 @@ class ContentService(BaseService[Content, ContentCreate, ContentUpdate, ContentI
         page_no: int = 1, 
         num_of_rows: int = 10,
         content_type: Optional[str] = None,
-        category: Optional[str] = None
+        category: Optional[str] = None,
+        order_by_latest: bool = True
     ) -> List[Content]:
         """공공데이터에서 콘텐츠 정보를 가져와 저장"""
         contents = []
         
         try:
-            # K-Startup API 호출
-            with KStartupAPIClient() as client:
-                response = client.get_content_information(
-                    page_no=page_no,
-                    num_of_rows=num_of_rows,
-                    content_type=content_type,
-                    category=category
-                )
+            # K-Startup API 호출 - 최신순의 경우 높은 페이지 번호부터 시작
+            if order_by_latest and page_no == 1:
+                # 최신 데이터를 가져오기 위해 높은 페이지 번호부터 시작
+                # 총 페이지 수를 모르므로 큰 번호부터 시도
+                pages_to_try = [20, 15, 10, 5, 1]  # 큰 페이지부터 시도
+                response = None
+                
+                with KStartupAPIClient() as client:
+                    for try_page in pages_to_try:
+                        logger.info(f"콘텐츠 페이지 {try_page}로 조회 시도 중...")
+                        temp_response = client.get_content_information(
+                            page_no=try_page,
+                            num_of_rows=num_of_rows,
+                            content_type=content_type,
+                            category=category,
+                            order_by_latest=order_by_latest
+                        )
+                        
+                        if temp_response.success and temp_response.data and hasattr(temp_response.data, 'data') and temp_response.data.data:
+                            logger.info(f"콘텐츠 페이지 {try_page}에서 {len(temp_response.data.data)}개 데이터 발견")
+                            response = temp_response
+                            break
+                    
+                    if not response:
+                        logger.warning("모든 페이지에서 콘텐츠 데이터를 찾을 수 없음")
+                        response = client.get_content_information(
+                            page_no=page_no,
+                            num_of_rows=num_of_rows,
+                            content_type=content_type,
+                            category=category,
+                            order_by_latest=order_by_latest
+                        )
+            else:
+                # 기존 방식 (특정 페이지 요청 시)
+                with KStartupAPIClient() as client:
+                    response = client.get_content_information(
+                        page_no=page_no,
+                        num_of_rows=num_of_rows,
+                        content_type=content_type,
+                        category=category,
+                        order_by_latest=order_by_latest
+                    )
                 
                 if not response.success:
                     logger.error(f"API 호출 실패: {response.error}")
@@ -194,8 +256,8 @@ class ContentService(BaseService[Content, ContentCreate, ContentUpdate, ContentI
                 # 응답 데이터 처리
                 for item in response.data.data:
                     try:
-                        # 공공데이터 응답을 우리 모델에 맞게 변환
-                        content_data = self._transform_api_data(item.dict())
+                        # ContentItem 객체에서 실제 데이터 추출
+                        content_data = self._transform_contentitem_to_data(item)
                         
                         # 중복 체크
                         content_id = content_data.get("content_id")
@@ -231,8 +293,53 @@ class ContentService(BaseService[Content, ContentCreate, ContentUpdate, ContentI
             
         return contents
     
+    def _transform_contentitem_to_data(self, content_item: ContentItem) -> dict:
+        """ContentItem 객체를 내부 데이터 형식으로 변환 (실제 사용 가능한 필드만 매핑)"""
+        published_date = None
+        if content_item.register_date:
+            try:
+                # register_date가 이미 검증된 형식이므로 datetime으로 변환
+                published_date = datetime.fromisoformat(content_item.register_date.replace(' ', 'T'))
+            except (ValueError, TypeError):
+                logger.warning(f"Invalid date format: {content_item.register_date}")
+        
+        update_date = None
+        if content_item.update_date:
+            try:
+                update_date = datetime.fromisoformat(content_item.update_date.replace(' ', 'T'))
+            except (ValueError, TypeError):
+                logger.warning(f"Invalid update date format: {content_item.update_date}")
+        
+        # tags 처리 (콤마로 구분된 문자열을 리스트로 변환)
+        tags_list = []
+        if content_item.tags:
+            tags_list = [tag.strip() for tag in content_item.tags.split(',') if tag.strip()]
+        
+        return {
+            # 기본 정보 (실제 사용 가능한 필드들)
+            "content_id": content_item.id,
+            "title": content_item.title,
+            "content_type": content_item.content_type,
+            "category": content_item.category,
+            "description": content_item.content_summary,
+            "content_url": content_item.detail_page_url,
+            "thumbnail_url": None,  # API에서 제공하지 않는 필드
+            "tags": tags_list,
+            "view_count": content_item.view_count or 0,
+            "like_count": 0,  # API에서 제공하지 않는 필드
+            "published_date": published_date,
+            
+            # 상세 정보 (실제 사용 가능한 필드들)
+            "content_summary": content_item.content_summary,
+            "content_body": content_item.content_body,
+            "file_name": content_item.file_name,
+            "author": content_item.author,
+            "update_date": update_date,
+            "publish_status": content_item.publish_status
+        }
+        
     def _transform_api_data(self, api_item: dict) -> dict:
-        """K-Startup API 응답을 내부 모델로 변환"""
+        """K-Startup API 응답을 내부 모델로 변환 (레거시 메서드)"""
         published_date = None
         if api_item.get("published_date"):
             try:
@@ -258,15 +365,28 @@ class ContentService(BaseService[Content, ContentCreate, ContentUpdate, ContentI
         self, 
         page: int = 1, 
         page_size: int = 20,
-        is_active: bool = True
+        is_active: bool = True,
+        order_by_latest: bool = True
     ) -> PaginationResult[Content]:
-        """저장된 콘텐츠 목록 조회 (페이지네이션)"""
+        """저장된 콘텐츠 목록 조회 (페이지네이션, 기본 최신순)"""
         try:
+            # 기본 필터 설정
+            filters = QueryFilter()
             if is_active:
-                return self.repository.find_active_contents(page=page, page_size=page_size)
+                filters.eq("is_active", True)
             else:
-                filters = QueryFilter().eq("is_active", False)
-                return self.repository.get_paginated(page=page, page_size=page_size, filters=filters)
+                filters.eq("is_active", False)
+            
+            # 최신순 정렬 설정 (기본값)
+            from ...core.interfaces.base_repository import SortOption
+            sort = SortOption().desc("created_at") if order_by_latest else None
+            
+            return self.repository.get_paginated(
+                page=page, 
+                page_size=page_size, 
+                filters=filters,
+                sort=sort
+            )
         except Exception as e:
             logger.error(f"콘텐츠 목록 조회 오류: {e}")
             return PaginationResult(

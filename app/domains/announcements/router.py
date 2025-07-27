@@ -127,6 +127,11 @@ async def fetch_announcements(
         description="사업유형으로 필터링",
         example="정부지원사업"
     ),
+    order_by_latest: bool = Query(
+        True,
+        description="최신순으로 데이터 조회 (최신 등록일시부터 조회)",
+        example=True
+    ),
     service: AnnouncementService = Depends(get_announcement_service)
 ):
     """
@@ -135,36 +140,34 @@ async def fetch_announcements(
     중복된 데이터는 자동으로 스킵되며, 새로운 데이터만 데이터베이스에 저장됩니다.
     """
     try:
-        announcements = await service.fetch_and_save_announcements(
+        announcements = service.fetch_and_save_announcements(
             page_no=page_no,
             num_of_rows=num_of_rows,
             business_name=business_name,
-            business_type=business_type
+            business_type=business_type,
+            order_by_latest=order_by_latest
         )
         
         response_data = []
         for a in announcements:
-            # Convert Announcement model to response schema manually to handle datetime serialization
+            # Ensure announcement_data is properly serialized
             if hasattr(a.announcement_data, 'model_dump'):
                 announcement_data_dict = a.announcement_data.model_dump(mode='json')
-            elif hasattr(a.announcement_data, 'dict'):
-                announcement_data_dict = a.announcement_data.dict()
+            elif isinstance(a.announcement_data, dict):
+                announcement_data_dict = a.announcement_data
             else:
-                announcement_data_dict = dict(a.announcement_data)
+                # Convert to dict if it's some other type
+                announcement_data_dict = dict(a.announcement_data) if a.announcement_data else {}
             
-            # Convert datetime objects to strings in the announcement_data_dict
-            for key, value in announcement_data_dict.items():
-                if hasattr(value, 'isoformat'):  # datetime object
-                    announcement_data_dict[key] = value.isoformat() + "Z"
-            
-            response_item = AnnouncementResponseSchema(
-                id=str(a.id),
-                announcement_data=announcement_data_dict,
-                source_url=a.source_url,
-                is_active=a.is_active,
-                created_at=a.created_at.isoformat() + "Z" if a.created_at else None,
-                updated_at=a.updated_at.isoformat() + "Z" if a.updated_at else None
-            )
+            # Create plain dictionary instead of Pydantic model
+            response_item = {
+                "id": str(a.id),
+                "announcement_data": announcement_data_dict,
+                "source_url": a.source_url,
+                "is_active": a.is_active,
+                "created_at": a.created_at.isoformat() if a.created_at else None,
+                "updated_at": a.updated_at.isoformat() if a.updated_at else None
+            }
             response_data.append(response_item)
         
         return success_response(
@@ -208,6 +211,7 @@ async def get_announcements(
     business_type: Optional[str] = Query(None, description="사업 유형 필터"),
     status: Optional[str] = Query(None, description="상태 필터"),
     is_active: Optional[bool] = Query(None, description="활성 상태 필터"),
+    order_by_latest: bool = Query(True, description="최신순 정렬 (기본값: True)"),
     service: AnnouncementService = Depends(get_announcement_service)
 ):
     """
@@ -220,32 +224,30 @@ async def get_announcements(
         result = service.get_announcements(
             page=pagination.page,
             page_size=pagination.size,
-            is_active=is_active if is_active is not None else True
+            is_active=is_active if is_active is not None else True,
+            order_by_latest=order_by_latest
         )
         
         items = []
         for a in result.items:
-            # Convert Announcement model to response schema manually to handle datetime serialization
+            # Ensure announcement_data is properly serialized
             if hasattr(a.announcement_data, 'model_dump'):
                 announcement_data_dict = a.announcement_data.model_dump(mode='json')
-            elif hasattr(a.announcement_data, 'dict'):
-                announcement_data_dict = a.announcement_data.dict()
+            elif isinstance(a.announcement_data, dict):
+                announcement_data_dict = a.announcement_data
             else:
-                announcement_data_dict = dict(a.announcement_data)
+                # Convert to dict if it's some other type
+                announcement_data_dict = dict(a.announcement_data) if a.announcement_data else {}
             
-            # Convert datetime objects to strings in the announcement_data_dict
-            for key, value in announcement_data_dict.items():
-                if hasattr(value, 'isoformat'):  # datetime object
-                    announcement_data_dict[key] = value.isoformat() + "Z"
-            
-            response_item = AnnouncementResponseSchema(
-                id=str(a.id),
-                announcement_data=announcement_data_dict,
-                source_url=a.source_url,
-                is_active=a.is_active,
-                created_at=a.created_at.isoformat() + "Z" if a.created_at else None,
-                updated_at=a.updated_at.isoformat() + "Z" if a.updated_at else None
-            )
+            # Create plain dictionary instead of Pydantic model
+            response_item = {
+                "id": str(a.id),
+                "announcement_data": announcement_data_dict,
+                "source_url": a.source_url,
+                "is_active": a.is_active,
+                "created_at": a.created_at.isoformat() if a.created_at else None,
+                "updated_at": a.updated_at.isoformat() if a.updated_at else None
+            }
             items.append(response_item)
         
         import math
@@ -292,27 +294,24 @@ async def get_recent_announcements(
         
         response_data = []
         for a in announcements:
-            # Convert Announcement model to response schema manually to handle datetime serialization
+            # Ensure announcement_data is properly serialized
             if hasattr(a.announcement_data, 'model_dump'):
                 announcement_data_dict = a.announcement_data.model_dump(mode='json')
-            elif hasattr(a.announcement_data, 'dict'):
-                announcement_data_dict = a.announcement_data.dict()
+            elif isinstance(a.announcement_data, dict):
+                announcement_data_dict = a.announcement_data
             else:
-                announcement_data_dict = dict(a.announcement_data)
+                # Convert to dict if it's some other type
+                announcement_data_dict = dict(a.announcement_data) if a.announcement_data else {}
             
-            # Convert datetime objects to strings in the announcement_data_dict
-            for key, value in announcement_data_dict.items():
-                if hasattr(value, 'isoformat'):  # datetime object
-                    announcement_data_dict[key] = value.isoformat() + "Z"
-            
-            response_item = AnnouncementResponseSchema(
-                id=str(a.id),
-                announcement_data=announcement_data_dict,
-                source_url=a.source_url,
-                is_active=a.is_active,
-                created_at=a.created_at.isoformat() + "Z" if a.created_at else None,
-                updated_at=a.updated_at.isoformat() + "Z" if a.updated_at else None
-            )
+            # Create plain dictionary instead of Pydantic model
+            response_item = {
+                "id": str(a.id),
+                "announcement_data": announcement_data_dict,
+                "source_url": a.source_url,
+                "is_active": a.is_active,
+                "created_at": a.created_at.isoformat() if a.created_at else None,
+                "updated_at": a.updated_at.isoformat() if a.updated_at else None
+            }
             response_data.append(response_item)
         
         return success_response(
@@ -360,7 +359,7 @@ async def get_announcement(
     MongoDB ObjectId를 사용하여 정확한 데이터를 반환합니다.
     """
     try:
-        announcement = await service.get_announcement_by_id(announcement_id)
+        announcement = service.get_announcement_by_id(announcement_id)
         if not announcement:
             raise NotFoundException("announcement", announcement_id, f"ID {announcement_id}에 해당하는 사업공고를 찾을 수 없습니다")
         
@@ -401,7 +400,7 @@ async def create_announcement(
 ):
     """새 사업공고 생성"""
     try:
-        announcement = await service.create_announcement(announcement_data)
+        announcement = service.create_announcement(announcement_data)
         
         data = AnnouncementResponseSchema(
             id=str(announcement.id),
@@ -444,7 +443,7 @@ async def update_announcement(
 ):
     """사업공고 수정"""
     try:
-        announcement = await service.update_announcement(announcement_id, update_data)
+        announcement = service.update_announcement(announcement_id, update_data)
         if not announcement:
             raise NotFoundException("announcement", announcement_id, f"ID {announcement_id}에 해당하는 사업공고를 찾을 수 없습니다")
         
@@ -489,7 +488,7 @@ async def delete_announcement(
 ):
     """사업공고 삭제 (비활성화)"""
     try:
-        success = await service.delete_announcement(announcement_id)
+        success = service.delete_announcement(announcement_id)
         if not success:
             raise NotFoundException("announcement", announcement_id, f"ID {announcement_id}에 해당하는 사업공고를 찾을 수 없습니다")
         
@@ -520,7 +519,7 @@ async def get_announcement_statistics(
 ):
     """공고 통계 조회"""
     try:
-        stats = await service.get_announcement_statistics()
+        stats = service.get_announcement_statistics()
         return success_response(
             data=stats,
             message="사업공고 통계 조회 성공"

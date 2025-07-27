@@ -158,20 +158,46 @@ class BusinessService(BaseService[Business, BusinessCreate, BusinessUpdate, Busi
         page_no: int = 1, 
         num_of_rows: int = 10,
         business_field: Optional[str] = None,
-        organization: Optional[str] = None
+        organization: Optional[str] = None,
+        order_by_latest: bool = True
     ) -> List[Business]:
-        """공공데이터에서 사업정보를 가져와 저장"""
+        """공공데이터에서 사업정보를 가져와 저장 (최신순 지원)"""
         businesses = []
         
         try:
-            # K-Startup API 호출
-            with KStartupAPIClient() as client:
-                response = client.get_business_information(
-                    page_no=page_no,
-                    num_of_rows=num_of_rows,
-                    business_field=business_field,
-                    organization=organization
-                )
+            # 최신순 조회를 위한 로직
+            if order_by_latest:
+                # 현재 연도부터 역순으로 조회
+                current_year = datetime.now().year
+                years_to_try = [str(current_year), str(current_year - 1), None]  # None은 전체 조회
+                
+                for business_year in years_to_try:
+                    logger.info(f"사업연도 {business_year or '전체'}로 조회 시도 중...")
+                    
+                    with KStartupAPIClient() as client:
+                        response = client.get_business_information(
+                            page_no=page_no,
+                            num_of_rows=num_of_rows,
+                            business_field=business_field,
+                            organization=organization,
+                            business_year=business_year
+                        )
+                        
+                        if response.success and response.data.data:
+                            logger.info(f"사업연도 {business_year or '전체'}에서 {len(response.data.data)}건 조회됨")
+                            break
+                    
+                    if not response.success:
+                        logger.warning(f"사업연도 {business_year or '전체'} 조회 실패: {response.error}")
+            else:
+                # 기존 방식 (연도 필터 없이 조회)
+                with KStartupAPIClient() as client:
+                    response = client.get_business_information(
+                        page_no=page_no,
+                        num_of_rows=num_of_rows,
+                        business_field=business_field,
+                        organization=organization
+                    )
                 
                 if not response.success:
                     logger.error(f"API 호출 실패: {response.error}")
@@ -182,8 +208,8 @@ class BusinessService(BaseService[Business, BusinessCreate, BusinessUpdate, Busi
                 # 응답 데이터 처리
                 for item in response.data.data:
                     try:
-                        # 공공데이터 응답을 우리 모델에 맞게 변환
-                        business_data = self._transform_api_data(item.dict())
+                        # BusinessItem 객체에서 실제 데이터 추출
+                        business_data = self._transform_businessitem_to_data(item)
                         
                         # 중복 체크
                         business_id = business_data.get("business_id")
@@ -219,40 +245,67 @@ class BusinessService(BaseService[Business, BusinessCreate, BusinessUpdate, Busi
             
         return businesses
     
-    def _transform_api_data(self, api_item: dict) -> dict:
-        """K-Startup API 응답을 내부 모델로 변환"""
+    def _transform_businessitem_to_data(self, business_item: BusinessItem) -> dict:
+        """BusinessItem 객체를 내부 데이터 형식으로 변환 (실제 사용 가능한 필드만 매핑)"""
         return {
-            "business_id": api_item.get("business_id"),
-            "business_name": api_item.get("business_name"),
-            "business_type": api_item.get("business_type"),
-            "organization": api_item.get("organization"),
-            "business_field": api_item.get("business_field"),
-            "description": api_item.get("description"),
-            "target_startup_stage": api_item.get("target_startup_stage"),
-            "support_scale": api_item.get("support_scale"),
-            "support_period": api_item.get("support_period"),
-            "eligibility": api_item.get("eligibility"),
-            "selection_method": api_item.get("selection_method"),
-            "benefits": api_item.get("benefits", []),
-            "website_url": api_item.get("website_url"),
-            "contact_department": api_item.get("contact_department"),
-            "contact_phone": api_item.get("contact_phone"),
-            "contact_email": api_item.get("contact_email")
+            # 기본 정보 (실제 사용 가능한 필드들)
+            "business_id": business_item.id,
+            "business_name": business_item.business_name,
+            "business_type": business_item.business_category,
+            "organization": business_item.host_organization,
+            "business_field": business_item.business_category,
+            "description": business_item.business_intro,
+            "target_startup_stage": business_item.support_target,
+            "support_scale": business_item.support_budget,
+            "support_period": business_item.business_year,
+            "eligibility": business_item.support_target,
+            "selection_method": business_item.selection_method,
+            "benefits": business_item.support_content.split(',') if business_item.support_content else [],
+            "website_url": business_item.detail_page_url,
+            "business_feature": business_item.business_feature,
+            
+            # 지원 관련 정보 (실제 사용 가능한 필드들)
+            "support_content": business_item.support_content,
+            "supervising_institution": business_item.supervising_institution,
+            "application_period": business_item.application_period,
+            "selection_criteria": business_item.selection_criteria,
+            
+            # 연락처 정보 (실제 사용 가능한 필드들)
+            "contact_department": business_item.contact_department,
+            "contact_phone": business_item.contact_phone,
+            "contact_email": business_item.contact_email,
+            
+            # 메타데이터 (실제 사용 가능한 필드들)
+            "created_date": business_item.created_date,
+            "updated_date": business_item.updated_date
         }
     
     def get_businesses(
         self, 
         page: int = 1, 
         page_size: int = 20,
-        is_active: bool = True
+        is_active: bool = True,
+        order_by_latest: bool = True
     ) -> PaginationResult[Business]:
-        """저장된 사업정보 목록 조회 (페이지네이션)"""
+        """저장된 사업정보 목록 조회 (페이지네이션, 기본 최신순)"""
         try:
+            # 기본 필터 설정
+            filters = QueryFilter()
             if is_active:
-                return self.repository.find_active_businesses(page=page, page_size=page_size)
+                filters.eq("is_active", True)
             else:
-                filters = QueryFilter().eq("is_active", False)
-                return self.repository.get_paginated(page=page, page_size=page_size, filters=filters)
+                filters.eq("is_active", False)
+            
+            # 최신순 정렬 설정 (기본값)
+            from ...core.interfaces.base_repository import SortOption
+            sort = SortOption().desc("created_at") if order_by_latest else None
+            
+            return self.repository.get_paginated(
+                page=page, 
+                page_size=page_size, 
+                filters=filters,
+                sort=sort
+            )
         except Exception as e:
             logger.error(f"사업정보 목록 조회 오류: {e}")
             return PaginationResult(

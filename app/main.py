@@ -178,7 +178,9 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
-    lifespan=lifespan
+    lifespan=lifespan,
+    # 추가 성능 최적화 설정
+    swagger_ui_init_oauth=None  # OAuth 초기화 비활성화
 )
 
 

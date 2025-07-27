@@ -86,6 +86,11 @@ async def fetch_contents(
         description="카테고리로 필터링",
         example="창업교육"
     ),
+    order_by_latest: bool = Query(
+        True,
+        description="최신순으로 데이터 조회 (최신 등록일시부터 조회)",
+        example=True
+    ),
     service: ContentService = Depends(get_content_service)
 ):
     """
@@ -94,21 +99,35 @@ async def fetch_contents(
     중복된 데이터는 자동으로 스킵되며, 새로운 데이터만 데이터베이스에 저장됩니다.
     """
     try:
-        contents = await service.fetch_and_save_contents(
+        contents = service.fetch_and_save_contents(
             page_no=page_no,
             num_of_rows=num_of_rows,
             content_type=content_type,
-            category=category
+            category=category,
+            order_by_latest=order_by_latest
         )
         
-        response_data = [ContentResponse(
-            id=str(c.id),
-            content_data=c.content_data,
-            source_url=c.source_url,
-            is_active=c.is_active,
-            created_at=c.created_at,
-            updated_at=c.updated_at
-        ) for c in contents]
+        response_data = []
+        for c in contents:
+            # Ensure content_data is properly serialized
+            if hasattr(c.content_data, 'model_dump'):
+                content_data_dict = c.content_data.model_dump(mode='json')
+            elif isinstance(c.content_data, dict):
+                content_data_dict = c.content_data
+            else:
+                # Convert to dict if it's some other type
+                content_data_dict = dict(c.content_data) if c.content_data else {}
+            
+            # Create plain dictionary instead of Pydantic model
+            response_item = {
+                "id": str(c.id),
+                "content_data": content_data_dict,
+                "source_url": c.source_url,
+                "is_active": c.is_active,
+                "created_at": c.created_at.isoformat() if c.created_at else None,
+                "updated_at": c.updated_at.isoformat() if c.updated_at else None
+            }
+            response_data.append(response_item)
         
         return success_response(
             data=response_data,
@@ -151,6 +170,7 @@ async def get_contents(
     category: Optional[str] = Query(None, description="카테고리 필터"),
     tags: Optional[str] = Query(None, description="태그 필터 (콤마로 구분)"),
     is_active: Optional[bool] = Query(None, description="활성 상태 필터"),
+    order_by_latest: bool = Query(True, description="최신순 정렬 (기본값: True)"),
     service: ContentService = Depends(get_content_service)
 ):
     """
@@ -170,22 +190,51 @@ async def get_contents(
         # None 값 제거
         filters = {k: v for k, v in filters.items() if v is not None}
         
-        result = await service.get_contents_paginated(pagination, filters)
+        # Use the simpler get_contents method for now
+        result = service.get_contents(
+            page=pagination.page,
+            page_size=pagination.size,
+            is_active=is_active if is_active is not None else True,
+            order_by_latest=order_by_latest
+        )
         
-        items = [ContentResponse(
-            id=str(c.id),
-            content_data=c.content_data,
-            source_url=c.source_url,
-            is_active=c.is_active,
-            created_at=c.created_at,
-            updated_at=c.updated_at
-        ) for c in result.items]
+        items = []
+        for c in result.items:
+            # Ensure content_data is properly serialized
+            if hasattr(c.content_data, 'model_dump'):
+                content_data_dict = c.content_data.model_dump(mode='json')
+            elif isinstance(c.content_data, dict):
+                content_data_dict = c.content_data
+            else:
+                # Convert to dict if it's some other type
+                content_data_dict = dict(c.content_data) if c.content_data else {}
+            
+            # Create plain dictionary instead of Pydantic model
+            item = {
+                "id": str(c.id),
+                "content_data": content_data_dict,
+                "source_url": c.source_url,
+                "is_active": c.is_active,
+                "created_at": c.created_at.isoformat() if c.created_at else None,
+                "updated_at": c.updated_at.isoformat() if c.updated_at else None
+            }
+            items.append(item)
+        
+        import math
+        total_pages = math.ceil(result.total_count / pagination.size) if result.total_count > 0 else 1
         
         return PaginatedResponse(
             success=True,
-            data=items,
+            items=items,
             message="콘텐츠 목록 조회 성공",
-            pagination=result.to_pagination_meta()
+            pagination={
+                "page": result.page,
+                "size": pagination.size,
+                "total": result.total_count,
+                "total_pages": total_pages,
+                "has_next": result.has_next,
+                "has_previous": result.has_previous
+            }
         )
     except ValidationException as e:
         raise HTTPException(status_code=422, detail=str(e))
@@ -230,18 +279,28 @@ async def get_content(
     MongoDB ObjectId를 사용하여 정확한 데이터를 반환하며, 조회수가 자동으로 증가합니다.
     """
     try:
-        content = await service.get_content_by_id(content_id)
+        content = service.get_content_by_id(content_id)
         if not content:
             raise NotFoundException("content", content_id, f"ID {content_id}에 해당하는 콘텐츠를 찾을 수 없습니다")
         
-        data = ContentResponse(
-            id=str(content.id),
-            content_data=content.content_data,
-            source_url=content.source_url,
-            is_active=content.is_active,
-            created_at=content.created_at,
-            updated_at=content.updated_at
-        )
+        # Ensure content_data is properly serialized
+        if hasattr(content.content_data, 'model_dump'):
+            content_data_dict = content.content_data.model_dump(mode='json')
+        elif isinstance(content.content_data, dict):
+            content_data_dict = content.content_data
+        else:
+            # Convert to dict if it's some other type
+            content_data_dict = dict(content.content_data) if content.content_data else {}
+        
+        # Create plain dictionary instead of Pydantic model
+        data = {
+            "id": str(content.id),
+            "content_data": content_data_dict,
+            "source_url": content.source_url,
+            "is_active": content.is_active,
+            "created_at": content.created_at.isoformat() if content.created_at else None,
+            "updated_at": content.updated_at.isoformat() if content.updated_at else None
+        }
         
         return success_response(
             data=data,
@@ -270,16 +329,26 @@ async def create_content(
 ):
     """새 콘텐츠 생성"""
     try:
-        content = await service.create_content(content_data)
+        content = service.create_content(content_data)
         
-        data = ContentResponse(
-            id=str(content.id),
-            content_data=content.content_data,
-            source_url=content.source_url,
-            is_active=content.is_active,
-            created_at=content.created_at,
-            updated_at=content.updated_at
-        )
+        # Ensure content_data is properly serialized
+        if hasattr(content.content_data, 'model_dump'):
+            content_data_dict = content.content_data.model_dump(mode='json')
+        elif isinstance(content.content_data, dict):
+            content_data_dict = content.content_data
+        else:
+            # Convert to dict if it's some other type
+            content_data_dict = dict(content.content_data) if content.content_data else {}
+        
+        # Create plain dictionary instead of Pydantic model
+        data = {
+            "id": str(content.id),
+            "content_data": content_data_dict,
+            "source_url": content.source_url,
+            "is_active": content.is_active,
+            "created_at": content.created_at.isoformat() if content.created_at else None,
+            "updated_at": content.updated_at.isoformat() if content.updated_at else None
+        }
         
         return CreatedResponse(
             success=True,
@@ -312,18 +381,28 @@ async def update_content(
 ):
     """콘텐츠 수정"""
     try:
-        content = await service.update_content(content_id, update_data)
+        content = service.update_content(content_id, update_data)
         if not content:
             raise NotFoundException("content", content_id, f"ID {content_id}에 해당하는 콘텐츠를 찾을 수 없습니다")
         
-        data = ContentResponse(
-            id=str(content.id),
-            content_data=content.content_data,
-            source_url=content.source_url,
-            is_active=content.is_active,
-            created_at=content.created_at,
-            updated_at=content.updated_at
-        )
+        # Ensure content_data is properly serialized
+        if hasattr(content.content_data, 'model_dump'):
+            content_data_dict = content.content_data.model_dump(mode='json')
+        elif isinstance(content.content_data, dict):
+            content_data_dict = content.content_data
+        else:
+            # Convert to dict if it's some other type
+            content_data_dict = dict(content.content_data) if content.content_data else {}
+        
+        # Create plain dictionary instead of Pydantic model
+        data = {
+            "id": str(content.id),
+            "content_data": content_data_dict,
+            "source_url": content.source_url,
+            "is_active": content.is_active,
+            "created_at": content.created_at.isoformat() if content.created_at else None,
+            "updated_at": content.updated_at.isoformat() if content.updated_at else None
+        }
         
         return success_response(
             data=data,
@@ -356,7 +435,7 @@ async def delete_content(
 ):
     """콘텐츠 삭제 (비활성화)"""
     try:
-        success = await service.delete_content(content_id)
+        success = service.delete_content(content_id)
         if not success:
             raise NotFoundException("content", content_id, f"ID {content_id}에 해당하는 콘텐츠를 찾을 수 없습니다")
         
@@ -388,7 +467,7 @@ async def like_content(
 ):
     """콘텐츠 좋아요"""
     try:
-        success = await service.like_content(content_id)
+        success = service.like_content(content_id)
         if not success:
             raise NotFoundException("content", content_id, f"ID {content_id}에 해당하는 콘텐츠를 찾을 수 없습니다")
         
@@ -419,16 +498,29 @@ async def get_recent_contents(
 ):
     """최근 콘텐츠 조회"""
     try:
-        contents = await service.get_recent_contents(limit)
+        contents = service.get_recent_contents(limit)
         
-        response_data = [ContentResponse(
-            id=str(c.id),
-            content_data=c.content_data,
-            source_url=c.source_url,
-            is_active=c.is_active,
-            created_at=c.created_at,
-            updated_at=c.updated_at
-        ) for c in contents]
+        response_data = []
+        for c in contents:
+            # Ensure content_data is properly serialized
+            if hasattr(c.content_data, 'model_dump'):
+                content_data_dict = c.content_data.model_dump(mode='json')
+            elif isinstance(c.content_data, dict):
+                content_data_dict = c.content_data
+            else:
+                # Convert to dict if it's some other type
+                content_data_dict = dict(c.content_data) if c.content_data else {}
+            
+            # Create plain dictionary instead of Pydantic model
+            response_item = {
+                "id": str(c.id),
+                "content_data": content_data_dict,
+                "source_url": c.source_url,
+                "is_active": c.is_active,
+                "created_at": c.created_at.isoformat() if c.created_at else None,
+                "updated_at": c.updated_at.isoformat() if c.updated_at else None
+            }
+            response_data.append(response_item)
         
         return success_response(
             data=response_data,
@@ -453,16 +545,29 @@ async def get_popular_contents(
 ):
     """인기 콘텐츠 조회 (조회수 기준)"""
     try:
-        contents = await service.get_popular_contents(limit)
+        contents = service.get_popular_contents(limit)
         
-        response_data = [ContentResponse(
-            id=str(c.id),
-            content_data=c.content_data,
-            source_url=c.source_url,
-            is_active=c.is_active,
-            created_at=c.created_at,
-            updated_at=c.updated_at
-        ) for c in contents]
+        response_data = []
+        for c in contents:
+            # Ensure content_data is properly serialized
+            if hasattr(c.content_data, 'model_dump'):
+                content_data_dict = c.content_data.model_dump(mode='json')
+            elif isinstance(c.content_data, dict):
+                content_data_dict = c.content_data
+            else:
+                # Convert to dict if it's some other type
+                content_data_dict = dict(c.content_data) if c.content_data else {}
+            
+            # Create plain dictionary instead of Pydantic model
+            response_item = {
+                "id": str(c.id),
+                "content_data": content_data_dict,
+                "source_url": c.source_url,
+                "is_active": c.is_active,
+                "created_at": c.created_at.isoformat() if c.created_at else None,
+                "updated_at": c.updated_at.isoformat() if c.updated_at else None
+            }
+            response_data.append(response_item)
         
         return success_response(
             data=response_data,
@@ -486,7 +591,7 @@ async def get_content_statistics(
 ):
     """콘텐츠 통계 조회"""
     try:
-        stats = await service.get_content_statistics()
+        stats = service.get_content_statistics()
         return success_response(
             data=stats,
             message="콘텐츠 통계 조회 성공"

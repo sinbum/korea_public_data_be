@@ -1,43 +1,59 @@
 services:
-  # FastAPI 애플리케이션
+  # MongoDB 개발 환경
+  mongodb:
+    image: mongo:6.0
+    container_name: korea_mongodb_dev
+    restart: unless-stopped
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+      - MONGO_INITDB_DATABASE=${MONGO_INITDB_DATABASE}
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./volumes/mongodb/data:/data/db
+      - ./volumes/mongodb/configdb:/data/configdb
+      - ./scripts/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    networks:
+      - korea_api_network
+
+  # Redis 개발 환경
+  redis:
+    image: redis:7-alpine
+    container_name: korea_redis_dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./volumes/redis/data:/data
+    networks:
+      - korea_api_network
+
+  # API 서버 개발 환경 (hot reload)
   api:
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile
-    container_name: korea_api
+      target: development
+    container_name: korea_api_dev
+    restart: unless-stopped
     ports:
-      - "${APP_PORT:-8000}:8000"
+      - "8000:8000"
     environment:
-      # 컨테이너 내부에서 사용할 환경변수 (서비스명 사용)
       - MONGODB_URL=mongodb://api_user:api_password@mongodb:27017/korea_public_api
       - REDIS_URL=redis://redis:6379/0
-      - PYTHONPATH=/app
       - DATABASE_NAME=${DATABASE_NAME:-korea_public_api}
       - PUBLIC_DATA_API_KEY=${PUBLIC_DATA_API_KEY}
+      - PUBLIC_DATA_API_KEY_DECODE=${PUBLIC_DATA_API_KEY_DECODE}
       - API_BASE_URL=${API_BASE_URL}
-      - API_VERSION=${API_VERSION:-1.0.0}
-      - APP_HOST=${APP_HOST:-0.0.0.0}
-      - APP_PORT=${APP_PORT:-8000}
-      - DEBUG=${DEBUG:-True}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-    env_file:
-      - .env
-    depends_on:
-      mongodb:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - DEBUG=True
+      - LOG_LEVEL=DEBUG
     volumes:
-      # 개발시 소스코드 실시간 반영
-      - ./app:/app/app:rw
-      # 로그 파일 로컬 저장
-      - ./volumes/logs:/app/logs:rw
-      # 업로드 파일 로컬 저장
-      - ./volumes/uploads:/app/uploads:rw
-      # 임시 파일 저장
-      - ./volumes/tmp:/app/tmp:rw
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-    restart: unless-stopped
+      - ./app:/app/app:ro  # 코드 변경 감지를 위한 볼륨 마운트
+      - ./logs:/app/logs
+    depends_on:
+      - mongodb
+      - redis
     networks:
       - korea_api_network
     healthcheck:
@@ -45,161 +61,92 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
 
-  # MongoDB
-  mongodb:
-    image: mongo:7
-    container_name: korea_mongodb
-    ports:
-      - "27017:27017"
-    environment:
-      - MONGO_INITDB_DATABASE=${MONGO_INITDB_DATABASE:-korea_public_api}
-      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME:-admin}
-      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD:-password123}
-    volumes:
-      # 데이터베이스 데이터를 로컬에 저장
-      - ./volumes/mongodb/data:/data/db:rw
-      # MongoDB 설정 파일
-      - ./volumes/mongodb/config:/data/configdb:rw
-      # 백업 디렉토리
-      - ./volumes/backups/mongodb:/backups:rw
-      # 초기화 스크립트
-      - ./scripts/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
-    restart: unless-stopped
-    networks:
-      - korea_api_network
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
-
-  # Redis (Celery용)
-  redis:
-    image: redis:7-alpine
-    container_name: korea_redis
-    ports:
-      - "6379:6379"
-    volumes:
-      # Redis 데이터를 로컬에 저장
-      - ./volumes/redis/data:/data:rw
-      # Redis 설정 파일
-      - ./volumes/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
-    command: redis-server /usr/local/etc/redis/redis.conf
-    restart: unless-stopped
-    networks:
-      - korea_api_network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 5s
-
-  # Celery Worker (데이터 수집 스케줄러)
+  # Celery Worker 개발 환경
   celery_worker:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: korea_celery_worker
+      target: development
+    container_name: korea_celery_worker_dev
+    restart: unless-stopped
+    command: celery -A app.core.celery worker --loglevel=debug
     environment:
       - MONGODB_URL=mongodb://api_user:api_password@mongodb:27017/korea_public_api
       - REDIS_URL=redis://redis:6379/0
-      - PYTHONPATH=/app
       - DATABASE_NAME=${DATABASE_NAME:-korea_public_api}
       - PUBLIC_DATA_API_KEY=${PUBLIC_DATA_API_KEY}
-      - API_BASE_URL=${API_BASE_URL}
-      - API_VERSION=${API_VERSION:-1.0.0}
-      - DEBUG=${DEBUG:-True}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-    env_file:
-      - .env
-    depends_on:
-      mongodb:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - PUBLIC_DATA_API_KEY_DECODE=${PUBLIC_DATA_API_KEY_DECODE}
+      - DEBUG=True
+      - LOG_LEVEL=DEBUG
     volumes:
-      # 소스코드 실시간 반영
-      - ./app:/app/app:rw
-      # 로그 파일 공유
-      - ./volumes/logs:/app/logs:rw
-      # 임시 파일 공유
-      - ./volumes/tmp:/app/tmp:rw
-    command: celery -A app.core.celery_config worker --loglevel=info --concurrency=4 --queues=announcements,businesses,contents,statistics,classification,system,monitoring,default
-    restart: unless-stopped
+      - ./app:/app/app:ro
+      - ./logs:/app/logs
+    depends_on:
+      - mongodb
+      - redis
     networks:
       - korea_api_network
 
-  # Celery Beat (스케줄러)
+  # Celery Beat 개발 환경
   celery_beat:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: korea_celery_beat
+      target: development
+    container_name: korea_celery_beat_dev
+    restart: unless-stopped
+    command: celery -A app.core.celery beat --loglevel=debug
     environment:
       - MONGODB_URL=mongodb://api_user:api_password@mongodb:27017/korea_public_api
       - REDIS_URL=redis://redis:6379/0
-      - PYTHONPATH=/app
       - DATABASE_NAME=${DATABASE_NAME:-korea_public_api}
       - PUBLIC_DATA_API_KEY=${PUBLIC_DATA_API_KEY}
-      - API_BASE_URL=${API_BASE_URL}
-      - API_VERSION=${API_VERSION:-1.0.0}
-      - DEBUG=${DEBUG:-True}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-    env_file:
-      - .env
-    depends_on:
-      mongodb:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - PUBLIC_DATA_API_KEY_DECODE=${PUBLIC_DATA_API_KEY_DECODE}
+      - DEBUG=True
+      - LOG_LEVEL=DEBUG
     volumes:
-      # 소스코드 실시간 반영
-      - ./app:/app/app:rw
-      # 로그 파일 공유
-      - ./volumes/logs:/app/logs:rw
-      # Celery beat 스케줄 파일
-      - ./volumes/tmp:/app/tmp:rw
-    command: celery -A app.core.celery_config beat --loglevel=info --schedule=/app/tmp/celerybeat-schedule
-    restart: unless-stopped
+      - ./app:/app/app:ro
+      - ./logs:/app/logs
+    depends_on:
+      - mongodb
+      - redis
     networks:
       - korea_api_network
 
-  # Celery Flower (모니터링 - 선택사항)
-  celery_flower:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: korea_celery_flower
-    ports:
-      - "5555:5555"
-    environment:
-      - MONGODB_URL=mongodb://api_user:api_password@mongodb:27017/korea_public_api
-      - REDIS_URL=redis://redis:6379/0
-      - PYTHONPATH=/app
-      - DATABASE_NAME=${DATABASE_NAME:-korea_public_api}
-      - PUBLIC_DATA_API_KEY=${PUBLIC_DATA_API_KEY}
-      - API_BASE_URL=${API_BASE_URL}
-      - API_VERSION=${API_VERSION:-1.0.0}
-      - DEBUG=${DEBUG:-True}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-    env_file:
-      - .env
-    depends_on:
-      redis:
-        condition: service_healthy
-    volumes:
-      - ./app:/app/app:rw
-    command: celery -A app.core.celery_config flower --port=5555
-    restart: unless-stopped
-    networks:
-      - korea_api_network
+  # Celery Flower 개발 환경 (모니터링) - 현재 비활성화됨
+  # 활성화하려면 requirements.txt에 flower==2.0.1 추가하고 이미지 재빌드 필요
+  # flower:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #     target: development
+  #   container_name: korea_celery_flower_dev
+  #   restart: unless-stopped
+  #   command: python -m celery flower --broker=redis://redis:6379/0 --port=5555
+  #   ports:
+  #     - "5555:5555"
+  #   environment:
+  #     - MONGODB_URL=mongodb://api_user:api_password@mongodb:27017/korea_public_api
+  #     - REDIS_URL=redis://redis:6379/0
+  #     - DATABASE_NAME=${DATABASE_NAME:-korea_public_api}
+  #     - PUBLIC_DATA_API_KEY=${PUBLIC_DATA_API_KEY}
+  #     - PUBLIC_DATA_API_KEY_DECODE=${PUBLIC_DATA_API_KEY_DECODE}
+  #     - DEBUG=True
+  #     - LOG_LEVEL=DEBUG
+  #   volumes:
+  #     - ./logs:/app/logs
+  #   depends_on:
+  #     - redis
+  #   networks:
+  #     - korea_api_network
 
-# 네트워크 설정
 networks:
   korea_api_network:
     driver: bridge
-    name: korea_api_network
+
+volumes:
+  mongodb_data:
+    driver: local
+  redis_data:
+    driver: local

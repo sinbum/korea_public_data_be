@@ -155,15 +155,22 @@ class ResponseValidationMiddleware(BaseHTTPMiddleware):
                 if response.headers.get("content-type", "").startswith("application/json"):
                     json_body = json.loads(body.decode())
                     
-                    # 표준 응답 형식 확인
-                    if not self._is_standard_response(json_body):
-                        logger.warning(
-                            f"Non-standard response format for {request.url.path}: "
-                            f"{list(json_body.keys())}"
+                    # 표준 응답 형식 확인 (딕셔너리인 경우만)
+                    if isinstance(json_body, dict):
+                        if not self._is_standard_response(json_body):
+                            logger.warning(
+                                f"Non-standard response format for {request.url.path}: "
+                                f"{list(json_body.keys())}"
+                            )
+                    else:
+                        # 리스트나 다른 형태의 JSON 응답
+                        logger.debug(
+                            f"Non-dict JSON response for {request.url.path}: "
+                            f"{type(json_body).__name__}"
                         )
                     
-                    # 에러 응답인 경우 추가 검증
-                    if response.status_code >= 400:
+                    # 에러 응답인 경우 추가 검증 (딕셔너리인 경우만)
+                    if response.status_code >= 400 and isinstance(json_body, dict):
                         if not all(key in json_body for key in ["success", "message"]):
                             logger.error(
                                 f"Invalid error response format for {request.url.path}"
