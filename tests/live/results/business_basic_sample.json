@@ -1,0 +1,48 @@
+{
+  "current_count": 5,
+  "match_count": 1231,
+  "page": 1,
+  "per_page": 5,
+  "total_count": 1231,
+  "data": [
+    {
+      "business_category": "cmrczn_Tab1",
+      "business_name": "바이오클러스터 조성 지원사업",
+      "support_target": "- 의약품, 의료기기, 디지털 헬스케어, AI 등 바이오 첨단산업 관련 기업\r\n  - 원부자재 수급 불안정성 개선을 위한 바이오 소부장 기업\r\n  - ESG 강화에 따른 친환경 기술 및 제품 개발 기업",
+      "support_budget": "(예산현황) 730백만원(시비)\r\n(지원규모) 바이오기업 30개사   * 액셀러레이팅 10개사, 맞춤형 지원 20개사",
+      "support_content": "- 민간 액셀러레이터(창업기획사)가 유망 바이오 스타트업(10개사)을 엄선하여 투자 유치를 목표로 종합 밀착지원\r\n  - 우수 바이오 스타트업(6개사)을 대상으로 기업 맞춤형 사업화 프로그램* 제공* 제품인증, 시제품 제작 등에 필요한 비용 일부 지원\r\n  - 바이오, 중소·벤처기업(14개사)에 기업 맞춤형 사업화 프로그램 제공",
+      "business_feature": "바이오기업 전문 액셀러레이팅 및 맞춤형 사업화 프로그램 제공",
+      "business_intro": "바이오 분야 벤처 창업을 준비하는 예비 창업팀과 기존 창업팀에 대한 맞춤형 지원사업",
+      "business_year": "2025",
+      "detail_page_url": null,
+      "id": "1",
+      "detl_pg_url": "www.k-startup.go.kr/web/contents/webCMRCZN.do?id=165422&page=1&schM=view"
+    },
+    {
+      "business_category": "cmrczn_Tab1",
+      "business_name": "글로벌 ICT 미래 유니콘 육성(ICT GROWTH)",
+      "support_target": "최근 3년간 20억원 이상 투자유치 또는 연평균 20% 이상 매출 성장을 달성한 ICT 융·복합분야 중소기업",
+      "support_budget": "(예산현황) ‘25년 24.09억원\r\n(지원규모) 연간 15개사 내외",
+      "support_content": "글로벌 진출 지원, 금융지원(보증, 투자 등) 연계 등 종합 지원",
+      "business_feature": "금융지원(민간투자 연계, 보증 지원 등) 및 과기정통부 해외거점 연계 해외진출 희망지역별 특화 진출 지원 프로그램 운영 등 종합 패키지 지원",
+      "business_intro": "글로벌 성장 잠재력이 높은 ICT 유망기업을 발굴하여 해외진출, 금융지원 연계 등 종합 지원을 통해 미래 유니콘 기업으로 육성",
+      "business_year": "2025",
+      "detail_page_url": null,
+      "id": "2",
+      "detl_pg_url": "www.k-startup.go.kr/web/contents/webCMRCZN.do?id=165410&page=1&schM=view"
+    },
+    {
+      "business_category": "cmrczn_Tab1",
+      "business_name": "K-Global  액셀러레이팅",
+      "support_target": "벤처투자 촉진에 관한 법률 제24조에 따라 중소벤처기업부에 등록한 민간창업기획자(단, 대한민국 국적자가 액셀러레이터 대표) 등",
+      "support_budget": "(예산현황) ’25년 6억원\r\n(지원규모) 2개사 액셀러레이터 지원",
+      "support_content": "사업화 및 기술지원, 멘토링, 네트워킹, 시설지원, 홍보지원 등 글로벌 액셀러레이팅 프로그램 운영 및 글로벌 네트워크 확대, 수행 인력 전문성 강화를 위한 활동 액셀러레이터 역량 강화 지원",
+      "business_feature": "ICT 특화 액셀러레이터의 역량 및 국내외 네트워크를 기반으로 디지털 스타트업의 스케일업 및 해외진출 지원을 위한 직·간접 투자 및 보육",
+      "business_intro": "ICT 분야 특화 액셀러레이터 역량 및 국내외 네트워크 등을 활용하여 유망 디지털 혁신기업 발굴, 육성 및 투자유치 활동 전반을 지원",
+      "business_year": "2025",
+      "detail_page_url": null,
+      "id": "3",
+      "detl_pg_url": "www.k-startup.go.kr/web/contents/webCMRCZN.do?id=165411&page=1&schM=view"
+    }
+  ]
+}

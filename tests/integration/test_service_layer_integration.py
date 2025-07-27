@@ -17,7 +17,7 @@ from typing import Dict, Any, List
 
 from app.shared.interfaces.base_service import BaseService
 from app.shared.cqrs.commands import CreateAnnouncementCommand, UpdateAnnouncementCommand
-from app.shared.cqrs.queries import GetAnnouncementQuery, ListAnnouncementsQuery
+from app.shared.cqrs.queries import GetAnnouncementByIdQuery, GetAnnouncementListQuery
 from app.shared.cqrs.bus import CommandBus, QueryBus
 from app.shared.events.domain_events import (
     EventBus, AnnouncementCreatedEvent, BusinessCreatedEvent,
@@ -193,7 +193,7 @@ class TestServiceLayerIntegration:
         
         # Register handlers
         command_bus.register_handler(CreateAnnouncementCommand, create_handler)
-        query_bus.register_handler(GetAnnouncementQuery, get_handler)
+        query_bus.register_handler(GetAnnouncementByIdQuery, get_handler)
         
         # Test command execution
         create_command = CreateAnnouncementCommand(
@@ -210,7 +210,7 @@ class TestServiceLayerIntegration:
         create_handler.assert_called_once()
         
         # Test query execution
-        get_query = GetAnnouncementQuery(announcement_id='1')
+        get_query = GetAnnouncementByIdQuery(announcement_id='1')
         
         get_result = await query_bus.execute(get_query)
         

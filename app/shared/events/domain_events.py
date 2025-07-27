@@ -227,9 +227,11 @@ class AnnouncementCreatedEvent(DomainEvent):
     category_code: Optional[str] = None
     
     def __init__(self, **data):
+        if 'aggregate_type' not in data:
+            data['aggregate_type'] = "Announcement"
+        if 'aggregate_id' not in data:
+            data['aggregate_id'] = data.get("announcement_id")
         super().__init__(**data)
-        self.aggregate_type = "Announcement"
-        self.aggregate_id = data.get("announcement_id")
 
 
 class AnnouncementUpdatedEvent(DomainEvent):
@@ -239,9 +241,11 @@ class AnnouncementUpdatedEvent(DomainEvent):
     changes: Dict[str, Any]
     
     def __init__(self, **data):
+        if 'aggregate_type' not in data:
+            data['aggregate_type'] = "Announcement"
+        if 'aggregate_id' not in data:
+            data['aggregate_id'] = data.get("announcement_id")
         super().__init__(**data)
-        self.aggregate_type = "Announcement"
-        self.aggregate_id = data.get("announcement_id")
 
 
 class AnnouncementDeletedEvent(DomainEvent):
@@ -251,9 +255,11 @@ class AnnouncementDeletedEvent(DomainEvent):
     title: str
     
     def __init__(self, **data):
+        if 'aggregate_type' not in data:
+            data['aggregate_type'] = "Announcement"
+        if 'aggregate_id' not in data:
+            data['aggregate_id'] = data.get("announcement_id")
         super().__init__(**data)
-        self.aggregate_type = "Announcement"
-        self.aggregate_id = data.get("announcement_id")
 
 
 class BusinessCreatedEvent(DomainEvent):
@@ -264,9 +270,11 @@ class BusinessCreatedEvent(DomainEvent):
     category: str
     
     def __init__(self, **data):
+        if 'aggregate_type' not in data:
+            data['aggregate_type'] = "Business"
+        if 'aggregate_id' not in data:
+            data['aggregate_id'] = data.get("business_id")
         super().__init__(**data)
-        self.aggregate_type = "Business"
-        self.aggregate_id = data.get("business_id")
 
 
 class BusinessUpdatedEvent(DomainEvent):
@@ -276,9 +284,11 @@ class BusinessUpdatedEvent(DomainEvent):
     changes: Dict[str, Any]
     
     def __init__(self, **data):
+        if 'aggregate_type' not in data:
+            data['aggregate_type'] = "Business"
+        if 'aggregate_id' not in data:
+            data['aggregate_id'] = data.get("business_id")
         super().__init__(**data)
-        self.aggregate_type = "Business"
-        self.aggregate_id = data.get("business_id")
 
 
 class ContentCreatedEvent(DomainEvent):
@@ -289,9 +299,11 @@ class ContentCreatedEvent(DomainEvent):
     content_type: str
     
     def __init__(self, **data):
+        if 'aggregate_type' not in data:
+            data['aggregate_type'] = "Content"
+        if 'aggregate_id' not in data:
+            data['aggregate_id'] = data.get("content_id")
         super().__init__(**data)
-        self.aggregate_type = "Content"
-        self.aggregate_id = data.get("content_id")
 
 
 class ContentLikedEvent(DomainEvent):
@@ -301,9 +313,11 @@ class ContentLikedEvent(DomainEvent):
     like_count: int
     
     def __init__(self, **data):
+        if 'aggregate_type' not in data:
+            data['aggregate_type'] = "Content"
+        if 'aggregate_id' not in data:
+            data['aggregate_id'] = data.get("content_id")
         super().__init__(**data)
-        self.aggregate_type = "Content"
-        self.aggregate_id = data.get("content_id")
 
 
 class DataFetchedEvent(DomainEvent):
@@ -316,8 +330,9 @@ class DataFetchedEvent(DomainEvent):
     errors: List[str] = []
     
     def __init__(self, **data):
+        if 'aggregate_type' not in data:
+            data['aggregate_type'] = "DataCollection"
         super().__init__(**data)
-        self.aggregate_type = "DataCollection"
 
 
 class SystemHealthCheckEvent(DomainEvent):
@@ -328,8 +343,9 @@ class SystemHealthCheckEvent(DomainEvent):
     metrics: Dict[str, Any]
     
     def __init__(self, **data):
+        if 'aggregate_type' not in data:
+            data['aggregate_type'] = "System"
         super().__init__(**data)
-        self.aggregate_type = "System"
 
 
 # Event middleware

@@ -1,0 +1,70 @@
+{
+  "session_id": "live_test_1753568294",
+  "timestamp": 1753568300.8248188,
+  "summary": {
+    "total_tests": 7,
+    "successful_tests": 2,
+    "success_rate": 28.57142857142857,
+    "total_errors": 1
+  },
+  "performance": {
+    "average_response_time": 0.05354510034833636,
+    "max_response_time": 0.3700418472290039,
+    "min_response_time": 0.0003495216369628906
+  },
+  "detailed_results": {
+    "announcements_basic": {
+      "success": false,
+      "status_code": 500,
+      "data_type": "APIResponse",
+      "execution_time": 0.0004277229309082031,
+      "timestamp": 1753568294.9173894
+    },
+    "announcements_filtered": {
+      "success": false,
+      "status_code": 500,
+      "data_type": "APIResponse",
+      "execution_time": 0.0006546974182128906,
+      "timestamp": 1753568296.0227876
+    },
+    "business_basic": {
+      "success": false,
+      "status_code": 500,
+      "data_type": "APIResponse",
+      "execution_time": 0.0006196498870849609,
+      "timestamp": 1753568297.1273828
+    },
+    "content_basic": {
+      "success": false,
+      "status_code": 500,
+      "data_type": "APIResponse",
+      "execution_time": 0.0004761219024658203,
+      "timestamp": 1753568298.2321424
+    },
+    "statistics_basic": {
+      "success": false,
+      "status_code": 500,
+      "data_type": "APIResponse",
+      "execution_time": 0.0003495216369628906,
+      "timestamp": 1753568299.3362448
+    },
+    "async_batch": {
+      "success": true,
+      "total_requests": 3,
+      "successful_requests": 3,
+      "execution_time": 0.3700418472290039
+    },
+    "error_handling": {
+      "success": true,
+      "error_message": "Expected auth error status, got 500\nassert 500 in [401, 403, 400]\n +  where 500 = APIResponse(success=False, data=None, error='Client not initialized. Use context manager.', status_code=500, total_count=None, current_count=None).status_code",
+      "execution_time": 0.0022461414337158203
+    }
+  },
+  "errors": [
+    {
+      "endpoint": "getAnnouncementInformation01",
+      "error": "Client not initialized. Use context manager.",
+      "status_code": 500
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "session_id": "live_test_1753568392",
+  "timestamp": 1753568400.5435486,
+  "summary": {
+    "total_tests": 7,
+    "successful_tests": 6,
+    "success_rate": 85.71428571428571,
+    "total_errors": 0
+  },
+  "performance": {
+    "average_response_time": 0.3650612490517752,
+    "max_response_time": 0.5501053333282471,
+    "min_response_time": 0.22879838943481445
+  },
+  "detailed_results": {
+    "announcements_basic": {
+      "success": true,
+      "status_code": 200,
+      "data_type": "APIResponse[PublicDataResponse]",
+      "execution_time": 0.40345215797424316,
+      "timestamp": 1753568392.8521087
+    },
+    "announcements_filtered": {
+      "success": true,
+      "status_code": 200,
+      "data_type": "APIResponse[PublicDataResponse]",
+      "execution_time": 0.29149627685546875,
+      "timestamp": 1753568394.249537
+    },
+    "business_basic": {
+      "success": true,
+      "status_code": 200,
+      "data_type": "APIResponse[PublicDataResponse]",
+      "execution_time": 0.31754636764526367,
+      "timestamp": 1753568395.676387
+    },
+    "content_basic": {
+      "success": true,
+      "status_code": 200,
+      "data_type": "APIResponse[PublicDataResponse]",
+      "execution_time": 0.5501053333282471,
+      "timestamp": 1753568397.3313472
+    },
+    "statistics_basic": {
+      "success": true,
+      "status_code": 200,
+      "data_type": "APIResponse[PublicDataResponse]",
+      "execution_time": 0.22879838943481445,
+      "timestamp": 1753568398.665618
+    },
+    "async_batch": {
+      "success": true,
+      "total_requests": 3,
+      "successful_requests": 3,
+      "execution_time": 0.5317592620849609
+    },
+    "error_handling": {
+      "success": false,
+      "error_message": null,
+      "status_code": 200,
+      "execution_time": 0.2322709560394287
+    }
+  },
+  "errors": []
+}

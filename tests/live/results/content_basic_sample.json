@@ -1,0 +1,36 @@
+{
+  "current_count": 5,
+  "match_count": 1083,
+  "page": 1,
+  "per_page": 5,
+  "total_count": 1083,
+  "data": [
+    {
+      "content_type": "fnd_scs_case",
+      "title": "내 손안에 펼쳐지는 스마트세상 - 앱 개발(창업) 우수사례",
+      "register_date": "2013-08-19 00:00:00",
+      "view_count": 25289,
+      "detail_page_url": "https://www.k-startup.go.kr/web/contents/webFND_SCS_CASE.do?id=54347&schM=view",
+      "file_name": "2013 내 손안에 펼쳐지는 스마트세상.pdf",
+      "id": null
+    },
+    {
+      "content_type": "fnd_scs_case",
+      "title": "청년,창업에 미치다 - 청년창업사관학교 졸업자 창업 분투기",
+      "register_date": "2013-09-30 00:00:00",
+      "view_count": 29070,
+      "detail_page_url": "https://www.k-startup.go.kr/web/contents/webFND_SCS_CASE.do?id=54781&schM=view",
+      "file_name": "청년, 창업에 미치다(통합).pdf,청년, 창업에 미치다(3).pdf,청년, 창업에 미치다(2).pdf,청년, 창업에 미치다(1).pdf",
+      "id": null
+    },
+    {
+      "content_type": "notice_matr",
+      "title": "「BI 경쟁력 강화사업」이관에 따른 고객(개인)정보 이전 공지",
+      "register_date": "2014-01-06 00:00:00",
+      "view_count": 4925,
+      "detail_page_url": "https://www.k-startup.go.kr/web/contents/webNOTICE_MATR.do?id=55808&schM=view",
+      "file_name": "『BI 경쟁력 강화사업』이관에 따른 고객(개인)정보 이전 공지(안).pdf",
+      "id": null
+    }
+  ]
+}
