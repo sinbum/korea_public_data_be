@@ -2,7 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Path, status
 from typing import List, Optional
 from .service import AnnouncementService
 from .models import AnnouncementResponse, AnnouncementCreate, AnnouncementUpdate
-from .schemas import AnnouncementResponse as AnnouncementResponseSchema
+from .schemas import (
+    AnnouncementResponse as AnnouncementResponseSchema,
+    AnnouncementCreate as AnnouncementCreateSchema,
+    AnnouncementUpdate as AnnouncementUpdateSchema,
+    AnnouncementSummary,
+    AnnouncementStats,
+    AnnouncementSearch
+)
 from ...shared.responses import (
     BaseResponse,
     PaginatedResponse, 
@@ -10,6 +17,14 @@ from ...shared.responses import (
     success_response,
     created_response,
     error_response
+)
+from ...shared.schemas import (
+    BaseResponse as BaseResponseSchema,
+    ErrorResponse,
+    PaginatedResponse as PaginatedResponseSchema,
+    ValidationErrorResponse,
+    WRITE_HTTP_RESPONSES,
+    READ_ONLY_HTTP_RESPONSES
 )
 from ...shared.pagination import PaginationParams, FilterParams
 from ...shared.exceptions.custom_exceptions import (
@@ -22,12 +37,7 @@ from ...core.dependencies import get_announcement_service
 router = APIRouter(
     prefix="/announcements",
     tags=["사업공고"],
-    responses={
-        400: {"description": "잘못된 요청"},
-        404: {"description": "리소스를 찾을 수 없음"}, 
-        422: {"description": "입력 데이터 검증 오류"},
-        500: {"description": "서버 내부 오류"}
-    }
+    responses=WRITE_HTTP_RESPONSES
 )
 
 
@@ -36,7 +46,7 @@ router = APIRouter(
 
 @router.post(
     "/fetch",
-    response_model=BaseResponse[List[AnnouncementResponseSchema]],
+    response_model=BaseResponseSchema[List[AnnouncementResponseSchema]],
     status_code=status.HTTP_200_OK,
     summary="공공데이터에서 사업공고 수집",
     description="""
@@ -52,8 +62,46 @@ router = APIRouter(
     - 정기적인 데이터 동기화
     - 특정 사업 유형의 공고만 수집
     - 신규 공고 즉시 확인
+    
+    **API 제한사항:**
+    - 외부 API 호출 시간: 최대 30초
+    - 한 번에 최대 100개 항목 수집 가능
+    - Rate Limiting: 분당 5회 호출 제한
     """,
-    response_description="성공적으로 수집된 사업공고 목록"
+    response_description="성공적으로 수집된 사업공고 목록과 수집 통계",
+    operation_id="fetch_announcements_from_public_api",
+    responses={
+        **WRITE_HTTP_RESPONSES,
+        200: {
+            "model": BaseResponseSchema[List[AnnouncementResponseSchema]],
+            "description": "성공적으로 데이터를 수집함",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "success": True,
+                        "status": "success",
+                        "data": [
+                            {
+                                "id": "674a1b2c3d4e5f6789abcdef",
+                                "announcement_data": {
+                                    "announcement_id": "174329",
+                                    "title": "2025년 민간주도 스타트업 스케일업 실증지원사업",
+                                    "business_category": "기술개발(R&D)",
+                                    "support_region": "전북"
+                                },
+                                "source_url": "https://www.k-startup.go.kr/web/contents/bizpbanc-ongoing.do",
+                                "is_active": True,
+                                "created_at": "2025-07-27T00:00:00Z",
+                                "updated_at": "2025-07-27T00:00:00Z"
+                            }
+                        ],
+                        "message": "총 1개의 사업공고가 성공적으로 수집되었습니다",
+                        "timestamp": "2025-07-27T00:00:00Z"
+                    }
+                }
+            }
+        }
+    }
 )
 async def fetch_announcements(
     page_no: int = Query(
@@ -151,7 +199,8 @@ async def fetch_announcements(
     - 관리자 페이지 데이터 관리
     - 모바일 앱 목록 화면
     """,
-    response_description="페이지네이션된 사업공고 목록"
+    response_description="페이지네이션된 사업공고 목록",
+    responses=READ_ONLY_HTTP_RESPONSES
 )
 async def get_announcements(
     pagination: PaginationParams = Depends(),
@@ -241,7 +290,8 @@ async def get_announcements(
     - 특정 공고 정보 확인
     - 관리 시스템에서 개별 데이터 조회
     """,
-    response_description="사업공고 상세 정보"
+    response_description="사업공고 상세 정보",
+    responses=READ_ONLY_HTTP_RESPONSES
 )
 async def get_announcement(
     announcement_id: str = Path(
@@ -289,7 +339,8 @@ async def get_announcement(
     status_code=status.HTTP_201_CREATED,
     summary="새 사업공고 생성",
     description="새로운 사업공고를 생성합니다.",
-    response_description="생성된 사업공고 정보"
+    response_description="생성된 사업공고 정보",
+    responses=WRITE_HTTP_RESPONSES
 )
 async def create_announcement(
     announcement_data: AnnouncementCreate,
@@ -330,7 +381,8 @@ async def create_announcement(
     response_model=BaseResponse[AnnouncementResponseSchema],
     summary="사업공고 수정",
     description="기존 사업공고를 수정합니다.",
-    response_description="수정된 사업공고 정보"
+    response_description="수정된 사업공고 정보",
+    responses=WRITE_HTTP_RESPONSES
 )
 async def update_announcement(
     announcement_id: str = Path(..., description="수정할 사업공고 ID"),
@@ -375,7 +427,8 @@ async def update_announcement(
     status_code=status.HTTP_200_OK,
     summary="사업공고 삭제",
     description="사업공고를 삭제(비활성화)합니다.",
-    response_description="삭제 성공 메시지"
+    response_description="삭제 성공 메시지",
+    responses=WRITE_HTTP_RESPONSES
 )
 async def delete_announcement(
     announcement_id: str = Path(..., description="삭제할 사업공고 ID"),
@@ -408,7 +461,8 @@ async def delete_announcement(
     "/recent",
     response_model=BaseResponse[List[AnnouncementResponseSchema]],
     summary="최근 사업공고 조회",
-    description="최근에 등록된 사업공고 목록을 조회합니다."
+    description="최근에 등록된 사업공고 목록을 조회합니다.",
+    responses=READ_ONLY_HTTP_RESPONSES
 )
 async def get_recent_announcements(
     limit: int = Query(10, ge=1, le=50, description="조회할 최근 공고 수"),
@@ -442,7 +496,8 @@ async def get_recent_announcements(
     "/statistics",
     response_model=BaseResponse[dict],
     summary="사업공고 통계 조회",
-    description="사업공고에 대한 통계 정보를 조회합니다."
+    description="사업공고에 대한 통계 정보를 조회합니다.",
+    responses=READ_ONLY_HTTP_RESPONSES
 )
 async def get_announcement_statistics(
     service: AnnouncementService = Depends(get_announcement_service)

@@ -37,6 +37,7 @@ from .shared.exceptions.custom_exceptions import BaseAPIException
 from .shared.exceptions.api_exceptions import KoreanPublicAPIError
 from .shared.exceptions.data_exceptions import DataValidationError
 from .shared.swagger_config import tags_metadata, swagger_ui_parameters
+from .shared.security.schemas import SECURITY_SCHEMES
 
 # 로깅 설정
 logging.basicConfig(
@@ -179,6 +180,57 @@ app = FastAPI(
     openapi_url="/openapi.json",
     lifespan=lifespan
 )
+
+
+# OpenAPI 스키마에 보안 설정 추가
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    
+    from fastapi.openapi.utils import get_openapi
+    openapi_schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+    )
+    
+    # 보안 스키마 추가
+    openapi_schema["components"]["securitySchemes"] = SECURITY_SCHEMES
+    
+    # 모든 API 엔드포인트에 대해 보안 스키마 설명을 위한 전역 보안 설정 (선택적)
+    # 주석: 현재는 인증이 구현되지 않았으므로 실제 보안 요구사항은 추가하지 않음
+    # openapi_schema["security"] = [
+    #     {"JWT": []},
+    #     {"APIKey": []},
+    #     {"OAuth2": ["read", "write"]},
+    #     {"Basic": []}
+    # ]
+    
+    # 서버 정보 추가
+    if not openapi_schema.get("servers"):
+        openapi_schema["servers"] = [
+            {
+                "url": "http://localhost:8000",
+                "description": "개발 서버"
+            },
+            {
+                "url": "https://api.startup-data.kr",
+                "description": "프로덕션 서버 (계획됨)"
+            }
+        ]
+    
+    # 외부 문서 정보 추가
+    openapi_schema["externalDocs"] = {
+        "description": "상세 API 가이드 및 개발 문서",
+        "url": "https://github.com/your-repo/docs/API_GUIDE.md"
+    }
+    
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
 
 # 미들웨어 등록 (순서 중요: 먼저 등록된 미들웨어가 나중에 실행됨)
 app.add_middleware(ResponseValidationMiddleware)
