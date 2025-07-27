@@ -72,10 +72,16 @@ class RequestValidationMiddleware(BaseHTTPMiddleware):
             logger.exception(f"Unhandled exception in middleware: {str(e)}")
             
             # 에러 응답 생성
+            from datetime import datetime
             error_response = ErrorResponse(
                 success=False,
-                message="내부 서버 오류가 발생했습니다.",
-                error_code="INTERNAL_SERVER_ERROR"
+                status="error",
+                error={
+                    "type": "InternalServerError",
+                    "message": "내부 서버 오류가 발생했습니다.",
+                    "details": []
+                },
+                timestamp=datetime.utcnow().isoformat() + "Z"
             )
             
             return JSONResponse(

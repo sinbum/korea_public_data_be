@@ -128,6 +128,11 @@ services:
     environment:
       - MONGODB_URL=mongodb://api_user:api_password@mongodb:27017/korea_public_api
       - REDIS_URL=redis://redis:6379/0
+      - DATABASE_NAME=${DATABASE_NAME:-korea_public_api}
+      - PUBLIC_DATA_API_KEY=${PUBLIC_DATA_API_KEY}
+      - PUBLIC_DATA_API_KEY_DECODE=${PUBLIC_DATA_API_KEY_DECODE}
+      - DEBUG=True
+      - LOG_LEVEL=DEBUG
     volumes:
       - ./logs:/app/logs
     depends_on:
