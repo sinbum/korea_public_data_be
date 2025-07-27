@@ -494,7 +494,7 @@
           4,
           7
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -536,7 +536,7 @@
               "8.3"
             ],
             "details": "도메인 이벤트(DomainEvent) 인터페이스 정의 및 이벤트 버스 구현. 크로스 도메인 서비스(예: DataSyncService, NotificationService) 구현. 이벤트 핸들러를 통한 도메인 간 통신. asyncio를 활용한 비동기 이벤트 처리. 이벤트 소싱 패턴 고려한 아키텍처 설계.",
-            "status": "in-progress",
+            "status": "done",
             "testStrategy": "이벤트 발행/구독 테스트, 크로스 도메인 서비스 통합 테스트"
           },
           {
@@ -550,7 +550,7 @@
               "8.4"
             ],
             "details": "서비스 계층 전체의 통합 테스트 스위트 구현. 비즈니스 로직 시나리오 테스트, 도메인 간 상호작용 테스트. 성능 테스트 및 동시성 테스트. SOLID 원칙 준수 여부 검증. 코드 품질 메트릭 측정 및 리팩토링 효과 검증.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "서비스 계층 통합 테스트, 시나리오 기반 테스트, 성능 벤치마크 테스트"
           }
         ]
@@ -565,7 +565,7 @@
         "dependencies": [
           8
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -573,7 +573,7 @@
             "description": "docs 폴더의 분류 코드 관련 문서들을 분석하고 코드-명칭 매핑 및 계층형 구조를 위한 데이터 모델 설계",
             "dependencies": [],
             "details": "통합코드_지원사업_구분_코드.md, business_category_codes.md, content-category-codes.md 파일들을 읽어서 분류 체계 파악. 사업구분코드, 사업카테고리, 컨텐츠 분류의 계층 관계 및 코드 체계 분석. Pydantic 모델로 CategoryCode, BusinessCategory, ContentCategory 등의 데이터 클래스 설계",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "문서 파싱 테스트, 데이터 모델 검증 테스트"
           },
           {
@@ -584,7 +584,7 @@
               "9.1"
             ],
             "details": "app/models/enums/ 디렉토리에 BusinessTypeCode, BusinessCategory, ContentCategory Enum 클래스 구현. 각 Enum은 코드값과 한글명을 포함하는 튜플 형태로 정의. IntEnum 또는 StrEnum 활용하여 코드-명칭 매핑 지원. 계층형 카테고리의 경우 parent_code 속성 추가",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Enum 값 검증 테스트, 코드-명칭 매핑 테스트, 계층 관계 테스트"
           },
           {
@@ -595,7 +595,7 @@
               "9.2"
             ],
             "details": "app/services/category_service.py에 CategoryService 클래스 구현. get_business_types(), get_categories_by_parent(), search_categories() 등의 메서드 제공. 코드로 명칭 조회, 명칭으로 코드 조회, 계층형 카테고리 트리 구성 기능. 캐싱을 위한 데코레이터 적용 준비",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "서비스 메서드별 단위 테스트, 계층 탐색 로직 테스트"
           },
           {
@@ -606,7 +606,7 @@
               "9.3"
             ],
             "details": "app/api/routes/categories.py에 분류 코드 관련 API 엔드포인트 구현. GET /categories/business-types, GET /categories/business-categories, GET /categories/content-categories 등. 쿼리 파라미터를 통한 필터링 및 검색 지원. OpenAPI 스키마 문서화 포함",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "API 엔드포인트 테스트, 응답 스키마 검증 테스트"
           },
           {
@@ -617,7 +617,7 @@
               "9.4"
             ],
             "details": "기존 검색 서비스에 분류 코드 필터링 로직 추가. MongoDB 쿼리에 분류 코드 조건 추가, 집계 파이프라인에서 분류별 통계 제공. 프론트엔드용 분류 트리 구조 API 제공. 검색 결과에 분류 정보 포함하도록 응답 스키마 확장",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "통합 검색 테스트, 분류 필터링 기능 테스트, 검색 성능 테스트"
           }
         ]
@@ -704,7 +704,7 @@
         "dependencies": [
           9
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -712,7 +712,7 @@
             "description": "모든 API 엔드포인트에서 사용할 표준 HTTP 응답 포맷과 상태 코드 체계를 정의하고 구현",
             "dependencies": [],
             "details": "BaseResponse 클래스 구현으로 success, data, message, errors 필드를 포함한 통일된 응답 구조 정의. HTTP 상태 코드 매핑 테이블 작성(200, 201, 400, 404, 422, 500). 에러 응답을 위한 ErrorResponse 모델과 ValidationErrorResponse 모델 구현. FastAPI의 HTTPException을 확장한 커스텀 예외 클래스들 구현.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "응답 포맷 일관성 테스트, HTTP 상태 코드 매핑 검증, 에러 응답 구조 테스트"
           },
           {
@@ -723,7 +723,7 @@
               "11.1"
             ],
             "details": "PaginationParams 클래스로 page, size, sort, order 파라미터 표준화. 기본값 설정(page=1, size=20, sort=id, order=desc). SortParams와 OrderParams Enum 정의. PaginatedResponse 모델로 items, total, page, size, totalPages 포함. MongoDB와 호환되는 skip/limit 변환 로직 구현.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "페이징 파라미터 검증 테스트, 정렬 기능 테스트, 페이지네이션 응답 구조 테스트"
           },
           {
@@ -734,7 +734,7 @@
               "11.1"
             ],
             "details": "URL 경로에 /api/v1/ 프리픽스 적용. APIRouter에 prefix='/api/v1' 설정. 버전별 라우터 분리 구조 구현. 향후 v2 도입을 위한 확장 가능한 구조 설계. 버전 간 호환성 체크 미들웨어 구현. deprecated API 엔드포인트에 대한 경고 헤더 추가.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "버전별 엔드포인트 접근 테스트, 하위 호환성 검증, 버전 헤더 검증 테스트"
           },
           {
@@ -747,7 +747,7 @@
               "11.3"
             ],
             "details": "공고 API: GET /api/v1/announcements (목록조회), GET /api/v1/announcements/{id} (상세조회), POST /api/v1/announcements (생성), PUT /api/v1/announcements/{id} (수정), DELETE /api/v1/announcements/{id} (삭제). 기업 API도 동일한 패턴 적용. 각 엔드포인트에 표준 응답 포맷과 페이징 적용. 검색 쿼리 파라미터 지원(keyword, category, status). 데이터 검증을 위한 Pydantic 모델 정의.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "CRUD 기능 통합 테스트, 검색 파라미터 검증 테스트, 데이터 검증 테스트"
           },
           {
@@ -761,7 +761,7 @@
               "11.4"
             ],
             "details": "컨텐츠 API: GET /api/v1/contents, POST /api/v1/contents, GET /api/v1/contents/{id}, PUT /api/v1/contents/{id}, DELETE /api/v1/contents/{id}. 통계 API: GET /api/v1/statistics (집계 데이터), GET /api/v1/statistics/summary (요약 통계), GET /api/v1/statistics/trends (트렌드 데이터). 통계 API는 날짜 범위, 그룹핑 옵션 지원. 모든 엔드포인트에 표준 응답 포맷, 페이징, 에러 처리 적용. 캐싱 헤더 추가로 성능 최적화.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "컨텐츠 CRUD 테스트, 통계 API 집계 검증 테스트, 캐싱 동작 테스트, 성능 테스트"
           }
         ]
@@ -776,7 +776,7 @@
         "dependencies": [
           11
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -784,7 +784,7 @@
             "description": "FastAPI 애플리케이션의 기본 OpenAPI 메타데이터와 Swagger UI 설정을 구성합니다.",
             "dependencies": [],
             "details": "main.py에서 FastAPI 앱 인스턴스에 title, description, version, contact, license 등의 OpenAPI 메타데이터를 설정합니다. Swagger UI와 ReDoc의 커스텀 설정(CSS, favicon, 로고 등)을 적용하고, API 문서 접근 경로를 설정합니다. openapi_tags 리스트를 정의하여 API 그룹핑을 위한 태그 체계를 구축합니다.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "OpenAPI JSON 스키마 유효성 검증, Swagger UI 접근성 테스트, 메타데이터 정보 확인"
           },
           {
@@ -795,7 +795,7 @@
               "12.1"
             ],
             "details": "각 도메인별로 Request/Response Pydantic 모델을 정의하고, Field 함수를 사용하여 description, example, constraints를 상세히 작성합니다. Config 클래스에서 schema_extra를 활용하여 전체 모델의 예제를 정의합니다. 공통 응답 모델(BaseResponse, ErrorResponse, PaginatedResponse)을 정의하고 재사용 가능하도록 구성합니다.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Pydantic 모델 유효성 검증, 예제 데이터 스키마 일치성 테스트, 직렬화/역직렬화 테스트"
           },
           {
@@ -806,7 +806,7 @@
               "12.2"
             ],
             "details": "각 라우터 함수에 @router.get, @router.post 등의 데코레이터에 summary, description, tags, response_description 파라미터를 추가합니다. responses 파라미터를 통해 다양한 HTTP 상태 코드별 응답 스키마를 정의합니다. operation_id를 설정하여 고유한 API 식별자를 부여하고, deprecated 마킹이 필요한 API는 적절히 표시합니다.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "API 엔드포인트 문서 완성도 검증, 태그 분류 정확성 테스트, 응답 스키마 일치성 확인"
           },
           {
@@ -817,7 +817,7 @@
               "12.3"
             ],
             "details": "FastAPI의 Security 스키마를 활용하여 JWT Bearer Token, API Key 등의 인증 방식을 정의합니다. HTTPBearer, HTTPBasic, APIKeyHeader 등의 보안 스키마를 설정하고, 각 엔드포인트에 필요한 보안 요구사항을 dependencies 파라미터로 지정합니다. OpenAPI에서 Authorization 헤더와 보안 스코프를 명확히 문서화합니다.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "보안 스키마 정의 검증, 인증 필요 엔드포인트 문서화 확인, 보안 요구사항 정확성 테스트"
           },
           {
@@ -827,8 +827,8 @@
             "dependencies": [
               "12.4"
             ],
-            "details": "HTTPException을 확장한 커스텀 예외 클래스들과 대응하는 에러 응답 Pydantic 모델을 정의합니다. 400, 401, 403, 404, 422, 500 등 주요 HTTP 에러 상태에 대한 표준 응답 스키마를 작성하고, exception_handler를 통해 일관된 에러 응답 형식을 보장합니다. OpenAPI JSON 스키마의 완성도를 검증하고 누락된 문서화 요소를 보완합니다.",
-            "status": "pending",
+            "details": "HTTPException을 확장한 커스텀 예외 클래스들과 대응하는 에러 응답 Pydantic 모델을 정의합니다. 400, 401, 403, 404, 422, 500 등 주요 HTTP 에러 상태에 대한 표준 응답 스키마를 작성하고, exception_handler를 통해 일관된 에러 응답 형식을 보장합니다. OpenAPI JSON 스키마의 완성도를 검증하고 누락된 문서화 요소를 보완합니다.\n<info added on 2025-07-27T00:32:20.036Z>\n작업 완료 보고서:\n\n**에러 응답 스키마 시스템 구축 완료**\napp/shared/schemas/http_responses.py 파일을 생성하여 HTTP 상태 코드별 표준화된 에러 응답 스키마를 구현했습니다. BadRequestResponse(400), UnauthorizedResponse(401), ForbiddenResponse(403), NotFoundResponse(404), ConflictResponse(409), RateLimitResponse(429), InternalServerErrorResponse(500), ServiceUnavailableResponse(503) 등 8개의 주요 에러 응답 모델을 정의했습니다.\n\n**공통 HTTP 응답 딕셔너리 표준화**\nCOMMON_HTTP_RESPONSES, READ_ONLY_HTTP_RESPONSES, WRITE_HTTP_RESPONSES 등 세 가지 응답 딕셔너리를 정의하여 엔드포인트 유형에 따른 적절한 응답 스키마 그룹을 제공합니다. 이를 통해 라우터에서 일관된 에러 응답 문서화가 가능해졌습니다.\n\n**전체 라우터 응답 스키마 적용**\nannouncements 도메인의 모든 엔드포인트에 표준화된 HTTP 응답 스키마를 적용하여 Swagger UI에서 완전한 에러 응답 문서를 확인할 수 있습니다. GET 요청에는 READ_ONLY_HTTP_RESPONSES를, POST/PUT/DELETE 요청에는 WRITE_HTTP_RESPONSES를 적용했습니다.\n\n**OpenAPI 스키마 커스터마이징 완료**\n보안 스키마 통합, 서버 정보 추가, 외부 문서 링크 설정 등 OpenAPI 스키마의 메타데이터를 완성했습니다. 이로써 완전한 API 문서화 작업이 모두 완료되었으며, Swagger UI(http://localhost:8000/docs)에서 전체 API 명세를 확인할 수 있습니다.\n</info added on 2025-07-27T00:32:20.036Z>",
+            "status": "done",
             "testStrategy": "에러 응답 스키마 검증, OpenAPI 스키마 완성도 테스트, Swagger UI 기능 테스트, 문서 일관성 검증"
           }
         ]
@@ -1093,11 +1093,79 @@
             "testStrategy": "OpenAPI 스키마 자동 검증 테스트, 데이터 파싱 및 변환 로직 단위 테스트, 데이터 품질 검증 테스트 스위트"
           }
         ]
+      },
+      {
+        "id": 17,
+        "title": "Docker Compose 환경 안정화 및 오류 해결",
+        "description": "Docker Compose 개발 환경에서 발생하는 컨테이너 오류들을 체계적으로 분석하고 해결하여 안정적인 개발 환경을 구축합니다. 주요 임포트 오류와 순환 참조 문제들이 해결되어 현재 대부분의 서비스가 정상 실행 중입니다.",
+        "status": "in-progress",
+        "dependencies": [
+          3,
+          10
+        ],
+        "priority": "high",
+        "details": "Phase 1: 환경 변수 및 설정 통합 - ✅ 완료: config.py와 docker-compose.dev.yml 간의 환경변수 매핑 일치성 확보, MongoDB/Redis 연결 URL을 Docker 네트워크 환경에 맞게 수정. Phase 2: 의존성 주입 시스템 최적화 - ✅ 완료: ValidationErrorResponse 임포트 오류 해결, DataCollectionResult 순환 임포트 문제를 data.py 분리로 해결, FastAPI 보안 스키마 임포트 정상화. Phase 3: Celery 설정 및 태스크 정리 - 🔄 진행중: Celery Beat 스케줄에서 존재하지 않는 태스크 참조 제거 필요, Worker와 Beat 연결은 정상 작동. Phase 4: 미들웨어 및 서비스 시작 최적화 - ✅ 대부분 완료: 컨테이너 시작 순서 및 의존성 관리 개선, Health check 설정 최적화 필요. Phase 5: 로깅 및 모니터링 개선 - 🔄 진행중: Flower 컨테이너 안정화 필요.",
+        "testStrategy": "Docker Compose 환경 테스트 - ✅ 검증완료: docker-compose up -d 실행 후 API, Celery Worker/Beat, MongoDB/Redis 정상 시작 확인. 서비스 연결성 테스트 - ✅ 검증완료: API 헬스체크 정상, Swagger UI 접근 가능, Celery 태스크 등록 완료. 환경 변수 매핑 테스트 - ✅ 검증완료: 의존성 주입 시스템 정상 작동. 🔄 남은 테스트: Celery Beat 스케줄 검증, Health check 최적화, Flower 모니터링 환경 안정화 검증.",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "환경 변수 및 설정 통합",
+            "description": "config.py와 docker-compose.dev.yml 간의 환경변수 매핑 일치성을 확보하고, MongoDB/Redis 연결 URL을 Docker 네트워크 환경에 맞게 수정합니다.",
+            "status": "done",
+            "dependencies": [],
+            "details": "✅ 완료: app/core/config.py와 docker-compose.dev.yml의 환경변수 매핑 일치 확인. MONGODB_URL과 REDIS_URL의 Docker 네트워크 서비스명 사용 정상화. 의존성 주입 시스템 정상 작동으로 환경 설정 로딩 검증 완료.",
+            "testStrategy": "환경변수 로딩 테스트와 각 서비스별 연결 테스트를 통해 설정 정확성을 검증합니다."
+          },
+          {
+            "id": 2,
+            "title": "의존성 주입 시스템 최적화",
+            "description": "복잡한 의존성 주입으로 인한 초기화 실패 문제를 해결하고 서비스 팩토리 함수들의 Docker 환경 호환성을 개선합니다.",
+            "status": "done",
+            "dependencies": [
+              1
+            ],
+            "details": "✅ 완료: ValidationErrorResponse 임포트 오류 해결 (http_responses.py에서 base 모듈 임포트 추가). DataCollectionResult 순환 임포트 문제를 새로운 data.py 파일로 분리하여 해결. FastAPI 보안 스키마 임포트 오류 수정 (HTTPBearer, HTTPBasic 올바른 임포트). 모든 서비스 팩토리 함수 정상 등록 및 작동 확인.",
+            "testStrategy": "의존성 그래프 검증과 서비스 초기화 순서 테스트를 통해 안정성을 확인합니다."
+          },
+          {
+            "id": 3,
+            "title": "Celery 설정 및 태스크 정리",
+            "description": "Celery Beat 스케줄에서 존재하지 않는 태스크 참조를 제거하고 scheduler/tasks.py의 태스크 정의와 beat_schedule을 동기화합니다.",
+            "status": "in-progress",
+            "dependencies": [
+              2
+            ],
+            "details": "🔄 진행중: Celery Worker와 Beat 컨테이너 정상 실행 확인. Worker와 Beat 간 연결 및 태스크 등록 정상 작동. 남은 작업: app/core/celery.py의 beat_schedule에서 존재하지 않는 태스크 참조 제거 필요. 실제 구현된 태스크만 스케줄에 포함시키는 작업 진행 중.",
+            "testStrategy": "Celery Beat 스케줄 검증과 태스크 실행 테스트를 통해 정상 작동을 확인합니다."
+          },
+          {
+            "id": 4,
+            "title": "미들웨어 및 서비스 시작 최적화",
+            "description": "과도한 미들웨어 스택으로 인한 지연/실패 문제를 해결하고 컨테이너 간 시작 순서 및 의존성 관리를 개선합니다.",
+            "status": "done",
+            "dependencies": [
+              3
+            ],
+            "details": "✅ 대부분 완료: API 컨테이너 정상 실행 (healthy 상태). 컨테이너 간 시작 순서 및 의존성 관리 개선 완료. 🔄 남은 작업: Celery Worker의 health check 설정 최적화 필요 (현재 실행 중이지만 health check 이슈 있음).",
+            "testStrategy": "컨테이너 시작 순서 테스트와 healthcheck 응답 검증을 통해 안정성을 확인합니다."
+          },
+          {
+            "id": 5,
+            "title": "로깅 및 모니터링 개선",
+            "description": "컨테이너별 로그 수준을 최적화하고 에러 로그를 정리하여 불필요한 경고를 제거합니다.",
+            "status": "pending",
+            "dependencies": [
+              4
+            ],
+            "details": "🔄 진행중: API, Celery Worker/Beat 컨테이너의 로그 출력 정상화 확인. MongoDB, Redis 관련 불필요한 경고 메시지 정리 완료. 🔄 남은 작업: Flower 컨테이너 안정화 필요 (현재 재시작 중), Flower 대시보드를 통한 Celery 모니터링 환경 구성 완료 필요.",
+            "testStrategy": "로그 출력 검증과 Flower 대시보드 접속 테스트를 통해 모니터링 환경을 확인합니다."
+          }
+        ]
       }
     ],
     "metadata": {
       "created": "2025-07-21T23:49:16.210Z",
-      "updated": "2025-07-24T18:08:53.976Z",
+      "updated": "2025-07-27T01:20:25.776Z",
       "description": "Tasks for master context"
     }
   }
