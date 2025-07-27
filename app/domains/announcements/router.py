@@ -273,6 +273,59 @@ async def get_announcements(
         )
 
 
+# 검색은 메인 GET / 엔드포인트의 keyword 파라미터로 통합됨
+
+@router.get(
+    "/recent",
+    response_model=BaseResponse[List[AnnouncementResponseSchema]],
+    summary="최근 사업공고 조회",
+    description="최근에 등록된 사업공고 목록을 조회합니다.",
+    responses=READ_ONLY_HTTP_RESPONSES
+)
+async def get_recent_announcements(
+    limit: int = Query(10, ge=1, le=50, description="조회할 최근 공고 수"),
+    service: AnnouncementService = Depends(get_announcement_service)
+):
+    """최근 공고 조회"""
+    try:
+        announcements = service.get_recent_announcements(limit)
+        
+        response_data = []
+        for a in announcements:
+            # Convert Announcement model to response schema manually to handle datetime serialization
+            if hasattr(a.announcement_data, 'model_dump'):
+                announcement_data_dict = a.announcement_data.model_dump(mode='json')
+            elif hasattr(a.announcement_data, 'dict'):
+                announcement_data_dict = a.announcement_data.dict()
+            else:
+                announcement_data_dict = dict(a.announcement_data)
+            
+            # Convert datetime objects to strings in the announcement_data_dict
+            for key, value in announcement_data_dict.items():
+                if hasattr(value, 'isoformat'):  # datetime object
+                    announcement_data_dict[key] = value.isoformat() + "Z"
+            
+            response_item = AnnouncementResponseSchema(
+                id=str(a.id),
+                announcement_data=announcement_data_dict,
+                source_url=a.source_url,
+                is_active=a.is_active,
+                created_at=a.created_at.isoformat() + "Z" if a.created_at else None,
+                updated_at=a.updated_at.isoformat() + "Z" if a.updated_at else None
+            )
+            response_data.append(response_item)
+        
+        return success_response(
+            data=response_data,
+            message=f"최근 {len(response_data)}개의 사업공고를 조회했습니다"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"최근 공고 조회 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
 @router.get(
     "/{announcement_id}",
     response_model=BaseResponse[AnnouncementResponseSchema],
@@ -452,43 +505,6 @@ async def delete_announcement(
         raise HTTPException(
             status_code=500,
             detail=f"사업공고 삭제 중 오류가 발생했습니다: {str(e)}"
-        )
-
-
-# 검색은 메인 GET / 엔드포인트의 keyword 파라미터로 통합됨
-
-@router.get(
-    "/recent",
-    response_model=BaseResponse[List[AnnouncementResponseSchema]],
-    summary="최근 사업공고 조회",
-    description="최근에 등록된 사업공고 목록을 조회합니다.",
-    responses=READ_ONLY_HTTP_RESPONSES
-)
-async def get_recent_announcements(
-    limit: int = Query(10, ge=1, le=50, description="조회할 최근 공고 수"),
-    service: AnnouncementService = Depends(get_announcement_service)
-):
-    """최근 공고 조회"""
-    try:
-        announcements = await service.get_recent_announcements(limit)
-        
-        response_data = [AnnouncementResponseSchema(
-            id=str(a.id),
-            announcement_data=a.announcement_data,
-            source_url=a.source_url,
-            is_active=a.is_active,
-            created_at=a.created_at,
-            updated_at=a.updated_at
-        ) for a in announcements]
-        
-        return success_response(
-            data=response_data,
-            message=f"최근 {len(response_data)}개의 사업공고를 조회했습니다"
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"최근 공고 조회 중 오류가 발생했습니다: {str(e)}"
         )
 
 
