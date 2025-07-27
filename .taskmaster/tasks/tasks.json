@@ -1165,9 +1165,7 @@
       {
         "id": 18,
         "title": "JWT 기반 사용자 인증 및 프로필 시스템 구현",
-        "description": "JWT 토큰 기반 인증 시스템과 사용자 프로필 관리 기능을 구현하여 개인화된 서비스 제공 기반을 구축합니다.",
-        "details": "Phase 1: JWT 인증 시스템 구축 - python-jose를 활용한 JWT 토큰 생성/검증, 액세스/리프레시 토큰 구조 설계, 토큰 블랙리스트 관리. FastAPI Security 스키마 적용, OAuth2PasswordBearer 구현. Phase 2: 사용자 모델 및 스키마 설계 - User 도메인 모델 생성 (email, password_hash, profile), UserProfile 서브도큐먼트 (업종, 창업단계, 지역, 관심분야), Pydantic 스키마 (UserCreate, UserUpdate, UserResponse). Phase 3: 인증 API 엔드포인트 구현 - POST /auth/register (회원가입), POST /auth/login (로그인), POST /auth/refresh (토큰 갱신), POST /auth/logout (로그아웃). 비밀번호 해싱은 bcrypt 사용, 입력 검증 및 중복 이메일 체크. Phase 4: 프로필 관리 API 구현 - GET/PUT /users/profile (프로필 조회/수정), 업종/창업단계/지역 코드 검증, 관심분야 태그 관리. Phase 5: 인증 미들웨어 및 의존성 주입 - get_current_user 의존성 함수, 보호된 라우트 데코레이터, 권한 기반 접근 제어 기반 구축.",
-        "testStrategy": "JWT 토큰 생성/검증 테스트 - 유효/무효 토큰 시나리오, 만료 토큰 처리 테스트. 인증 API 테스트 - 회원가입/로그인 성공/실패 케이스, 중복 이메일 검증, 비밀번호 강도 테스트. 프로필 관리 테스트 - 프로필 CRUD 작업, 코드 검증 로직, 권한 확인 테스트. 보안 테스트 - SQL 인젝션 방지, XSS 방지, 토큰 탈취 시나리오 테스트. 통합 테스트 - 전체 인증 플로우 E2E 테스트, 다양한 사용자 프로필 시나리오 테스트.",
+        "description": "JWT 토큰 기반 인증 시스템과 OAuth 2.0 Google Login을 결합한 하이브리드 인증 시스템을 구현하여 개인화된 서비스 제공 기반을 구축합니다. 로컬 회원가입과 소셜 로그인 사용자를 통합 관리하며, GDPR 준수 개인정보 처리를 보장합니다.",
         "status": "pending",
         "dependencies": [
           2,
@@ -1175,73 +1173,87 @@
           17
         ],
         "priority": "high",
+        "details": "Phase 1: JWT 인증 시스템 구축 - python-jose를 활용한 JWT 토큰 생성/검증, 액세스/리프레시 토큰 구조 설계, 토큰 블랙리스트 관리. FastAPI Security 스키마 적용, OAuth2PasswordBearer 구현. Phase 2: OAuth 2.0 Google Login 통합 - Google OAuth 2.0 클라이언트 설정, authorization code flow 구현, Google 사용자 정보 → JWT 토큰 변환 메커니즘. Phase 3: 하이브리드 사용자 모델 설계 - User 도메인 모델 확장 (email, password_hash, google_id, auth_provider), UserProfile 서브도큐먼트 (업종, 창업단계, 지역, 관심분야), 로컬/소셜 사용자 통합 스키마. Phase 4: 통합 인증 API 엔드포인트 - POST /auth/register (로컬 회원가입), POST /auth/login (로컬 로그인), GET /auth/google (Google OAuth 시작), POST /auth/google/callback (Google 콜백 처리), POST /auth/refresh, POST /auth/logout. Phase 5: 접근 레벨별 권한 시스템 - 익명 사용자 권한, 인증된 사용자 권한, 프리미엄 사용자 권한 분리. GDPR 준수 최소 권한 요청 및 개인정보 처리 동의 관리.",
+        "testStrategy": "JWT 토큰 생성/검증 테스트 - 유효/무효 토큰 시나리오, 만료 토큰 처리 테스트. OAuth 2.0 Google Login 테스트 - authorization code flow 전체 과정, 토큰 교환 및 사용자 정보 획득 검증. 하이브리드 인증 테스트 - 로컬/소셜 로그인 혼재 시나리오, 동일 이메일 계정 통합 처리. 권한 시스템 테스트 - 접근 레벨별 API 접근 제어, 권한 승격/하향 플로우. GDPR 준수 테스트 - 개인정보 수집 동의, 데이터 삭제 요청 처리, 최소 권한 원칙 검증. 보안 테스트 - OAuth CSRF 방지, state 파라미터 검증, 토큰 탈취 시나리오 테스트.",
         "subtasks": [
           {
             "id": 1,
             "title": "JWT 인증 시스템 핵심 인프라 구축",
             "description": "python-jose를 활용한 JWT 토큰 생성/검증 시스템과 액세스/리프레시 토큰 구조를 설계하고 구현합니다. 토큰 블랙리스트 관리와 FastAPI Security 스키마를 적용합니다.",
+            "status": "pending",
             "dependencies": [],
             "details": "JWT 토큰 생성/검증 유틸리티 함수 구현, 액세스 토큰(15분 만료)과 리프레시 토큰(7일 만료) 구조 설계, Redis 기반 토큰 블랙리스트 관리, OAuth2PasswordBearer 구현, 토큰 페이로드 스키마 정의 및 암호화 키 관리",
-            "status": "pending",
             "testStrategy": "JWT 토큰 생성/검증 테스트, 토큰 만료 시나리오 테스트, 블랙리스트 토큰 거부 검증, 암호화 키 순환 테스트"
           },
           {
             "id": 2,
-            "title": "사용자 도메인 모델 및 스키마 설계",
-            "description": "User 도메인 모델과 UserProfile 서브도큐먼트를 생성하고, 업종, 창업단계, 지역, 관심분야를 포함한 사용자 프로필 스키마를 설계합니다.",
-            "dependencies": [],
-            "details": "User 모델 (email, password_hash, profile, created_at, is_active) 구현, UserProfile 서브도큐먼트 (업종 코드, 창업단계, 지역 코드, 관심분야 태그) 설계, Pydantic 스키마 (UserCreate, UserUpdate, UserResponse, ProfileUpdate) 정의, 업종/창업단계/지역 코드 검증 규칙 구현",
+            "title": "OAuth 2.0 Google Login 클라이언트 구현",
+            "description": "Google OAuth 2.0 클라이언트를 구현하고 authorization code flow를 통한 사용자 인증 시스템을 구축합니다. Google 사용자 정보를 JWT 토큰으로 변환하는 메커니즘을 포함합니다.",
             "status": "pending",
-            "testStrategy": "사용자 모델 CRUD 작업 테스트, 프로필 데이터 검증 테스트, 업종/지역 코드 유효성 검증, 중복 이메일 체크 테스트"
+            "dependencies": [
+              1
+            ],
+            "details": "Google OAuth 2.0 클라이언트 설정 (client_id, client_secret, redirect_uri), authorization code flow 구현, state 파라미터 CSRF 방지, Google API를 통한 사용자 정보 획득, Google 사용자 정보 → JWT 토큰 변환 로직, scope 최소화 (openid, email, profile만 요청)",
+            "testStrategy": "OAuth authorization flow 전체 과정 테스트, CSRF 방지 state 파라미터 검증, Google API 사용자 정보 획득 테스트, 토큰 변환 로직 정확성 검증"
           },
           {
             "id": 3,
-            "title": "인증 API 엔드포인트 구현",
-            "description": "회원가입, 로그인, 토큰 갱신, 로그아웃 API 엔드포인트를 구현하고, bcrypt 기반 비밀번호 해싱과 입력 검증 로직을 추가합니다.",
-            "dependencies": [
-              "18.1",
-              "18.2"
-            ],
-            "details": "POST /auth/register (회원가입 + 이메일 중복 체크), POST /auth/login (로그인 + JWT 토큰 발급), POST /auth/refresh (리프레시 토큰으로 액세스 토큰 갱신), POST /auth/logout (토큰 블랙리스트 등록), bcrypt 비밀번호 해싱, 이메일 형식 및 비밀번호 강도 검증",
+            "title": "하이브리드 사용자 도메인 모델 및 스키마 설계",
+            "description": "로컬 회원가입과 소셜 로그인 사용자를 통합 관리할 수 있는 User 도메인 모델을 설계하고, 인증 제공자별 사용자 정보를 효과적으로 관리하는 스키마를 구현합니다.",
             "status": "pending",
-            "testStrategy": "회원가입/로그인 성공/실패 케이스 테스트, 중복 이메일 검증, 비밀번호 강도 테스트, 토큰 갱신 플로우 테스트, 로그아웃 시 토큰 무효화 검증"
+            "dependencies": [],
+            "details": "User 모델 확장 (email, password_hash, google_id, auth_provider, profile, created_at, is_active), UserProfile 서브도큐먼트 유지 (업종 코드, 창업단계, 지역 코드, 관심분야 태그), 다중 인증 제공자 지원 구조, Pydantic 스키마 확장 (SocialUserCreate, LocalUserCreate, UserResponse), 동일 이메일 계정 통합 로직",
+            "testStrategy": "하이브리드 사용자 모델 CRUD 테스트, 동일 이메일 계정 통합 로직 검증, 인증 제공자별 사용자 생성 테스트, 프로필 데이터 일관성 검증"
           },
           {
             "id": 4,
-            "title": "사용자 프로필 관리 API 구현",
-            "description": "사용자 프로필 조회 및 수정 API를 구현하고, 업종/창업단계/지역 코드 검증과 관심분야 태그 관리 기능을 추가합니다.",
-            "dependencies": [
-              "18.2",
-              "18.3"
-            ],
-            "details": "GET /users/profile (현재 사용자 프로필 조회), PUT /users/profile (프로필 수정), 업종/창업단계/지역 코드 마스터 데이터 검증, 관심분야 태그 자동완성 및 관리, 프로필 완성도 계산 및 표시, 프로필 이미지 업로드 지원",
+            "title": "통합 인증 API 엔드포인트 구현",
+            "description": "로컬 인증과 Google OAuth 2.0 인증을 모두 지원하는 통합 인증 API 엔드포인트를 구현합니다. 기존 bcrypt 비밀번호 해싱 시스템을 유지하면서 소셜 로그인 플로우를 추가합니다.",
             "status": "pending",
-            "testStrategy": "프로필 CRUD 작업 테스트, 코드 검증 로직 테스트, 관심분야 태그 관리 테스트, 프로필 완성도 계산 정확성 검증, 이미지 업로드 및 저장 테스트"
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "details": "POST /auth/register (로컬 회원가입 + 이메일 중복 체크), POST /auth/login (로컬 로그인), GET /auth/google (Google OAuth 시작), POST /auth/google/callback (Google 콜백 처리 + JWT 토큰 발급), POST /auth/refresh (리프레시 토큰으로 액세스 토큰 갱신), POST /auth/logout (토큰 블랙리스트 등록), 계정 연결 API (로컬 ↔ Google 계정 연결)",
+            "testStrategy": "로컬/소셜 로그인 통합 테스트, Google OAuth 콜백 처리 검증, 계정 연결/해제 플로우 테스트, 하이브리드 인증 시나리오 검증"
           },
           {
             "id": 5,
-            "title": "인증 미들웨어 및 의존성 주입 시스템",
-            "description": "get_current_user 의존성 함수와 보호된 라우트 데코레이터를 구현하고, 권한 기반 접근 제어 시스템을 구축합니다.",
-            "dependencies": [
-              "18.1",
-              "18.3"
-            ],
-            "details": "get_current_user 의존성 함수 구현 (토큰 검증 + 사용자 조회), get_current_active_user 의존성 함수 (활성 사용자만), 권한 기반 데코레이터 (@require_auth, @require_admin), 역할 기반 접근 제어 (RBAC) 기반 구축, API 라우트별 권한 설정",
+            "title": "사용자 프로필 관리 API 구현",
+            "description": "사용자 프로필 조회 및 수정 API를 구현하고, 업종/창업단계/지역 코드 검증과 관심분야 태그 관리 기능을 추가합니다.",
             "status": "pending",
-            "testStrategy": "인증된/비인증된 사용자 접근 테스트, 권한별 API 접근 제어 검증, 비활성 사용자 접근 차단 테스트, 토큰 만료 시 접근 거부 검증"
+            "dependencies": [
+              3,
+              4
+            ],
+            "details": "GET /users/profile (현재 사용자 프로필 조회), PUT /users/profile (프로필 수정), 업종/창업단계/지역 코드 마스터 데이터 검증, 관심분야 태그 자동완성 및 관리, 프로필 완성도 계산 및 표시, 프로필 이미지 업로드 지원",
+            "testStrategy": "프로필 CRUD 작업 테스트, 코드 검증 로직 테스트, 관심분야 태그 관리 테스트, 프로필 완성도 계산 정확성 검증, 이미지 업로드 및 저장 테스트"
           },
           {
             "id": 6,
-            "title": "보안 강화 및 GDPR 준수 시스템",
-            "description": "개인정보 보안, GDPR 준수, 소셜 로그인 연동 기반을 구축하고, 보안 감사 및 로깅 시스템을 구현합니다.",
-            "dependencies": [
-              "18.3",
-              "18.4",
-              "18.5"
-            ],
-            "details": "개인정보 암호화 저장 및 마스킹 처리, GDPR 데이터 삭제 요청 처리 API, 소셜 로그인 (Google/Kakao) OAuth2 연동 기반 구축, 로그인 시도 제한 및 계정 잠금 기능, 보안 감사 로그 및 suspicious activity 모니터링, Rate limiting 및 브루트 포스 공격 방지",
+            "title": "접근 레벨별 권한 시스템 및 의존성 주입",
+            "description": "익명 사용자, 인증된 사용자, 프리미엄 사용자의 접근 레벨을 구분하는 권한 시스템을 구현하고, get_current_user 의존성 함수와 권한 기반 접근 제어를 구축합니다.",
             "status": "pending",
-            "testStrategy": "개인정보 암호화/복호화 테스트, GDPR 데이터 삭제 완전성 검증, 소셜 로그인 플로우 테스트, 계정 잠금/해제 로직 검증, 보안 감사 로그 정확성 테스트, Rate limiting 동작 검증"
+            "dependencies": [
+              1,
+              4
+            ],
+            "details": "get_current_user 의존성 함수 구현 (JWT/OAuth 토큰 통합 검증), get_current_active_user 의존성 함수, 접근 레벨별 권한 데코레이터 (@require_auth, @require_premium), 익명 사용자 제한 API 접근, 인증된 사용자 기본 기능, 프리미엄 사용자 고급 기능 분리",
+            "testStrategy": "접근 레벨별 권한 제어 검증, 하이브리드 토큰 검증 로직 테스트, 권한 승격/하향 플로우 검증, 익명/인증/프리미엄 사용자별 API 접근 테스트"
+          },
+          {
+            "id": 7,
+            "title": "GDPR 준수 개인정보 처리 및 보안 강화",
+            "description": "GDPR 준수를 위한 개인정보 처리 동의 관리, 최소 권한 원칙 적용, 데이터 삭제 요청 처리 시스템을 구현하고 OAuth 보안을 강화합니다.",
+            "status": "pending",
+            "dependencies": [
+              2,
+              4,
+              6
+            ],
+            "details": "GDPR 개인정보 수집 동의 관리 시스템, 최소 권한 OAuth scope 요청 (openid, email, profile만), 사용자 데이터 삭제 요청 API (Right to be forgotten), OAuth CSRF 및 state 파라미터 보안 강화, 개인정보 암호화 저장, 보안 감사 로그 (로그인 시도, 권한 변경, 데이터 접근)",
+            "testStrategy": "GDPR 동의 관리 플로우 테스트, 데이터 삭제 요청 완전성 검증, OAuth 보안 취약점 테스트, 개인정보 암호화/복호화 검증, 최소 권한 원칙 준수 확인"
           }
         ]
       },
