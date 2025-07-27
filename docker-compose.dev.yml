@@ -114,31 +114,32 @@ services:
     networks:
       - korea_api_network
 
-  # Celery Flower 개발 환경 (모니터링)
-  flower:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: development
-    container_name: korea_celery_flower_dev
-    restart: unless-stopped
-    command: celery -A app.core.celery flower --port=5555
-    ports:
-      - "5555:5555"
-    environment:
-      - MONGODB_URL=mongodb://api_user:api_password@mongodb:27017/korea_public_api
-      - REDIS_URL=redis://redis:6379/0
-      - DATABASE_NAME=${DATABASE_NAME:-korea_public_api}
-      - PUBLIC_DATA_API_KEY=${PUBLIC_DATA_API_KEY}
-      - PUBLIC_DATA_API_KEY_DECODE=${PUBLIC_DATA_API_KEY_DECODE}
-      - DEBUG=True
-      - LOG_LEVEL=DEBUG
-    volumes:
-      - ./logs:/app/logs
-    depends_on:
-      - redis
-    networks:
-      - korea_api_network
+  # Celery Flower 개발 환경 (모니터링) - 현재 비활성화됨
+  # 활성화하려면 requirements.txt에 flower==2.0.1 추가하고 이미지 재빌드 필요
+  # flower:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #     target: development
+  #   container_name: korea_celery_flower_dev
+  #   restart: unless-stopped
+  #   command: python -m celery flower --broker=redis://redis:6379/0 --port=5555
+  #   ports:
+  #     - "5555:5555"
+  #   environment:
+  #     - MONGODB_URL=mongodb://api_user:api_password@mongodb:27017/korea_public_api
+  #     - REDIS_URL=redis://redis:6379/0
+  #     - DATABASE_NAME=${DATABASE_NAME:-korea_public_api}
+  #     - PUBLIC_DATA_API_KEY=${PUBLIC_DATA_API_KEY}
+  #     - PUBLIC_DATA_API_KEY_DECODE=${PUBLIC_DATA_API_KEY_DECODE}
+  #     - DEBUG=True
+  #     - LOG_LEVEL=DEBUG
+  #   volumes:
+  #     - ./logs:/app/logs
+  #   depends_on:
+  #     - redis
+  #   networks:
+  #     - korea_api_network
 
 networks:
   korea_api_network:
