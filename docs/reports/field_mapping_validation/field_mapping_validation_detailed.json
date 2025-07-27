@@ -1,0 +1,987 @@
+{
+  "announcements": {
+    "endpoint": "announcements",
+    "actual_fields": [
+      "announcement_id",
+      "application_exclusion_content",
+      "application_target",
+      "application_target_content",
+      "business_application_url",
+      "business_category",
+      "business_entry",
+      "business_guidance_url",
+      "business_target_age",
+      "contact_department",
+      "contact_number",
+      "content",
+      "detail_page_url",
+      "email_reception",
+      "end_date",
+      "fax_reception",
+      "id",
+      "integrated_announcement",
+      "integrated_business_name",
+      "online_reception",
+      "organization",
+      "other_reception",
+      "performance_material",
+      "postal_reception",
+      "recruitment_progress",
+      "start_date",
+      "supervising_institution",
+      "support_region",
+      "title",
+      "visit_reception"
+    ],
+    "api_model_info": {
+      "model_name": "AnnouncementItem",
+      "total_fields": 30,
+      "fields": {
+        "announcement_id": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "pbanc_sn"
+        },
+        "title": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "biz_pbanc_nm"
+        },
+        "content": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "pbanc_ctnt"
+        },
+        "start_date": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "pbanc_rcpt_bgng_dt"
+        },
+        "end_date": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "pbanc_rcpt_end_dt"
+        },
+        "business_category": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "supt_biz_clsfc"
+        },
+        "integrated_business_name": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "intg_pbanc_biz_nm"
+        },
+        "application_target": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "aply_trgt"
+        },
+        "application_target_content": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "aply_trgt_ctnt"
+        },
+        "application_exclusion_content": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "aply_excl_trgt_ctnt"
+        },
+        "business_entry": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "biz_enyy"
+        },
+        "business_target_age": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "biz_trgt_age"
+        },
+        "support_region": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "supt_regin"
+        },
+        "organization": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "pbanc_ntrp_nm"
+        },
+        "supervising_institution": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "sprv_inst"
+        },
+        "contact_department": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "biz_prch_dprt_nm"
+        },
+        "contact_number": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "prch_cnpl_no"
+        },
+        "detail_page_url": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "detl_pg_url"
+        },
+        "business_guidance_url": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "biz_gdnc_url"
+        },
+        "business_application_url": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "biz_aply_url"
+        },
+        "online_reception": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "aply_mthd_onli_rcpt_istc"
+        },
+        "visit_reception": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "aply_mthd_vst_rcpt_istc"
+        },
+        "email_reception": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "aply_mthd_eml_rcpt_istc"
+        },
+        "fax_reception": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "aply_mthd_fax_rcpt_istc"
+        },
+        "postal_reception": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "aply_mthd_pssr_rcpt_istc"
+        },
+        "other_reception": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "aply_mthd_etc_istc"
+        },
+        "integrated_announcement": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "intg_pbanc_yn"
+        },
+        "recruitment_progress": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "rcrt_prgs_yn"
+        },
+        "performance_material": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "prfn_matr"
+        },
+        "id": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "id"
+        }
+      },
+      "aliases": {
+        "announcement_id": "pbanc_sn",
+        "title": "biz_pbanc_nm",
+        "content": "pbanc_ctnt",
+        "start_date": "pbanc_rcpt_bgng_dt",
+        "end_date": "pbanc_rcpt_end_dt",
+        "business_category": "supt_biz_clsfc",
+        "integrated_business_name": "intg_pbanc_biz_nm",
+        "application_target": "aply_trgt",
+        "application_target_content": "aply_trgt_ctnt",
+        "application_exclusion_content": "aply_excl_trgt_ctnt",
+        "business_entry": "biz_enyy",
+        "business_target_age": "biz_trgt_age",
+        "support_region": "supt_regin",
+        "organization": "pbanc_ntrp_nm",
+        "supervising_institution": "sprv_inst",
+        "contact_department": "biz_prch_dprt_nm",
+        "contact_number": "prch_cnpl_no",
+        "detail_page_url": "detl_pg_url",
+        "business_guidance_url": "biz_gdnc_url",
+        "business_application_url": "biz_aply_url",
+        "online_reception": "aply_mthd_onli_rcpt_istc",
+        "visit_reception": "aply_mthd_vst_rcpt_istc",
+        "email_reception": "aply_mthd_eml_rcpt_istc",
+        "fax_reception": "aply_mthd_fax_rcpt_istc",
+        "postal_reception": "aply_mthd_pssr_rcpt_istc",
+        "other_reception": "aply_mthd_etc_istc",
+        "integrated_announcement": "intg_pbanc_yn",
+        "recruitment_progress": "rcrt_prgs_yn",
+        "performance_material": "prfn_matr",
+        "id": "id"
+      }
+    },
+    "domain_model_info": {
+      "model_name": "Announcement",
+      "total_fields": 6,
+      "fields": {
+        "id": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "_id"
+        },
+        "announcement_data": {
+          "type": "<class 'app.domains.announcements.models.AnnouncementData'>",
+          "required": true,
+          "default": null
+        },
+        "source_url": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null
+        },
+        "is_active": {
+          "type": "<class 'bool'>",
+          "required": true,
+          "default": null
+        },
+        "created_at": {
+          "type": "typing.Optional[datetime.datetime]",
+          "required": true,
+          "default": null
+        },
+        "updated_at": {
+          "type": "typing.Optional[datetime.datetime]",
+          "required": true,
+          "default": null
+        }
+      },
+      "aliases": {
+        "id": "_id"
+      }
+    },
+    "mapping_validation": {
+      "api_model_coverage": {
+        "covered_fields": 30,
+        "total_actual_fields": 30,
+        "coverage_percentage": 100.0
+      },
+      "missing_in_model": [],
+      "missing_in_actual": [
+        "aply_excl_trgt_ctnt",
+        "aply_mthd_eml_rcpt_istc",
+        "aply_mthd_etc_istc",
+        "aply_mthd_fax_rcpt_istc",
+        "aply_mthd_onli_rcpt_istc",
+        "aply_mthd_pssr_rcpt_istc",
+        "aply_mthd_vst_rcpt_istc",
+        "aply_trgt",
+        "aply_trgt_ctnt",
+        "biz_aply_url",
+        "biz_enyy",
+        "biz_gdnc_url",
+        "biz_pbanc_nm",
+        "biz_prch_dprt_nm",
+        "biz_trgt_age",
+        "detl_pg_url",
+        "intg_pbanc_biz_nm",
+        "intg_pbanc_yn",
+        "pbanc_ctnt",
+        "pbanc_ntrp_nm",
+        "pbanc_rcpt_bgng_dt",
+        "pbanc_rcpt_end_dt",
+        "pbanc_sn",
+        "prch_cnpl_no",
+        "prfn_matr",
+        "rcrt_prgs_yn",
+        "sprv_inst",
+        "supt_biz_clsfc",
+        "supt_regin"
+      ],
+      "api_to_domain_gaps": [
+        "announcement_id",
+        "application_exclusion_content",
+        "application_target",
+        "application_target_content",
+        "business_application_url",
+        "business_category",
+        "business_entry",
+        "business_guidance_url",
+        "business_target_age",
+        "contact_department",
+        "contact_number",
+        "content",
+        "detail_page_url",
+        "email_reception",
+        "end_date",
+        "fax_reception",
+        "integrated_announcement",
+        "integrated_business_name",
+        "online_reception",
+        "organization",
+        "other_reception",
+        "performance_material",
+        "postal_reception",
+        "recruitment_progress",
+        "start_date",
+        "supervising_institution",
+        "support_region",
+        "title",
+        "visit_reception"
+      ],
+      "domain_to_api_gaps": [
+        "announcement_data",
+        "created_at",
+        "is_active",
+        "source_url",
+        "updated_at"
+      ],
+      "alias_mappings": {
+        "announcement_id": "pbanc_sn",
+        "title": "biz_pbanc_nm",
+        "content": "pbanc_ctnt",
+        "start_date": "pbanc_rcpt_bgng_dt",
+        "end_date": "pbanc_rcpt_end_dt",
+        "business_category": "supt_biz_clsfc",
+        "integrated_business_name": "intg_pbanc_biz_nm",
+        "application_target": "aply_trgt",
+        "application_target_content": "aply_trgt_ctnt",
+        "application_exclusion_content": "aply_excl_trgt_ctnt",
+        "business_entry": "biz_enyy",
+        "business_target_age": "biz_trgt_age",
+        "support_region": "supt_regin",
+        "organization": "pbanc_ntrp_nm",
+        "supervising_institution": "sprv_inst",
+        "contact_department": "biz_prch_dprt_nm",
+        "contact_number": "prch_cnpl_no",
+        "detail_page_url": "detl_pg_url",
+        "business_guidance_url": "biz_gdnc_url",
+        "business_application_url": "biz_aply_url",
+        "online_reception": "aply_mthd_onli_rcpt_istc",
+        "visit_reception": "aply_mthd_vst_rcpt_istc",
+        "email_reception": "aply_mthd_eml_rcpt_istc",
+        "fax_reception": "aply_mthd_fax_rcpt_istc",
+        "postal_reception": "aply_mthd_pssr_rcpt_istc",
+        "other_reception": "aply_mthd_etc_istc",
+        "integrated_announcement": "intg_pbanc_yn",
+        "recruitment_progress": "rcrt_prgs_yn",
+        "performance_material": "prfn_matr",
+        "id": "id"
+      }
+    },
+    "instantiation_test": {
+      "api_model_test": {
+        "success": 3,
+        "failed": 0,
+        "errors": []
+      },
+      "domain_model_test": {
+        "success": 0,
+        "failed": 3,
+        "errors": [
+          {
+            "item_index": 0,
+            "error": "2 validation errors for Announcement\nannouncement_data\n  Field required [type=missing, input_value={'id': '174329', 'title':...hM=view&pbancSn=174329'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.5/v/missing\ncreated_at\n  Input should be a valid datetime, invalid datetime separator, expected `T`, `t`, `_` or space [type=datetime_parsing, input_value='2025-07-14', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.5/v/datetime_parsing"
+          },
+          {
+            "item_index": 1,
+            "error": "2 validation errors for Announcement\nannouncement_data\n  Field required [type=missing, input_value={'id': '174326', 'title':...hM=view&pbancSn=174326'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.5/v/missing\ncreated_at\n  Input should be a valid datetime, invalid datetime separator, expected `T`, `t`, `_` or space [type=datetime_parsing, input_value='2025-07-23', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.5/v/datetime_parsing"
+          },
+          {
+            "item_index": 2,
+            "error": "2 validation errors for Announcement\nannouncement_data\n  Field required [type=missing, input_value={'id': '174325', 'title':...hM=view&pbancSn=174325'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.5/v/missing\ncreated_at\n  Input should be a valid datetime, invalid datetime separator, expected `T`, `t`, `_` or space [type=datetime_parsing, input_value='2025-07-23', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.5/v/datetime_parsing"
+          }
+        ]
+      }
+    }
+  },
+  "business": {
+    "endpoint": "business",
+    "actual_fields": [
+      "business_category",
+      "business_feature",
+      "business_intro",
+      "business_name",
+      "business_year",
+      "detail_page_url",
+      "detl_pg_url",
+      "id",
+      "support_budget",
+      "support_content",
+      "support_target"
+    ],
+    "api_model_info": {
+      "model_name": "BusinessItem",
+      "total_fields": 10,
+      "fields": {
+        "business_category": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "biz_category_cd"
+        },
+        "business_name": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "supt_biz_titl_nm"
+        },
+        "support_target": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "biz_supt_trgt_info"
+        },
+        "support_budget": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "biz_supt_bdgt_info"
+        },
+        "support_content": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "biz_supt_ctnt"
+        },
+        "business_feature": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "supt_biz_chrct"
+        },
+        "business_intro": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "supt_biz_intrd_info"
+        },
+        "business_year": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "biz_yr"
+        },
+        "detail_page_url": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "Detl_pg_url"
+        },
+        "id": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "id"
+        }
+      },
+      "aliases": {
+        "business_category": "biz_category_cd",
+        "business_name": "supt_biz_titl_nm",
+        "support_target": "biz_supt_trgt_info",
+        "support_budget": "biz_supt_bdgt_info",
+        "support_content": "biz_supt_ctnt",
+        "business_feature": "supt_biz_chrct",
+        "business_intro": "supt_biz_intrd_info",
+        "business_year": "biz_yr",
+        "detail_page_url": "Detl_pg_url",
+        "id": "id"
+      }
+    },
+    "domain_model_info": {
+      "model_name": "Business",
+      "total_fields": 6,
+      "fields": {
+        "id": {
+          "type": "<class 'app.shared.models.base.PyObjectId'>",
+          "required": true,
+          "default": null,
+          "alias": "_id"
+        },
+        "created_at": {
+          "type": "<class 'datetime.datetime'>",
+          "required": true,
+          "default": null
+        },
+        "updated_at": {
+          "type": "<class 'datetime.datetime'>",
+          "required": true,
+          "default": null
+        },
+        "business_data": {
+          "type": "<class 'app.domains.businesses.models.BusinessData'>",
+          "required": true,
+          "default": null
+        },
+        "source_url": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null
+        },
+        "is_active": {
+          "type": "<class 'bool'>",
+          "required": true,
+          "default": null
+        }
+      },
+      "aliases": {
+        "id": "_id"
+      }
+    },
+    "mapping_validation": {
+      "api_model_coverage": {
+        "covered_fields": 10,
+        "total_actual_fields": 11,
+        "coverage_percentage": 90.9090909090909
+      },
+      "missing_in_model": [
+        "detl_pg_url"
+      ],
+      "missing_in_actual": [
+        "Detl_pg_url",
+        "biz_category_cd",
+        "biz_supt_bdgt_info",
+        "biz_supt_ctnt",
+        "biz_supt_trgt_info",
+        "biz_yr",
+        "supt_biz_chrct",
+        "supt_biz_intrd_info",
+        "supt_biz_titl_nm"
+      ],
+      "api_to_domain_gaps": [
+        "business_category",
+        "business_feature",
+        "business_intro",
+        "business_name",
+        "business_year",
+        "detail_page_url",
+        "support_budget",
+        "support_content",
+        "support_target"
+      ],
+      "domain_to_api_gaps": [
+        "business_data",
+        "created_at",
+        "is_active",
+        "source_url",
+        "updated_at"
+      ],
+      "alias_mappings": {
+        "business_category": "biz_category_cd",
+        "business_name": "supt_biz_titl_nm",
+        "support_target": "biz_supt_trgt_info",
+        "support_budget": "biz_supt_bdgt_info",
+        "support_content": "biz_supt_ctnt",
+        "business_feature": "supt_biz_chrct",
+        "business_intro": "supt_biz_intrd_info",
+        "business_year": "biz_yr",
+        "detail_page_url": "Detl_pg_url",
+        "id": "id"
+      }
+    },
+    "instantiation_test": {
+      "api_model_test": {
+        "success": 3,
+        "failed": 0,
+        "errors": []
+      },
+      "domain_model_test": {
+        "success": 0,
+        "failed": 3,
+        "errors": [
+          {
+            "item_index": 0,
+            "error": "2 validation errors for Business\nid\n  Value error, Invalid objectid [type=value_error, input_value='1', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.5/v/value_error\nbusiness_data\n  Field required [type=missing, input_value={'id': '1', 'title': '바... 27, 7, 23, 43, 967726)}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.5/v/missing"
+          },
+          {
+            "item_index": 1,
+            "error": "2 validation errors for Business\nid\n  Value error, Invalid objectid [type=value_error, input_value='2', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.5/v/value_error\nbusiness_data\n  Field required [type=missing, input_value={'id': '2', 'title': '글... 27, 7, 23, 43, 967849)}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.5/v/missing"
+          },
+          {
+            "item_index": 2,
+            "error": "2 validation errors for Business\nid\n  Value error, Invalid objectid [type=value_error, input_value='3', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.5/v/value_error\nbusiness_data\n  Field required [type=missing, input_value={'id': '3', 'title': 'K-G... 27, 7, 23, 43, 967946)}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.5/v/missing"
+          }
+        ]
+      }
+    }
+  },
+  "content": {
+    "endpoint": "content",
+    "actual_fields": [
+      "content_type",
+      "detail_page_url",
+      "file_name",
+      "id",
+      "register_date",
+      "title",
+      "view_count"
+    ],
+    "api_model_info": {
+      "model_name": "ContentItem",
+      "total_fields": 7,
+      "fields": {
+        "content_type": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "clss_cd"
+        },
+        "title": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "titl_nm"
+        },
+        "register_date": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "fstm_reg_dt"
+        },
+        "view_count": {
+          "type": "typing.Optional[int]",
+          "required": true,
+          "default": null,
+          "alias": "view_cnt"
+        },
+        "detail_page_url": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "detl_pg_url"
+        },
+        "file_name": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "file_nm"
+        },
+        "id": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "id"
+        }
+      },
+      "aliases": {
+        "content_type": "clss_cd",
+        "title": "titl_nm",
+        "register_date": "fstm_reg_dt",
+        "view_count": "view_cnt",
+        "detail_page_url": "detl_pg_url",
+        "file_name": "file_nm",
+        "id": "id"
+      }
+    },
+    "domain_model_info": {
+      "model_name": "Content",
+      "total_fields": 6,
+      "fields": {
+        "id": {
+          "type": "<class 'app.shared.models.base.PyObjectId'>",
+          "required": true,
+          "default": null,
+          "alias": "_id"
+        },
+        "created_at": {
+          "type": "<class 'datetime.datetime'>",
+          "required": true,
+          "default": null
+        },
+        "updated_at": {
+          "type": "<class 'datetime.datetime'>",
+          "required": true,
+          "default": null
+        },
+        "content_data": {
+          "type": "<class 'app.domains.contents.models.ContentData'>",
+          "required": true,
+          "default": null
+        },
+        "source_url": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null
+        },
+        "is_active": {
+          "type": "<class 'bool'>",
+          "required": true,
+          "default": null
+        }
+      },
+      "aliases": {
+        "id": "_id"
+      }
+    },
+    "mapping_validation": {
+      "api_model_coverage": {
+        "covered_fields": 7,
+        "total_actual_fields": 7,
+        "coverage_percentage": 100.0
+      },
+      "missing_in_model": [],
+      "missing_in_actual": [
+        "clss_cd",
+        "detl_pg_url",
+        "file_nm",
+        "fstm_reg_dt",
+        "titl_nm",
+        "view_cnt"
+      ],
+      "api_to_domain_gaps": [
+        "content_type",
+        "detail_page_url",
+        "file_name",
+        "register_date",
+        "title",
+        "view_count"
+      ],
+      "domain_to_api_gaps": [
+        "content_data",
+        "created_at",
+        "is_active",
+        "source_url",
+        "updated_at"
+      ],
+      "alias_mappings": {
+        "content_type": "clss_cd",
+        "title": "titl_nm",
+        "register_date": "fstm_reg_dt",
+        "view_count": "view_cnt",
+        "detail_page_url": "detl_pg_url",
+        "file_name": "file_nm",
+        "id": "id"
+      }
+    },
+    "instantiation_test": {
+      "api_model_test": {
+        "success": 3,
+        "failed": 0,
+        "errors": []
+      },
+      "domain_model_test": {
+        "success": 0,
+        "failed": 3,
+        "errors": [
+          {
+            "item_index": 0,
+            "error": "2 validation errors for Content\nid\n  Value error, Invalid objectid [type=value_error, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.5/v/value_error\ncontent_data\n  Field required [type=missing, input_value={'title': '내 손안에 ...&schM=view', 'id': None}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.5/v/missing"
+          },
+          {
+            "item_index": 1,
+            "error": "2 validation errors for Content\nid\n  Value error, Invalid objectid [type=value_error, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.5/v/value_error\ncontent_data\n  Field required [type=missing, input_value={'title': '청년,창업...&schM=view', 'id': None}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.5/v/missing"
+          },
+          {
+            "item_index": 2,
+            "error": "2 validation errors for Content\nid\n  Value error, Invalid objectid [type=value_error, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.5/v/value_error\ncontent_data\n  Field required [type=missing, input_value={'title': '「BI 경쟁...&schM=view', 'id': None}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.5/v/missing"
+          }
+        ]
+      }
+    }
+  },
+  "statistics": {
+    "endpoint": "statistics",
+    "actual_fields": [
+      "content",
+      "detail_page_url",
+      "file_name",
+      "id",
+      "modify_date",
+      "register_date",
+      "title"
+    ],
+    "api_model_info": {
+      "model_name": "StatisticalItem",
+      "total_fields": 7,
+      "fields": {
+        "title": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "titl_nm"
+        },
+        "content": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "ctnt"
+        },
+        "register_date": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "fstm_reg_dt"
+        },
+        "modify_date": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "last_mdfcn_dt"
+        },
+        "detail_page_url": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "detl_pg_url"
+        },
+        "file_name": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "file_nm"
+        },
+        "id": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null,
+          "alias": "id"
+        }
+      },
+      "aliases": {
+        "title": "titl_nm",
+        "content": "ctnt",
+        "register_date": "fstm_reg_dt",
+        "modify_date": "last_mdfcn_dt",
+        "detail_page_url": "detl_pg_url",
+        "file_name": "file_nm",
+        "id": "id"
+      }
+    },
+    "domain_model_info": {
+      "model_name": "Statistics",
+      "total_fields": 6,
+      "fields": {
+        "id": {
+          "type": "<class 'app.shared.models.base.PyObjectId'>",
+          "required": true,
+          "default": null,
+          "alias": "_id"
+        },
+        "created_at": {
+          "type": "<class 'datetime.datetime'>",
+          "required": true,
+          "default": null
+        },
+        "updated_at": {
+          "type": "<class 'datetime.datetime'>",
+          "required": true,
+          "default": null
+        },
+        "statistical_data": {
+          "type": "<class 'app.domains.statistics.models.StatisticalData'>",
+          "required": true,
+          "default": null
+        },
+        "source_url": {
+          "type": "typing.Optional[str]",
+          "required": true,
+          "default": null
+        },
+        "is_active": {
+          "type": "<class 'bool'>",
+          "required": true,
+          "default": null
+        }
+      },
+      "aliases": {
+        "id": "_id"
+      }
+    },
+    "mapping_validation": {
+      "api_model_coverage": {
+        "covered_fields": 7,
+        "total_actual_fields": 7,
+        "coverage_percentage": 100.0
+      },
+      "missing_in_model": [],
+      "missing_in_actual": [
+        "ctnt",
+        "detl_pg_url",
+        "file_nm",
+        "fstm_reg_dt",
+        "last_mdfcn_dt",
+        "titl_nm"
+      ],
+      "api_to_domain_gaps": [
+        "content",
+        "detail_page_url",
+        "file_name",
+        "modify_date",
+        "register_date",
+        "title"
+      ],
+      "domain_to_api_gaps": [
+        "created_at",
+        "is_active",
+        "source_url",
+        "statistical_data",
+        "updated_at"
+      ],
+      "alias_mappings": {
+        "title": "titl_nm",
+        "content": "ctnt",
+        "register_date": "fstm_reg_dt",
+        "modify_date": "last_mdfcn_dt",
+        "detail_page_url": "detl_pg_url",
+        "file_name": "file_nm",
+        "id": "id"
+      }
+    },
+    "instantiation_test": {
+      "api_model_test": {
+        "success": 3,
+        "failed": 0,
+        "errors": []
+      },
+      "domain_model_test": {
+        "success": 0,
+        "failed": 3,
+        "errors": [
+          {
+            "item_index": 0,
+            "error": "2 validation errors for Statistics\nid\n  Value error, Invalid objectid [type=value_error, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.5/v/value_error\nstatistical_data\n  Field required [type=missing, input_value={'title': '중소기업...&schM=view', 'id': None}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.5/v/missing"
+          },
+          {
+            "item_index": 1,
+            "error": "2 validation errors for Statistics\nid\n  Value error, Invalid objectid [type=value_error, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.5/v/value_error\nstatistical_data\n  Field required [type=missing, input_value={'title': '중소기업...&schM=view', 'id': None}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.5/v/missing"
+          },
+          {
+            "item_index": 2,
+            "error": "2 validation errors for Statistics\nid\n  Value error, Invalid objectid [type=value_error, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.5/v/value_error\nstatistical_data\n  Field required [type=missing, input_value={'title': '중소기업...&schM=view', 'id': None}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.5/v/missing"
+          }
+        ]
+      }
+    }
+  }
+}

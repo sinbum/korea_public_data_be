@@ -1,0 +1,1280 @@
+{
+  "announcements": {
+    "endpoint": "announcements",
+    "metadata": {
+      "current_count": {
+        "value": 5,
+        "type": "int"
+      },
+      "match_count": {
+        "value": 25664,
+        "type": "int"
+      },
+      "page": {
+        "value": 1,
+        "type": "int"
+      },
+      "per_page": {
+        "value": 5,
+        "type": "int"
+      },
+      "total_count": {
+        "value": 25664,
+        "type": "int"
+      }
+    },
+    "data_structure": {
+      "root_keys": [
+        "current_count",
+        "match_count",
+        "page",
+        "per_page",
+        "total_count",
+        "data"
+      ],
+      "has_data_array": true,
+      "data_array_length": 3,
+      "pagination_present": true,
+      "item_fields": [
+        "announcement_id",
+        "title",
+        "content",
+        "start_date",
+        "end_date",
+        "business_category",
+        "integrated_business_name",
+        "application_target",
+        "application_target_content",
+        "application_exclusion_content",
+        "business_entry",
+        "business_target_age",
+        "support_region",
+        "organization",
+        "supervising_institution",
+        "contact_department",
+        "contact_number",
+        "detail_page_url",
+        "business_guidance_url",
+        "business_application_url",
+        "online_reception",
+        "visit_reception",
+        "email_reception",
+        "fax_reception",
+        "postal_reception",
+        "other_reception",
+        "integrated_announcement",
+        "recruitment_progress",
+        "performance_material",
+        "id"
+      ],
+      "item_field_count": 30
+    },
+    "field_analysis": {
+      "total_unique_fields": 30,
+      "field_statistics": {
+        "application_target_content": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 33,
+            "max": 1021,
+            "avg": 400.0
+          }
+        },
+        "announcement_id": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 6,
+            "max": 6,
+            "avg": 6.0
+          }
+        },
+        "business_target_age": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 37,
+            "max": 37,
+            "avg": 37.0
+          }
+        },
+        "integrated_announcement": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 1,
+            "max": 1,
+            "avg": 1.0
+          }
+        },
+        "end_date": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 10,
+            "max": 10,
+            "avg": 10.0
+          }
+        },
+        "business_guidance_url": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 35,
+            "max": 102,
+            "avg": 59.666666666666664
+          }
+        },
+        "start_date": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 10,
+            "max": 10,
+            "avg": 10.0
+          }
+        },
+        "title": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 27,
+            "max": 39,
+            "avg": 34.666666666666664
+          }
+        },
+        "application_exclusion_content": {
+          "presence_rate": 100.0,
+          "null_rate": 33.33333333333333,
+          "types": {
+            "str": 2
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 2,
+            "max": 496,
+            "avg": 249.0
+          }
+        },
+        "business_application_url": {
+          "presence_rate": 100.0,
+          "null_rate": 100.0,
+          "types": {},
+          "most_common_type": "null"
+        },
+        "email_reception": {
+          "presence_rate": 100.0,
+          "null_rate": 33.33333333333333,
+          "types": {
+            "str": 2
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 44,
+            "max": 44,
+            "avg": 44.0
+          }
+        },
+        "recruitment_progress": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 1,
+            "max": 1,
+            "avg": 1.0
+          }
+        },
+        "integrated_business_name": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 19,
+            "max": 40,
+            "avg": 28.666666666666668
+          }
+        },
+        "contact_department": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 5,
+            "max": 6,
+            "avg": 5.333333333333333
+          }
+        },
+        "postal_reception": {
+          "presence_rate": 100.0,
+          "null_rate": 100.0,
+          "types": {},
+          "most_common_type": "null"
+        },
+        "detail_page_url": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 85,
+            "max": 85,
+            "avg": 85.0
+          }
+        },
+        "fax_reception": {
+          "presence_rate": 100.0,
+          "null_rate": 100.0,
+          "types": {},
+          "most_common_type": "null"
+        },
+        "support_region": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 2,
+            "max": 2,
+            "avg": 2.0
+          }
+        },
+        "contact_number": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 9,
+            "max": 10,
+            "avg": 9.333333333333334
+          }
+        },
+        "content": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 61,
+            "max": 181,
+            "avg": 107.66666666666667
+          }
+        },
+        "business_category": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 4,
+            "max": 13,
+            "avg": 9.0
+          }
+        },
+        "visit_reception": {
+          "presence_rate": 100.0,
+          "null_rate": 100.0,
+          "types": {},
+          "most_common_type": "null"
+        },
+        "business_entry": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 30,
+            "max": 36,
+            "avg": 34.0
+          }
+        },
+        "organization": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 6,
+            "max": 16,
+            "avg": 11.666666666666666
+          }
+        },
+        "id": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 1,
+            "max": 1,
+            "avg": 1.0
+          }
+        },
+        "online_reception": {
+          "presence_rate": 100.0,
+          "null_rate": 66.66666666666666,
+          "types": {
+            "str": 1
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 35,
+            "max": 35,
+            "avg": 35.0
+          }
+        },
+        "performance_material": {
+          "presence_rate": 100.0,
+          "null_rate": 100.0,
+          "types": {},
+          "most_common_type": "null"
+        },
+        "other_reception": {
+          "presence_rate": 100.0,
+          "null_rate": 100.0,
+          "types": {},
+          "most_common_type": "null"
+        },
+        "application_target": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 32,
+            "max": 32,
+            "avg": 32.0
+          }
+        },
+        "supervising_institution": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 2,
+            "max": 4,
+            "avg": 3.0
+          }
+        }
+      },
+      "all_fields": [
+        "announcement_id",
+        "application_exclusion_content",
+        "application_target",
+        "application_target_content",
+        "business_application_url",
+        "business_category",
+        "business_entry",
+        "business_guidance_url",
+        "business_target_age",
+        "contact_department",
+        "contact_number",
+        "content",
+        "detail_page_url",
+        "email_reception",
+        "end_date",
+        "fax_reception",
+        "id",
+        "integrated_announcement",
+        "integrated_business_name",
+        "online_reception",
+        "organization",
+        "other_reception",
+        "performance_material",
+        "postal_reception",
+        "recruitment_progress",
+        "start_date",
+        "supervising_institution",
+        "support_region",
+        "title",
+        "visit_reception"
+      ]
+    },
+    "data_quality": {
+      "total_items_analyzed": 3,
+      "duplicate_ids": [],
+      "quality_issues": [],
+      "field_completeness": {
+        "announcement_id": {
+          "filled": 3,
+          "total": 3
+        },
+        "title": {
+          "filled": 3,
+          "total": 3
+        },
+        "content": {
+          "filled": 3,
+          "total": 3
+        },
+        "start_date": {
+          "filled": 3,
+          "total": 3
+        },
+        "end_date": {
+          "filled": 3,
+          "total": 3
+        },
+        "business_category": {
+          "filled": 3,
+          "total": 3
+        },
+        "integrated_business_name": {
+          "filled": 3,
+          "total": 3
+        },
+        "application_target": {
+          "filled": 3,
+          "total": 3
+        },
+        "application_target_content": {
+          "filled": 3,
+          "total": 3
+        },
+        "application_exclusion_content": {
+          "filled": 2,
+          "total": 3
+        },
+        "business_entry": {
+          "filled": 3,
+          "total": 3
+        },
+        "business_target_age": {
+          "filled": 3,
+          "total": 3
+        },
+        "support_region": {
+          "filled": 3,
+          "total": 3
+        },
+        "organization": {
+          "filled": 3,
+          "total": 3
+        },
+        "supervising_institution": {
+          "filled": 3,
+          "total": 3
+        },
+        "contact_department": {
+          "filled": 3,
+          "total": 3
+        },
+        "contact_number": {
+          "filled": 3,
+          "total": 3
+        },
+        "detail_page_url": {
+          "filled": 3,
+          "total": 3
+        },
+        "business_guidance_url": {
+          "filled": 3,
+          "total": 3
+        },
+        "business_application_url": {
+          "filled": 0,
+          "total": 3
+        },
+        "online_reception": {
+          "filled": 1,
+          "total": 3
+        },
+        "visit_reception": {
+          "filled": 0,
+          "total": 3
+        },
+        "email_reception": {
+          "filled": 2,
+          "total": 3
+        },
+        "fax_reception": {
+          "filled": 0,
+          "total": 3
+        },
+        "postal_reception": {
+          "filled": 0,
+          "total": 3
+        },
+        "other_reception": {
+          "filled": 0,
+          "total": 3
+        },
+        "integrated_announcement": {
+          "filled": 3,
+          "total": 3
+        },
+        "recruitment_progress": {
+          "filled": 3,
+          "total": 3
+        },
+        "performance_material": {
+          "filled": 0,
+          "total": 3
+        },
+        "id": {
+          "filled": 3,
+          "total": 3
+        }
+      },
+      "low_completeness_fields": [
+        {
+          "field": "business_application_url",
+          "completeness": 0.0
+        },
+        {
+          "field": "online_reception",
+          "completeness": 33.33333333333333
+        },
+        {
+          "field": "visit_reception",
+          "completeness": 0.0
+        },
+        {
+          "field": "fax_reception",
+          "completeness": 0.0
+        },
+        {
+          "field": "postal_reception",
+          "completeness": 0.0
+        },
+        {
+          "field": "other_reception",
+          "completeness": 0.0
+        },
+        {
+          "field": "performance_material",
+          "completeness": 0.0
+        }
+      ]
+    },
+    "sample_count": 3
+  },
+  "business": {
+    "endpoint": "business",
+    "metadata": {
+      "current_count": {
+        "value": 5,
+        "type": "int"
+      },
+      "match_count": {
+        "value": 1231,
+        "type": "int"
+      },
+      "page": {
+        "value": 1,
+        "type": "int"
+      },
+      "per_page": {
+        "value": 5,
+        "type": "int"
+      },
+      "total_count": {
+        "value": 1231,
+        "type": "int"
+      }
+    },
+    "data_structure": {
+      "root_keys": [
+        "current_count",
+        "match_count",
+        "page",
+        "per_page",
+        "total_count",
+        "data"
+      ],
+      "has_data_array": true,
+      "data_array_length": 3,
+      "pagination_present": true,
+      "item_fields": [
+        "business_category",
+        "business_name",
+        "support_target",
+        "support_budget",
+        "support_content",
+        "business_feature",
+        "business_intro",
+        "business_year",
+        "detail_page_url",
+        "id",
+        "detl_pg_url"
+      ],
+      "item_field_count": 11
+    },
+    "field_analysis": {
+      "total_unique_fields": 11,
+      "field_statistics": {
+        "business_name": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 15,
+            "max": 29,
+            "avg": 20.0
+          }
+        },
+        "detail_page_url": {
+          "presence_rate": 100.0,
+          "null_rate": 100.0,
+          "types": {},
+          "most_common_type": "null"
+        },
+        "business_intro": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 46,
+            "max": 74,
+            "avg": 63.333333333333336
+          }
+        },
+        "business_feature": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 33,
+            "max": 78,
+            "avg": 62.333333333333336
+          }
+        },
+        "id": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 1,
+            "max": 1,
+            "avg": 1.0
+          }
+        },
+        "support_content": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 36,
+            "max": 184,
+            "avg": 108.33333333333333
+          }
+        },
+        "business_category": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 11,
+            "max": 11,
+            "avg": 11.0
+          }
+        },
+        "support_budget": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 37,
+            "max": 65,
+            "avg": 46.666666666666664
+          }
+        },
+        "detl_pg_url": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 72,
+            "max": 72,
+            "avg": 72.0
+          }
+        },
+        "business_year": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 4,
+            "max": 4,
+            "avg": 4.0
+          }
+        },
+        "support_target": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 60,
+            "max": 112,
+            "avg": 80.66666666666667
+          }
+        }
+      },
+      "all_fields": [
+        "business_category",
+        "business_feature",
+        "business_intro",
+        "business_name",
+        "business_year",
+        "detail_page_url",
+        "detl_pg_url",
+        "id",
+        "support_budget",
+        "support_content",
+        "support_target"
+      ]
+    },
+    "data_quality": {
+      "total_items_analyzed": 3,
+      "duplicate_ids": [],
+      "quality_issues": [],
+      "field_completeness": {
+        "business_category": {
+          "filled": 3,
+          "total": 3
+        },
+        "business_name": {
+          "filled": 3,
+          "total": 3
+        },
+        "support_target": {
+          "filled": 3,
+          "total": 3
+        },
+        "support_budget": {
+          "filled": 3,
+          "total": 3
+        },
+        "support_content": {
+          "filled": 3,
+          "total": 3
+        },
+        "business_feature": {
+          "filled": 3,
+          "total": 3
+        },
+        "business_intro": {
+          "filled": 3,
+          "total": 3
+        },
+        "business_year": {
+          "filled": 3,
+          "total": 3
+        },
+        "detail_page_url": {
+          "filled": 0,
+          "total": 3
+        },
+        "id": {
+          "filled": 3,
+          "total": 3
+        },
+        "detl_pg_url": {
+          "filled": 3,
+          "total": 3
+        }
+      },
+      "low_completeness_fields": [
+        {
+          "field": "detail_page_url",
+          "completeness": 0.0
+        }
+      ]
+    },
+    "sample_count": 3
+  },
+  "content": {
+    "endpoint": "content",
+    "metadata": {
+      "current_count": {
+        "value": 5,
+        "type": "int"
+      },
+      "match_count": {
+        "value": 1083,
+        "type": "int"
+      },
+      "page": {
+        "value": 1,
+        "type": "int"
+      },
+      "per_page": {
+        "value": 5,
+        "type": "int"
+      },
+      "total_count": {
+        "value": 1083,
+        "type": "int"
+      }
+    },
+    "data_structure": {
+      "root_keys": [
+        "current_count",
+        "match_count",
+        "page",
+        "per_page",
+        "total_count",
+        "data"
+      ],
+      "has_data_array": true,
+      "data_array_length": 3,
+      "pagination_present": true,
+      "item_fields": [
+        "content_type",
+        "title",
+        "register_date",
+        "view_count",
+        "detail_page_url",
+        "file_name",
+        "id"
+      ],
+      "item_field_count": 7
+    },
+    "field_analysis": {
+      "total_unique_fields": 7,
+      "field_statistics": {
+        "detail_page_url": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 77,
+            "max": 78,
+            "avg": 77.66666666666667
+          }
+        },
+        "content_type": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 11,
+            "max": 12,
+            "avg": 11.666666666666666
+          }
+        },
+        "file_name": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 25,
+            "max": 76,
+            "avg": 47.333333333333336
+          }
+        },
+        "register_date": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 19,
+            "max": 19,
+            "avg": 19.0
+          }
+        },
+        "view_count": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "int": 3
+          },
+          "most_common_type": "int"
+        },
+        "id": {
+          "presence_rate": 100.0,
+          "null_rate": 100.0,
+          "types": {},
+          "most_common_type": "null"
+        },
+        "title": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 32,
+            "max": 34,
+            "avg": 32.666666666666664
+          }
+        }
+      },
+      "all_fields": [
+        "content_type",
+        "detail_page_url",
+        "file_name",
+        "id",
+        "register_date",
+        "title",
+        "view_count"
+      ]
+    },
+    "data_quality": {
+      "total_items_analyzed": 3,
+      "duplicate_ids": [],
+      "quality_issues": [],
+      "field_completeness": {
+        "content_type": {
+          "filled": 3,
+          "total": 3
+        },
+        "title": {
+          "filled": 3,
+          "total": 3
+        },
+        "register_date": {
+          "filled": 3,
+          "total": 3
+        },
+        "view_count": {
+          "filled": 3,
+          "total": 3
+        },
+        "detail_page_url": {
+          "filled": 3,
+          "total": 3
+        },
+        "file_name": {
+          "filled": 3,
+          "total": 3
+        },
+        "id": {
+          "filled": 0,
+          "total": 3
+        }
+      },
+      "low_completeness_fields": [
+        {
+          "field": "id",
+          "completeness": 0.0
+        }
+      ]
+    },
+    "sample_count": 3
+  },
+  "statistics": {
+    "endpoint": "statistics",
+    "metadata": {
+      "current_count": {
+        "value": 5,
+        "type": "int"
+      },
+      "match_count": {
+        "value": 25,
+        "type": "int"
+      },
+      "page": {
+        "value": 1,
+        "type": "int"
+      },
+      "per_page": {
+        "value": 5,
+        "type": "int"
+      },
+      "total_count": {
+        "value": 25,
+        "type": "int"
+      }
+    },
+    "data_structure": {
+      "root_keys": [
+        "current_count",
+        "match_count",
+        "page",
+        "per_page",
+        "total_count",
+        "data"
+      ],
+      "has_data_array": true,
+      "data_array_length": 3,
+      "pagination_present": true,
+      "item_fields": [
+        "title",
+        "content",
+        "register_date",
+        "modify_date",
+        "detail_page_url",
+        "file_name",
+        "id"
+      ],
+      "item_field_count": 7
+    },
+    "field_analysis": {
+      "total_unique_fields": 7,
+      "field_statistics": {
+        "detail_page_url": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 85,
+            "max": 85,
+            "avg": 85.0
+          }
+        },
+        "file_name": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 19,
+            "max": 45,
+            "avg": 27.666666666666668
+          }
+        },
+        "register_date": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 19,
+            "max": 19,
+            "avg": 19.0
+          }
+        },
+        "content": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 79,
+            "max": 83,
+            "avg": 80.33333333333333
+          }
+        },
+        "id": {
+          "presence_rate": 100.0,
+          "null_rate": 100.0,
+          "types": {},
+          "most_common_type": "null"
+        },
+        "title": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 31,
+            "max": 31,
+            "avg": 31.0
+          }
+        },
+        "modify_date": {
+          "presence_rate": 100.0,
+          "null_rate": 0.0,
+          "types": {
+            "str": 3
+          },
+          "most_common_type": "str",
+          "string_length_stats": {
+            "min": 19,
+            "max": 19,
+            "avg": 19.0
+          }
+        }
+      },
+      "all_fields": [
+        "content",
+        "detail_page_url",
+        "file_name",
+        "id",
+        "modify_date",
+        "register_date",
+        "title"
+      ]
+    },
+    "data_quality": {
+      "total_items_analyzed": 3,
+      "duplicate_ids": [],
+      "quality_issues": [],
+      "field_completeness": {
+        "title": {
+          "filled": 3,
+          "total": 3
+        },
+        "content": {
+          "filled": 3,
+          "total": 3
+        },
+        "register_date": {
+          "filled": 3,
+          "total": 3
+        },
+        "modify_date": {
+          "filled": 3,
+          "total": 3
+        },
+        "detail_page_url": {
+          "filled": 3,
+          "total": 3
+        },
+        "file_name": {
+          "filled": 3,
+          "total": 3
+        },
+        "id": {
+          "filled": 0,
+          "total": 3
+        }
+      },
+      "low_completeness_fields": [
+        {
+          "field": "id",
+          "completeness": 0.0
+        }
+      ]
+    },
+    "sample_count": 3
+  },
+  "cross_endpoint_analysis": {
+    "common_fields": [
+      "detail_page_url",
+      "id"
+    ],
+    "structure_consistency": {
+      "announcements": {
+        "has_pagination": true,
+        "has_data_array": true,
+        "field_count": 30
+      },
+      "business": {
+        "has_pagination": true,
+        "has_data_array": true,
+        "field_count": 11
+      },
+      "content": {
+        "has_pagination": true,
+        "has_data_array": true,
+        "field_count": 7
+      },
+      "statistics": {
+        "has_pagination": true,
+        "has_data_array": true,
+        "field_count": 7
+      }
+    },
+    "total_endpoints_analyzed": 4
+  }
+}

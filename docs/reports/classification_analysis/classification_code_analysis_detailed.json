@@ -1,0 +1,243 @@
+{
+  "announcements": {
+    "endpoint": "announcements",
+    "total_items": 3,
+    "classification_fields": [
+      "business_category",
+      "support_region",
+      "supervising_institution"
+    ],
+    "actual_codes": {
+      "business_category": [
+        "멘토링ㆍ컨설팅ㆍ교육",
+        "기술개발(R&amp;D)",
+        "창업교육"
+      ],
+      "support_region": [
+        "서울",
+        "전국",
+        "전북"
+      ],
+      "supervising_institution": [
+        "지자체",
+        "민간",
+        "공공기관"
+      ]
+    },
+    "code_distribution": {
+      "business_category": {
+        "기술개발(R&amp;D)": 1,
+        "멘토링ㆍ컨설팅ㆍ교육": 1,
+        "창업교육": 1
+      },
+      "support_region": {
+        "전북": 1,
+        "전국": 1,
+        "서울": 1
+      },
+      "supervising_institution": {
+        "공공기관": 1,
+        "지자체": 1,
+        "민간": 1
+      }
+    },
+    "mapping_analysis": {
+      "business_category": {
+        "actual_korean_categories": [
+          "멘토링ㆍ컨설팅ㆍ교육",
+          "기술개발(R&amp;D)",
+          "창업교육"
+        ],
+        "defined_enum_codes": [
+          "cmrczn_tab1",
+          "cmrczn_tab2",
+          "cmrczn_tab3",
+          "cmrczn_tab4",
+          "cmrczn_tab5",
+          "cmrczn_tab6",
+          "cmrczn_tab7",
+          "cmrczn_tab8",
+          "cmrczn_tab9"
+        ],
+        "defined_enum_descriptions": [
+          "사업화",
+          "창업교육",
+          "시설,공간,보육",
+          "멘토링,컨설팅",
+          "행사,네트워크",
+          "기술개발 R&D",
+          "융자",
+          "인력",
+          "글로벌"
+        ],
+        "mapping_gaps": {
+          "actual_not_in_defined": [
+            "멘토링ㆍ컨설팅ㆍ교육",
+            "기술개발(R&amp;D)"
+          ],
+          "defined_not_in_actual": [
+            "융자",
+            "글로벌",
+            "멘토링,컨설팅",
+            "인력",
+            "사업화",
+            "행사,네트워크",
+            "시설,공간,보육",
+            "기술개발 R&D"
+          ],
+          "matched_categories": [
+            "창업교육"
+          ]
+        },
+        "mapping_status": "미매핑",
+        "recommended_mappings": {
+          "멘토링ㆍ컨설팅ㆍ교육": {
+            "suggested_enum_code": "cmrczn_tab4",
+            "enum_description": "멘토링,컨설팅",
+            "confidence": "high"
+          },
+          "기술개발(R&amp;D)": {
+            "suggested_enum_code": "cmrczn_tab6",
+            "enum_description": "기술개발 R&D",
+            "confidence": "high"
+          },
+          "창업교육": {
+            "suggested_enum_code": "cmrczn_tab2",
+            "enum_description": "창업교육",
+            "confidence": "high"
+          }
+        }
+      }
+    }
+  },
+  "business": {
+    "endpoint": "business",
+    "total_items": 3,
+    "classification_fields": [
+      "business_category"
+    ],
+    "actual_codes": {
+      "business_category": [
+        "cmrczn_Tab1"
+      ]
+    },
+    "code_distribution": {
+      "business_category": {
+        "cmrczn_Tab1": 3
+      }
+    },
+    "mapping_analysis": {
+      "business_category": {
+        "actual_korean_categories": [
+          "cmrczn_Tab1"
+        ],
+        "defined_enum_codes": [
+          "cmrczn_tab1",
+          "cmrczn_tab2",
+          "cmrczn_tab3",
+          "cmrczn_tab4",
+          "cmrczn_tab5",
+          "cmrczn_tab6",
+          "cmrczn_tab7",
+          "cmrczn_tab8",
+          "cmrczn_tab9"
+        ],
+        "defined_enum_descriptions": [
+          "사업화",
+          "창업교육",
+          "시설,공간,보육",
+          "멘토링,컨설팅",
+          "행사,네트워크",
+          "기술개발 R&D",
+          "융자",
+          "인력",
+          "글로벌"
+        ],
+        "mapping_gaps": {
+          "actual_not_in_defined": [
+            "cmrczn_Tab1"
+          ],
+          "defined_not_in_actual": [
+            "융자",
+            "글로벌",
+            "멘토링,컨설팅",
+            "인력",
+            "사업화",
+            "행사,네트워크",
+            "시설,공간,보육",
+            "창업교육",
+            "기술개발 R&D"
+          ],
+          "matched_categories": []
+        },
+        "mapping_status": "미매핑",
+        "recommended_mappings": {
+          "cmrczn_Tab1": {
+            "suggested_enum_code": null,
+            "enum_description": "매핑 불가",
+            "confidence": "none"
+          }
+        }
+      }
+    }
+  },
+  "content": {
+    "endpoint": "content",
+    "total_items": 3,
+    "classification_fields": [
+      "content_type"
+    ],
+    "actual_codes": {
+      "content_type": [
+        "notice_matr",
+        "fnd_scs_case"
+      ]
+    },
+    "code_distribution": {
+      "content_type": {
+        "fnd_scs_case": 2,
+        "notice_matr": 1
+      }
+    },
+    "mapping_analysis": {
+      "content_type": {
+        "actual_code_categories": [
+          "notice_matr",
+          "fnd_scs_case"
+        ],
+        "defined_enum_codes": [
+          "notice_matr",
+          "fnd_scs_case",
+          "kstartup_isse_trd"
+        ],
+        "defined_enum_descriptions": [
+          "정책 및 규제정보(공지사항)",
+          "창업우수사례",
+          "생태계 이슈, 동향"
+        ],
+        "mapping_status": "완전매핑",
+        "mapping_coverage": {
+          "actual_codes_covered": [
+            "notice_matr",
+            "fnd_scs_case"
+          ],
+          "actual_codes_missing": [],
+          "defined_codes_unused": [
+            "kstartup_isse_trd"
+          ],
+          "coverage_percentage": 100.0
+        }
+      }
+    }
+  },
+  "statistics": {
+    "endpoint": "statistics",
+    "total_items": 3,
+    "classification_fields": [],
+    "actual_codes": {},
+    "code_distribution": {},
+    "mapping_analysis": {
+      "note": "통계 정보 엔드포인트에는 분류 필드가 없습니다."
+    }
+  }
+}
