@@ -28,22 +28,26 @@ def configure_dependencies() -> DIContainer:
     from ..domains.businesses.repository import BusinessRepository
     from ..domains.contents.repository import ContentRepository
     from ..domains.statistics.repository import StatisticsRepository
+    from ..domains.users.repository import UserRepository
     
     container.register_singleton(AnnouncementRepository)
     container.register_singleton(BusinessRepository)
     container.register_singleton(ContentRepository)
     container.register_singleton(StatisticsRepository)
+    container.register_singleton(UserRepository)
     
     # Register services as singletons (they're stateless but depend on repositories)
     from ..domains.announcements.service import AnnouncementService
     from ..domains.businesses.service import BusinessService
     from ..domains.contents.service import ContentService
     from ..domains.statistics.service import StatisticsService
+    from ..domains.users.service import UserService
     
     container.register_singleton(AnnouncementService)
     container.register_singleton(BusinessService)
     container.register_singleton(ContentService)
     container.register_singleton(StatisticsService)
+    container.register_singleton(UserService)
     
     # Register API clients as singletons
     from ..shared.clients.kstartup_api_client import KStartupAPIClient
