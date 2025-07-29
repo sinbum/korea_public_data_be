@@ -43,31 +43,34 @@ class AnnouncementService(BaseService[Announcement, AnnouncementCreate, Announce
                 
                 for business_year in years_to_try:
                     logger.info(f"사업연도 {business_year or '전체'}로 조회 시도 중...")
-                    response = self.api_client.get_announcement_information(
-                        page_no=page_no,
-                        num_of_rows=num_of_rows,
-                        business_name=business_name,
-                        business_type=business_type
-                    )
+                    with self.api_client as client:
+                        response = client.get_announcement_information(
+                            page_no=page_no,
+                            num_of_rows=num_of_rows,
+                            business_name=business_name,
+                            business_type=business_type
+                        )
                     
                     if response.success and response.data and hasattr(response.data, 'data') and response.data.data:
                         logger.info(f"사업연도 {business_year or '전체'}에서 {len(response.data.data)}개 데이터 발견")
                         break
                 else:
                     logger.warning("모든 연도에서 데이터를 찾을 수 없음")
-                    response = self.api_client.get_announcement_information(
+                    with self.api_client as client:
+                        response = client.get_announcement_information(
+                            page_no=page_no,
+                            num_of_rows=num_of_rows,
+                            business_name=business_name,
+                            business_type=business_type
+                        )
+            else:
+                with self.api_client as client:
+                    response = client.get_announcement_information(
                         page_no=page_no,
                         num_of_rows=num_of_rows,
                         business_name=business_name,
                         business_type=business_type
                     )
-            else:
-                response = self.api_client.get_announcement_information(
-                    page_no=page_no,
-                    num_of_rows=num_of_rows,
-                    business_name=business_name,
-                    business_type=business_type
-                )
             
             logger.info(f"K-Startup API 응답: {response.total_count}건 중 {response.current_count}건 조회")
             
@@ -269,7 +272,7 @@ class AnnouncementService(BaseService[Announcement, AnnouncementCreate, Announce
         return await self.get_list(page=page, limit=limit, filters=filters)
     
     def _transform_announcementitem_to_data(self, announcement_item) -> dict:
-        """AnnouncementItem 객체를 내부 데이터 형식으로 변환 (완전한 필드 매핑)"""
+        """AnnouncementItem 객체를 새로운 확장된 데이터 형식으로 변환 (모든 API 필드 활용)"""
         
         # 날짜 변환 헬퍼 함수
         def convert_date_to_datetime(date_str):
@@ -283,57 +286,96 @@ class AnnouncementService(BaseService[Announcement, AnnouncementCreate, Announce
                     pass
             return None
         
-        # 모집기간 설정
+        # 모집기간 설정 (레거시 지원)
         recruitment_period = ""
-        if announcement_item.application_start_date and announcement_item.application_end_date:
-            recruitment_period = f"{announcement_item.application_start_date} ~ {announcement_item.application_end_date}"
-        elif announcement_item.application_start_date:
-            recruitment_period = f"{announcement_item.application_start_date} ~"
-        elif announcement_item.application_end_date:
-            recruitment_period = f"~ {announcement_item.application_end_date}"
+        if announcement_item.start_date and announcement_item.end_date:
+            recruitment_period = f"{announcement_item.start_date} ~ {announcement_item.end_date}"
+        elif announcement_item.start_date:
+            recruitment_period = f"{announcement_item.start_date} ~"
+        elif announcement_item.end_date:
+            recruitment_period = f"~ {announcement_item.end_date}"
         
-        # 지원 대상 정보 구성
-        support_target = ""
-        if announcement_item.application_target:
-            support_target = announcement_item.application_target
-        elif announcement_item.application_target_content:
-            support_target = announcement_item.application_target_content
+        # 통합 문의처 정보 구성
+        contact_info = ""
+        contact_parts = []
+        if announcement_item.contact_department:
+            contact_parts.append(announcement_item.contact_department)
+        if announcement_item.contact_number:
+            contact_parts.append(f"({announcement_item.contact_number})")
+        contact_info = " ".join(contact_parts) if contact_parts else None
         
-        # 신청 방법 정보 구성
+        # 신청 방법 통합 정보 구성
         application_method = ""
         if announcement_item.online_reception:
-            application_method = announcement_item.online_reception
+            application_method = f"온라인 접수 - {announcement_item.online_reception}"
         elif announcement_item.business_guidance_url:
             application_method = f"온라인 접수 - {announcement_item.business_guidance_url}"
+        elif announcement_item.business_application_url:
+            application_method = f"온라인 접수 - {announcement_item.business_application_url}"
         else:
             application_method = "온라인 접수"
         
+        # 상태 판정
+        status = "모집중" if getattr(announcement_item, 'recruitment_progress', 'N') == "Y" else "모집종료"
+        
         return {
-            # 기본 공고 정보
-            "announcement_id": announcement_item.announcement_id or announcement_item.id,
-            "integrated_business_name": announcement_item.integrated_business_name,
+            # === 기본 공고 정보 ===
+            "announcement_id": str(announcement_item.announcement_id) if announcement_item.announcement_id else None,
+            "title": announcement_item.title,
+            "content": announcement_item.content,
+            
+            # === 일정 정보 ===
+            "start_date": announcement_item.start_date,
+            "end_date": announcement_item.end_date,
+            "announcement_date": convert_date_to_datetime(announcement_item.start_date),
+            "deadline": convert_date_to_datetime(announcement_item.end_date),
+            
+            # === 사업 정보 ===
             "business_category": announcement_item.business_category,
-            "host_organization": announcement_item.host_organization,
-            "supervising_institution": announcement_item.supervising_institution,
+            "integrated_business_name": announcement_item.integrated_business_name,
+            "business_overview": announcement_item.content,  # content와 동일
+            
+            # === 지원 대상 및 조건 ===
+            "application_target": announcement_item.application_target,
+            "application_target_content": announcement_item.application_target_content,
+            "application_exclusion_content": announcement_item.application_exclusion_content,
+            "support_target": announcement_item.application_target,  # application_target과 동일
+            "business_entry": announcement_item.business_entry,
+            "business_target_age": announcement_item.business_target_age,
             "support_region": announcement_item.support_region,
-            "business_overview": announcement_item.business_overview,
-            "business_content": announcement_item.business_content,
-            "support_target": support_target,
-            "support_content": announcement_item.support_content,
-            "support_amount": announcement_item.support_amount,
-            "application_condition": announcement_item.application_condition,
-            "application_method": application_method,
-            "application_start_date": convert_date_to_datetime(announcement_item.application_start_date),
-            "application_end_date": convert_date_to_datetime(announcement_item.application_end_date),
-            "announcement_date": convert_date_to_datetime(announcement_item.announcement_date),
-            "deadline": convert_date_to_datetime(announcement_item.application_end_date),
-            "contact_info": announcement_item.contact_department,
-            "contact_phone": announcement_item.contact_phone,
-            "reference_url": announcement_item.reference_url,
+            
+            # === 기관 정보 ===
+            "organization": announcement_item.organization,
+            "supervising_institution": announcement_item.supervising_institution,
+            "contact_department": announcement_item.contact_department,
+            "contact_number": announcement_item.contact_number,
+            "contact_info": contact_info,  # 통합된 문의처 정보
+            
+            # === URL 정보 ===
+            "detail_page_url": announcement_item.detail_page_url,
             "business_guidance_url": announcement_item.business_guidance_url,
-            "etc": announcement_item.etc,
+            "business_application_url": announcement_item.business_application_url,
+            
+            # === 신청 방법 정보 ===
+            "application_method": application_method,  # 통합된 신청 방법
+            "online_reception": announcement_item.online_reception,
+            "visit_reception": announcement_item.visit_reception,
+            "email_reception": announcement_item.email_reception,
+            "fax_reception": announcement_item.fax_reception,
+            "postal_reception": announcement_item.postal_reception,
+            "other_reception": announcement_item.other_reception,
+            
+            # === 상태 정보 ===
+            "status": status,
+            "integrated_announcement": announcement_item.integrated_announcement,
             "recruitment_progress": announcement_item.recruitment_progress,
-            "status": "모집중" if announcement_item.recruitment_progress == "Y" else "모집종료"
+            "performance_material": announcement_item.performance_material,
+            
+            # === 레거시 필드 (하위 호환성) ===
+            "business_id": str(announcement_item.announcement_id) if announcement_item.announcement_id else None,
+            "business_name": announcement_item.title,  # title과 동일
+            "business_type": announcement_item.business_category,  # business_category와 동일
+            "recruitment_period": recruitment_period,  # 계산된 모집기간
         }
     
     # 이전 레거시 메서드들은 향후 제거 예정 (K-Startup 클라이언트로 완전 마이그레이션 후)

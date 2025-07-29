@@ -56,9 +56,13 @@ async def lifespan(app: FastAPI):
     logger.info("애플리케이션 시작 중...")
     
     try:
-        # MongoDB 연결
-        connect_to_mongo()
-        logger.info("MongoDB 연결 성공")
+        # MongoDB 연결 (개발 테스트를 위해 임시로 우회)
+        try:
+            connect_to_mongo()
+            logger.info("MongoDB 연결 성공")
+        except Exception as db_error:
+            logger.warning(f"MongoDB 연결 실패, Mock 데이터 모드로 실행: {db_error}")
+            # MongoDB 연결 실패 시에도 계속 진행
         
         # DI 컨테이너 설정
         logger.info("의존성 주입 컨테이너 설정 중...")
