@@ -40,17 +40,11 @@ class RequestValidationMiddleware(BaseHTTPMiddleware):
         logger.info(f"Request: {request.method} {request.url.path}")
         
         try:
-            # 요청 본문 읽기 (POST, PUT, PATCH)
+            # 요청 본문 읽기 (POST, PUT, PATCH) - 조심스럽게 처리
             if request.method in ["POST", "PUT", "PATCH"]:
-                body = await request.body()
-                if body:
-                    try:
-                        json_body = json.loads(body)
-                        # 요청 데이터 로깅 (민감한 정보 제외)
-                        safe_body = self._sanitize_request_data(json_body)
-                        logger.debug(f"Request body: {safe_body}")
-                    except json.JSONDecodeError:
-                        logger.warning("Invalid JSON in request body")
+                # 요청 스트림을 소비하지 않고 로깅만 수행
+                # request.body()를 호출하면 스트림이 소비되어 FastAPI가 파싱할 수 없음
+                logger.debug(f"Processing {request.method} request to {request.url.path}")
             
             # 다음 미들웨어 또는 엔드포인트 호출
             response = await call_next(request)

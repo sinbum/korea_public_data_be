@@ -1,34 +1,96 @@
-# API 사용 가이드
+# 🌐 Korea Public Data API 가이드
+
+> **현재 상태**: 백엔드 현재 구현 상태를 반영한 실제 사용 가능한 API 가이드
+
+![API Status](https://img.shields.io/badge/API%20Status-Partially%20Implemented-yellow.svg)
+![Version](https://img.shields.io/badge/Version-v1.0.0-blue.svg)
+![Last Updated](https://img.shields.io/badge/Last%20Updated-2025--08--02-green.svg)
 
 ## 📋 목차
 1. [시작하기](#시작하기)
-2. [인증](#인증)
-3. [API 엔드포인트](#api-엔드포인트)
-4. [응답 형식](#응답-형식)
-5. [에러 처리](#에러-처리)
-6. [예제 코드](#예제-코드)
-7. [자주 묻는 질문](#자주-묻는-질문)
+2. [현재 구현 상태](#현재-구현-상태)
+3. [인증](#인증)
+4. [API 엔드포인트](#api-엔드포인트)
+5. [응답 형식](#응답-형식)
+6. [에러 처리](#에러-처리)
+7. [예제 코드](#예제-코드)
+8. [개발 로드맵](#개발-로드맵)
+9. [자주 묻는 질문](#자주-묻는-질문)
 
 ## 🚀 시작하기
 
 ### Base URL
 ```
 개발 환경: http://localhost:8000
-프로덕션: https://api.startup-data.kr
+프로덕션: TBD (개발 중)
 ```
 
 ### API 버전
-현재 지원되는 API 버전: `v1`
+- **현재 지원**: `v1` (부분 구현)
+- **계획**: `v2`, `v3` (API 버저닝 시스템 준비됨)
 
 모든 API 엔드포인트는 `/api/v1` 접두사를 사용합니다.
 
+## 📊 현재 구현 상태
+
+### 도메인별 완성도
+
+| 도메인 | 완성도 | 상태 | 사용 가능 기능 |
+|--------|--------|------|----------------|
+| **🏢 Announcements** | **95%** | ✅ **프로덕션 준비** | 전체 CRUD, 데이터 수집, 검색 |
+| **🎯 Businesses** | **60%** | 🔄 **API만 완성** | 기본 CRUD (비즈니스 로직 미흡) |
+| **📚 Contents** | **60%** | 🔄 **API만 완성** | 기본 CRUD (분류 시스템 미흡) |
+| **📊 Statistics** | **65%** | 🔄 **API만 완성** | 기본 CRUD (집계 로직 미흡) |
+
+### ⚠️ 중요 알림
+- **Announcements 도메인만 완전히 사용 가능**합니다
+- 다른 도메인들은 기본 API는 있지만 비즈니스 로직이 부족합니다
+- 인증 시스템이 아직 구현되지 않았습니다 (기본 API 키 인증만 존재)
+- Repository 패턴이 적용되지 않아 서비스에서 직접 DB 접근합니다
+
 ## 🔐 인증
 
-현재 버전에서는 별도의 인증이 필요하지 않습니다. (개발 단계)
+### 현재 상태: 기본 인증만 지원
 
-향후 API 키 또는 JWT 토큰 기반 인증이 추가될 예정입니다.
+현재 버전에서는 **매우 기본적인 인증**만 제공됩니다:
+- 기본적인 API 키 검증만 존재
+- 사용자 관리 시스템 없음
+- 권한 기반 접근 제어 부재
+
+### 개발 중인 인증 시스템 (예정)
+
+#### Phase 1: JWT 기반 인증 (1-2주 내)
+```http
+POST /api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+```
+
+**응답**:
+```json
+{
+  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+  "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+  "token_type": "Bearer",
+  "expires_in": 3600
+}
+```
+
+#### Phase 2: RBAC 시스템 (2-3주 내)
+- 역할 기반 접근 제어
+- 사용자/관리자/개발자 권한 분리
+- API 엔드포인트별 권한 제어
+
+### 현재 사용 방법
+개발 단계에서는 인증 없이 API 사용 가능하지만, 프로덕션 배포 전 반드시 인증 시스템이 구현될 예정입니다.
 
 ## 🛠️ API 엔드포인트
+
+### ✅ 완전 구현된 엔드포인트 (사용 권장)
 
 ### 1. 기본 정보
 
@@ -52,7 +114,10 @@ GET /health
 GET /
 ```
 
-### 2. 사업공고 (Announcements)
+### 2. 🏢 사업공고 (Announcements) - ✅ 완전 구현됨
+
+> **상태**: 프로덕션 준비 완료 (95% 완성도)  
+> **권장 사용**: 모든 기능 안정적으로 사용 가능
 
 #### 2.1 공공데이터에서 사업공고 수집
 ```http
@@ -72,28 +137,38 @@ curl -X POST "http://localhost:8000/api/v1/announcements/fetch?page_no=1&num_of_
 
 **응답 예시:**
 ```json
-[
-  {
-    "id": "65f1a2b3c4d5e6f7a8b9c0d1",
-    "announcement_data": {
-      "business_id": "KISED-2024-001",
-      "business_name": "창업도약패키지",
-      "business_type": "정부지원사업",
-      "business_overview": "유망 창업기업의 성장 단계별 맞춤형 지원을 통한 스케일업 촉진",
-      "support_target": "창업 3년 이내 기업, 매출 10억원 미만",
-      "recruitment_period": "2024.03.15 ~ 2024.04.15",
-      "application_method": "온라인 접수 (www.k-startup.go.kr)",
-      "contact_info": "창업진흥원 창업성장실 02-123-4567",
-      "announcement_date": "2024-03-01T09:00:00Z",
-      "deadline": "2024-04-15T18:00:00Z",
-      "status": "모집중"
-    },
-    "source_url": "https://www.data.go.kr/dataset/15121654",
-    "is_active": true,
-    "created_at": "2024-03-01T09:00:00Z",
-    "updated_at": "2024-03-01T09:00:00Z"
+{
+  "success": true,
+  "message": "공고 데이터 수집 완료",
+  "data": [
+    {
+      "id": "65f1a2b3c4d5e6f7a8b9c0d1",
+      "announcement_data": {
+        "business_id": "KISED-2024-001",
+        "business_name": "창업도약패키지",
+        "business_type": "정부지원사업",
+        "business_overview": "유망 창업기업의 성장 단계별 맞춤형 지원을 통한 스케일업 촉진",
+        "support_target": "창업 3년 이내 기업, 매출 10억원 미만",
+        "recruitment_period": "2024.03.15 ~ 2024.04.15",
+        "application_method": "온라인 접수 (www.k-startup.go.kr)",
+        "contact_info": "창업진흥원 창업성장실 02-123-4567",
+        "announcement_date": "2024-03-01T09:00:00Z",
+        "deadline": "2024-04-15T18:00:00Z",
+        "status": "모집중"
+      },
+      "source_url": "https://www.data.go.kr/dataset/15121654",
+      "is_active": true,
+      "created_at": "2024-03-01T09:00:00Z",
+      "updated_at": "2024-03-01T09:00:00Z"
+    }
+  ],
+  "meta": {
+    "total_fetched": 1,
+    "new_items": 1,
+    "updated_items": 0,
+    "duplicates_skipped": 0
   }
-]
+}
 ```
 
 #### 2.2 사업공고 목록 조회
@@ -164,18 +239,93 @@ PUT /api/v1/announcements/{announcement_id}
 DELETE /api/v1/announcements/{announcement_id}
 ```
 
+---
+
+### 🔄 부분 구현된 엔드포인트 (개발 중)
+
+> **주의**: 아래 API들은 기본 CRUD는 동작하지만 비즈니스 로직이 부족합니다.
+
+### 3. 🎯 사업정보 (Businesses) - 🔄 60% 완성
+
+**현재 상태**:
+- ✅ 기본 CRUD API 완성
+- ❌ 비즈니스 로직 미흡 (단순 CRUD만 가능)
+- ❌ 관련 공고 매칭 로직 없음
+- ❌ 성과 분석 기능 없음
+
+#### 3.1 사업정보 목록 조회 (기본 기능만)
+```http
+GET /api/v1/businesses/
+```
+
+**Query Parameters**:
+- `skip` (int, optional): 건너뛸 데이터 수
+- `limit` (int, optional): 조회할 데이터 수
+
+**⚠️ 제한사항**: 단순 목록 조회만 가능. 고급 필터링, 분석 데이터 없음
+
+#### 3.2 사업정보 상세 조회
+```http
+GET /api/v1/businesses/{business_id}
+```
+
+**⚠️ 제한사항**: 관련 공고, 성과 데이터 등 부가 정보 제공 안됨
+
+### 4. 📚 콘텐츠 정보 (Contents) - 🔄 60% 완성
+
+**현재 상태**:
+- ✅ 기본 CRUD API 완성
+- ❌ 분류 시스템 미흡
+- ❌ 자동 분류 기능 없음
+- ❌ 검색 최적화 없음
+
+#### 4.1 콘텐츠 목록 조회 (기본 기능만)
+```http
+GET /api/v1/contents/
+```
+
+**⚠️ 제한사항**: 기본 목록만. 카테고리별 분류, 태그 시스템 없음
+
+### 5. 📊 통계 정보 (Statistics) - 🔄 65% 완성
+
+**현재 상태**:
+- ✅ 기본 CRUD API 완성
+- ❌ 집계 로직 미흡
+- ❌ 실시간 통계 계산 없음
+- ❌ 대시보드용 데이터 가공 없음
+
+#### 5.1 통계 정보 조회 (기본 기능만)
+```http
+GET /api/v1/statistics/
+```
+
+**⚠️ 제한사항**: 저장된 원시 데이터만 반환. 실시간 집계, 차트용 데이터 가공 없음
+
 ## 📊 응답 형식
 
-### 성공 응답
-모든 성공 응답은 다음 형식을 따릅니다:
+### 표준 응답 구조
 
+#### 성공 응답 (Announcements - 완전 구현)
 ```json
 {
   "success": true,
   "message": "성공",
-  "data": { /* 응답 데이터 */ }
+  "data": { /* 응답 데이터 */ },
+  "timestamp": "2025-08-02T10:30:00Z"
 }
 ```
+
+#### 기본 응답 (다른 도메인 - 부분 구현)
+```json
+[
+  { /* 데이터 객체들 */ }
+]
+```
+
+**⚠️ 주의**: 
+- **Announcements**: 표준화된 응답 구조 사용
+- **다른 도메인들**: 아직 기본 배열/객체 응답만 제공
+- 향후 모든 도메인을 표준 응답 구조로 통일 예정
 
 ### 페이지네이션 응답
 목록 조회 시 페이지네이션 정보가 포함됩니다:
@@ -341,31 +491,71 @@ curl -X POST "http://localhost:8000/api/v1/announcements/" \
   }'
 ```
 
+## 🛣️ 개발 로드맵
+
+### Phase 1: 기반 인프라 강화 (2-3주)
+- **인증 시스템 구축**: JWT + RBAC
+- **Repository 패턴 적용**: 모든 도메인
+- **응답 형식 표준화**: 통일된 API 응답 구조
+- **에러 처리 개선**: 구조화된 에러 응답
+
+### Phase 2: 도메인 로직 완성 (3-4주)
+- **Businesses 도메인**: 분석 기능, 추천 시스템
+- **Contents 도메인**: 자동 분류, 검색 최적화
+- **Statistics 도메인**: 실시간 집계, 대시보드 데이터
+- **도메인 간 연동**: 관련 데이터 매칭
+
+### Phase 3: 고급 기능 (1-2개월)
+- **GraphQL 지원**: REST와 함께 제공
+- **실시간 알림**: WebSocket 기반
+- **캐싱 전략**: Redis 다계층 캐싱
+- **성능 최적화**: 쿼리 최적화, 인덱싱
+
 ## ❓ 자주 묻는 질문
 
+### Q: 어떤 API를 사용해야 하나요?
+**A: 현재는 Announcements API만 안정적입니다.** 다른 도메인은 기본 기능만 제공되므로 프로덕션 사용을 권장하지 않습니다.
+
+### Q: 언제 모든 기능이 완성되나요?
+**A: 3-4개월 내 엔터프라이즈급 시스템으로 완성 예정입니다.** 단계별 개발 로드맵을 참고하세요.
+
 ### Q: API 호출 횟수에 제한이 있나요?
-A: 현재 개발 단계에서는 별도의 rate limiting이 없습니다. 프로덕션 환경에서는 적절한 제한이 적용될 예정입니다.
+**A: 현재는 제한 없음.** 프로덕션에서는 인증 기반 rate limiting 적용 예정.
 
 ### Q: 데이터는 얼마나 자주 업데이트되나요?
-A: 자동 스케줄러를 통해 사업공고는 매일, 통계 데이터는 매주 업데이트됩니다. `/fetch` 엔드포인트를 통해 수동으로도 최신 데이터를 가져올 수 있습니다.
+**A: Announcements만 자동 업데이트됩니다.** Celery 스케줄러로 매일 업데이트. 다른 도메인은 수동 업데이트만 가능.
 
 ### Q: 페이지네이션은 어떻게 사용하나요?
-A: `skip`과 `limit` 파라미터를 사용합니다. 예: 2페이지(페이지당 20개)를 조회하려면 `skip=20&limit=20`을 사용하세요.
+**A: 도메인별로 다릅니다:**
+- **Announcements**: 표준 meta 정보 포함
+- **다른 도메인**: 기본 `skip`/`limit`만 지원
 
-### Q: 데이터 중복은 어떻게 처리되나요?
-A: `/fetch` 엔드포인트는 `business_id`를 기준으로 중복을 자동 감지하여 새로운 데이터만 저장합니다.
+### Q: 에러 처리는 어떻게 되나요?
+**A: 현재 기본적인 에러 처리만 제공.** 구조화된 에러 응답은 인증 시스템과 함께 개선 예정.
 
-### Q: 오래된 데이터는 어떻게 관리되나요?
-A: 데이터는 삭제되지 않고 `is_active` 플래그를 통해 비활성화됩니다. 필요시 다시 활성화할 수 있습니다.
+### Q: 테스트 환경은 어떻게 사용하나요?
+**A: Docker Compose로 로컬 개발 환경 구축 가능.** 자세한 내용은 README.md 참고.
 
-## 📞 지원
+## 📞 지원 및 문서
 
-- **이슈 리포트**: GitHub Issues
-- **이메일**: dev@example.com
-- **문서**: http://localhost:8000/docs (Swagger UI)
+### 개발 도구
+- **Swagger UI**: http://localhost:8000/docs
 - **ReDoc**: http://localhost:8000/redoc
+- **Health Check**: http://localhost:8000/health
+
+### 추가 문서
+- **백엔드 현재 상태**: [be/docs/architecture/backend_current_state.md](../architecture/backend_current_state.md)
+- **K-Startup API 명세**: [kstartup_api_spec.md](../integration/kstartup_api_spec.md)
+- **개발 환경 설정**: [../../README.md](../../README.md)
+
+### 지원
+- **이슈 리포트**: GitHub Issues
+- **개발팀 문의**: 프로젝트 담당자에게 문의
 
 ---
 
-**업데이트**: 2024-03-01  
-**버전**: 1.0.0
+**⚠️ 중요 공지**: 이 문서는 실제 구현 상태를 반영합니다. 모든 기능이 완성되지 않았으므로 사용 전 구현 상태를 확인하세요.
+
+**마지막 업데이트**: 2025-08-02  
+**API 버전**: v1.0.0  
+**문서 버전**: 2.0.0 (실제 구현 상태 반영)

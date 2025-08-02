@@ -6,7 +6,7 @@ Supports both local authentication and Google OAuth 2.0 social login.
 
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field, EmailStr, validator
+from pydantic import BaseModel, Field, EmailStr, field_validator
 from enum import Enum
 
 
@@ -27,7 +27,7 @@ class UserProfile(BaseModel):
     position: Optional[str] = Field(None, description="직책")
     phone_number: Optional[str] = Field(None, description="연락처")
     
-    @validator('interests')
+    @field_validator('interests')
     def validate_interests(cls, v):
         """관심 분야는 최대 10개까지만 허용"""
         if len(v) > 10:
@@ -37,7 +37,7 @@ class UserProfile(BaseModel):
 
 class User(BaseModel):
     """User model supporting both local and OAuth authentication"""
-    id: Optional[str] = Field(None, alias="_id", description="사용자 ID")
+    id: Optional[str] = Field(None, description="사용자 ID")
     email: EmailStr = Field(..., description="이메일 주소")
     name: str = Field(..., description="사용자 이름")
     password_hash: Optional[str] = Field(None, description="암호화된 비밀번호 (로컬 인증 시)")
@@ -65,10 +65,7 @@ class User(BaseModel):
     consent_data_processing: bool = Field(True, description="개인정보 처리 동의")
     
     class Config:
-        allow_population_by_field_name = True
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
+        populate_by_name = True
 
 
 class UserCreate(BaseModel):
@@ -79,7 +76,7 @@ class UserCreate(BaseModel):
     consent_data_processing: bool = Field(True, description="개인정보 처리 동의")
     consent_marketing: bool = Field(False, description="마케팅 수신 동의")
     
-    @validator('password')
+    @field_validator('password')
     def validate_password(cls, v):
         """비밀번호 복잡성 검증"""
         if len(v) < 8:

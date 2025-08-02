@@ -309,3 +309,40 @@ async def auth_status():
             "logout": "/auth/logout"
         }
     }
+
+
+@router.post("/test-register")
+async def test_register(data: dict):
+    """Test endpoint to isolate the issue"""
+    try:
+        # Create a minimal UserCreate directly
+        from pydantic import BaseModel, Field, EmailStr
+        
+        class TestUserCreate(BaseModel):
+            email: EmailStr = Field(..., description="이메일 주소")
+            name: str = Field(..., min_length=2, max_length=50, description="사용자 이름")
+            password: str = Field(..., min_length=8, max_length=100, description="비밀번호")
+            consent_data_processing: bool = Field(True, description="개인정보 처리 동의")
+            consent_marketing: bool = Field(False, description="마케팅 수신 동의")
+        
+        # Try to create instance
+        test_user = TestUserCreate(**data)
+        
+        return {
+            "message": "Minimal UserCreate works",
+            "data": test_user.model_dump()
+        }
+    except Exception as e:
+        import traceback
+        return {"error": str(e), "type": type(e).__name__, "traceback": traceback.format_exc()}
+
+
+@router.post("/test-simple")
+async def test_simple(data: dict):
+    """Test endpoint without Pydantic models"""
+    return {"message": "Simple endpoint works", "received": data}
+
+@router.post("/test-clean")
+async def test_clean():
+    """Completely clean endpoint with no dependencies"""
+    return {"message": "Clean endpoint works", "timestamp": "2025-01-01T00:00:00Z"}
