@@ -318,10 +318,13 @@ class AnnouncementService(BaseService[Announcement, AnnouncementCreate, Announce
         # 상태 판정
         status = "모집중" if getattr(announcement_item, 'recruitment_progress', 'N') == "Y" else "모집종료"
         
+        # 제목 처리 - title이 없으면 integrated_business_name이나 기본값 사용
+        title = announcement_item.title or announcement_item.integrated_business_name or "제목 없음"
+        
         return {
             # === 기본 공고 정보 ===
             "announcement_id": str(announcement_item.announcement_id) if announcement_item.announcement_id else None,
-            "title": announcement_item.title,
+            "title": title,
             "content": announcement_item.content,
             
             # === 일정 정보 ===
@@ -373,7 +376,7 @@ class AnnouncementService(BaseService[Announcement, AnnouncementCreate, Announce
             
             # === 레거시 필드 (하위 호환성) ===
             "business_id": str(announcement_item.announcement_id) if announcement_item.announcement_id else None,
-            "business_name": announcement_item.title,  # title과 동일
+            "business_name": title,  # 처리된 title 사용
             "business_type": announcement_item.business_category,  # business_category와 동일
             "recruitment_period": recruitment_period,  # 계산된 모집기간
         }
@@ -385,10 +388,17 @@ class AnnouncementService(BaseService[Announcement, AnnouncementCreate, Announce
         page: int = 1, 
         page_size: int = 20,
         is_active: bool = True,
-        order_by_latest: bool = True
+        order_by_latest: bool = True,
+        sort_by: Optional[str] = "announcement_date",
+        business_type: Optional[str] = None,
+        status: Optional[str] = None,
+        search: Optional[str] = None
     ) -> PaginationResult[Announcement]:
-        """저장된 사업공고 목록 조회 (페이지네이션, 기본 최신순)"""
+        """저장된 사업공고 목록 조회 (페이지네이션, 기본 최신순, 필터링 지원)"""
         try:
+            # Enhanced logging to debug filtering issue
+            logger.info(f"Service get_announcements called with: page={page}, page_size={page_size}, is_active={is_active}, business_type='{business_type}', status='{status}', search='{search}'")
+            
             # 기본 필터 설정
             filters = QueryFilter()
             if is_active:
@@ -396,16 +406,60 @@ class AnnouncementService(BaseService[Announcement, AnnouncementCreate, Announce
             else:
                 filters.eq("is_active", False)
             
-            # 최신순 정렬 설정 (공고일 기준)
-            from ...core.interfaces.base_repository import SortOption
-            sort = SortOption().desc("announcement_data.announcement_date") if order_by_latest else None
+            # business_type 필터 추가
+            if business_type:
+                logger.info(f"Applying business_type filter: '{business_type}' to field 'announcement_data.business_type'")
+                # Try both business_type and business_category fields for compatibility
+                filters.eq("announcement_data.business_type", business_type)
+                # Also add alternative field name search
+                # filters.eq("announcement_data.business_category", business_type)
             
-            return self.repository.get_paginated(
+            # status 필터 추가
+            if status:
+                filters.eq("announcement_data.status", status)
+            
+            # 검색 필터 추가 (사업명 또는 기관명에서 검색)
+            if search:
+                # MongoDB regex를 사용한 텍스트 검색
+                filters.regex("announcement_data.business_name", search, "i")  # case-insensitive
+            
+            # Log the final filters being applied
+            logger.info(f"Final filters to be applied: {filters.to_dict()}")
+            
+            # 마감임박순 선택 시 마감일이 오늘 이후인 공고만 필터링
+            if sort_by == "end_date":
+                from datetime import datetime, timezone
+                today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                filters.gte("announcement_data.end_date", today)
+                logger.info(f"마감임박순 정렬: 오늘({today}) 이후 마감인 공고만 필터링")
+            
+            # 정렬 설정 (sort_by 파라미터에 따라 announcement_date 또는 end_date 기준)
+            from ...core.interfaces.base_repository import SortOption
+            if order_by_latest:
+                if sort_by == "end_date":
+                    # 마감일 기준 정렬 (마감 임박순 - 오늘 이후 마감인 공고만)
+                    sort = SortOption().asc("announcement_data.end_date").desc("announcement_data.announcement_id")
+                else:
+                    # 기본값: 공고일 기준 정렬 (최신 공고순)
+                    sort = SortOption().desc("announcement_data.announcement_date").desc("announcement_data.announcement_id")
+            else:
+                sort = None
+            
+            result = self.repository.get_paginated(
                 page=page, 
                 page_size=page_size, 
                 filters=filters,
                 sort=sort
             )
+            
+            logger.info(f"Service returning {len(result.items)} items out of {result.total_count} total")
+            
+            # Log sample of returned items to verify filtering
+            if result.items and business_type:
+                sample_types = [item.announcement_data.business_type for item in result.items[:5]]
+                logger.info(f"Sample business_types in result: {sample_types}")
+            
+            return result
         except Exception as e:
             logger.error(f"공고 목록 조회 오류: {e}")
             return PaginationResult(

@@ -46,7 +46,7 @@ class AnnouncementResponse(BaseModel):
         description="공고 고유 ID (MongoDB ObjectId 문자열)",
         example="674a1b2c3d4e5f6789abcdef"
     )
-    announcement_data: Dict[str, Any] = Field(
+    announcement_data: AnnouncementData = Field(
         ..., 
         description="공고 상세 데이터 (K-Startup API 응답 형태)",
         example={
@@ -67,12 +67,12 @@ class AnnouncementResponse(BaseModel):
         description="활성 상태 (삭제되지 않은 공고인지 여부)",
         example=True
     )
-    created_at: str = Field(
+    created_at: datetime = Field(
         ..., 
         description="생성 일시 (ISO 8601 형식)",
         example="2025-07-27T00:00:00Z"
     )
-    updated_at: str = Field(
+    updated_at: datetime = Field(
         ..., 
         description="수정 일시 (ISO 8601 형식)",
         example="2025-07-27T00:00:00Z"

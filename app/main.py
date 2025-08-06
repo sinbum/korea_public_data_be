@@ -21,6 +21,7 @@ from .domains.businesses.router import router as businesses_router
 from .domains.contents.router import router as contents_router
 from .domains.statistics.router import router as statistics_router
 from .domains.users.router import router as users_router
+from .domains.data_requests.router import router as data_requests_router
 # from .domains.data_sources.router import router as data_sources_router
 from .shared.classification.router import router as classification_router
 from .scheduler.task_management_api import get_task_management_router
@@ -285,6 +286,7 @@ app.include_router(businesses_router, prefix="/api/v1")
 app.include_router(contents_router, prefix="/api/v1")
 app.include_router(statistics_router, prefix="/api/v1")
 app.include_router(users_router, prefix="/api/v1")
+app.include_router(data_requests_router, prefix="/api/v1")
 app.include_router(classification_router, prefix="/api/v1")
 app.include_router(get_task_management_router())
 # app.include_router(data_sources_router, prefix="/api/v1")

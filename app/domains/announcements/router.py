@@ -212,6 +212,7 @@ async def get_announcements(
     status: Optional[str] = Query(None, description="상태 필터"),
     is_active: Optional[bool] = Query(None, description="활성 상태 필터"),
     order_by_latest: bool = Query(True, description="최신순 정렬 (기본값: True)"),
+    sort_by: Optional[str] = Query("announcement_date", description="정렬 기준 (announcement_date: 공고등록순, end_date: 마감순)"),
     service: AnnouncementService = Depends(get_announcement_service)
 ):
     """
@@ -220,12 +221,21 @@ async def get_announcements(
     표준 페이지네이션과 필터링을 지원합니다.
     """
     try:
-        # Use the simpler get_announcements method for now
+        # Debug logging to check received parameters
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Router received parameters: business_type='{business_type}', status='{status}', keyword='{keyword}', is_active={is_active}, sort_by='{sort_by}'")
+        
+        # Use the enhanced get_announcements method with filtering support
         result = service.get_announcements(
             page=pagination.page,
             page_size=pagination.size,
             is_active=is_active if is_active is not None else True,
-            order_by_latest=order_by_latest
+            order_by_latest=order_by_latest,
+            sort_by=sort_by,
+            business_type=business_type,
+            status=status,
+            search=keyword
         )
         
         items = []
@@ -363,17 +373,27 @@ async def get_announcement(
         if not announcement:
             raise NotFoundException("announcement", announcement_id, f"ID {announcement_id}에 해당하는 사업공고를 찾을 수 없습니다")
         
-        data = AnnouncementResponseSchema(
-            id=str(announcement.id),
-            announcement_data=announcement.announcement_data,
-            source_url=announcement.source_url,
-            is_active=announcement.is_active,
-            created_at=announcement.created_at,
-            updated_at=announcement.updated_at
-        )
+        # Ensure announcement_data is properly serialized
+        if hasattr(announcement.announcement_data, 'model_dump'):
+            announcement_data_dict = announcement.announcement_data.model_dump(mode='json')
+        elif isinstance(announcement.announcement_data, dict):
+            announcement_data_dict = announcement.announcement_data
+        else:
+            # Convert to dict if it's some other type
+            announcement_data_dict = dict(announcement.announcement_data) if announcement.announcement_data else {}
+        
+        # Create plain dictionary instead of Pydantic model
+        response_item = {
+            "id": str(announcement.id),
+            "announcement_data": announcement_data_dict,
+            "source_url": announcement.source_url,
+            "is_active": announcement.is_active,
+            "created_at": announcement.created_at.isoformat() if announcement.created_at else None,
+            "updated_at": announcement.updated_at.isoformat() if announcement.updated_at else None
+        }
         
         return success_response(
-            data=data,
+            data=response_item,
             message="사업공고 상세 정보 조회 성공"
         )
     except NotFoundException:
@@ -402,18 +422,28 @@ async def create_announcement(
     try:
         announcement = service.create_announcement(announcement_data)
         
-        data = AnnouncementResponseSchema(
-            id=str(announcement.id),
-            announcement_data=announcement.announcement_data,
-            source_url=announcement.source_url,
-            is_active=announcement.is_active,
-            created_at=announcement.created_at,
-            updated_at=announcement.updated_at
-        )
+        # Ensure announcement_data is properly serialized
+        if hasattr(announcement.announcement_data, 'model_dump'):
+            announcement_data_dict = announcement.announcement_data.model_dump(mode='json')
+        elif isinstance(announcement.announcement_data, dict):
+            announcement_data_dict = announcement.announcement_data
+        else:
+            # Convert to dict if it's some other type
+            announcement_data_dict = dict(announcement.announcement_data) if announcement.announcement_data else {}
+        
+        # Create plain dictionary instead of Pydantic model
+        response_item = {
+            "id": str(announcement.id),
+            "announcement_data": announcement_data_dict,
+            "source_url": announcement.source_url,
+            "is_active": announcement.is_active,
+            "created_at": announcement.created_at.isoformat() if announcement.created_at else None,
+            "updated_at": announcement.updated_at.isoformat() if announcement.updated_at else None
+        }
         
         return CreatedResponse(
             success=True,
-            data=data,
+            data=response_item,
             message="사업공고가 성공적으로 생성되었습니다",
             resource_id=str(announcement.id)
         )
@@ -447,17 +477,27 @@ async def update_announcement(
         if not announcement:
             raise NotFoundException("announcement", announcement_id, f"ID {announcement_id}에 해당하는 사업공고를 찾을 수 없습니다")
         
-        data = AnnouncementResponseSchema(
-            id=str(announcement.id),
-            announcement_data=announcement.announcement_data,
-            source_url=announcement.source_url,
-            is_active=announcement.is_active,
-            created_at=announcement.created_at,
-            updated_at=announcement.updated_at
-        )
+        # Ensure announcement_data is properly serialized
+        if hasattr(announcement.announcement_data, 'model_dump'):
+            announcement_data_dict = announcement.announcement_data.model_dump(mode='json')
+        elif isinstance(announcement.announcement_data, dict):
+            announcement_data_dict = announcement.announcement_data
+        else:
+            # Convert to dict if it's some other type
+            announcement_data_dict = dict(announcement.announcement_data) if announcement.announcement_data else {}
+        
+        # Create plain dictionary instead of Pydantic model
+        response_item = {
+            "id": str(announcement.id),
+            "announcement_data": announcement_data_dict,
+            "source_url": announcement.source_url,
+            "is_active": announcement.is_active,
+            "created_at": announcement.created_at.isoformat() if announcement.created_at else None,
+            "updated_at": announcement.updated_at.isoformat() if announcement.updated_at else None
+        }
         
         return success_response(
-            data=data,
+            data=response_item,
             message="사업공고가 성공적으로 수정되었습니다"
         )
     except NotFoundException:
