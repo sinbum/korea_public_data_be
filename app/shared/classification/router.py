@@ -83,6 +83,31 @@ async def get_business_categories(
 
 
 @router.get(
+    "/business-categories/search",
+    response_model=List[BusinessCategoryCode],
+    summary="사업 분야 검색",
+    description="쿼리 문자열로 사업 분야를 검색합니다.",
+    responses=COMMON_ERROR_RESPONSES
+)
+async def search_business_categories(
+    q: str = Query(..., description="검색어", example="교육"),
+    fields: Optional[List[str]] = Query(None, description="검색할 필드 목록", example=["name", "description"]),
+    limit: int = Query(10, ge=1, le=50, description="최대 결과 수", example=10),
+    service: ClassificationService = Depends(get_classification_service)
+) -> List[BusinessCategoryCode]:
+    """Search business categories."""
+    try:
+        return await service.search_business_categories(
+            query=q,
+            search_fields=fields,
+            limit=limit
+        )
+    except Exception as e:
+        logger.error(f"Error searching business categories: {e}")
+        raise HTTPException(status_code=500, detail="Search failed")
+
+
+@router.get(
     "/business-categories/{code}",
     response_model=BusinessCategoryCode,
     summary="사업 분야 단일 조회",
@@ -128,31 +153,6 @@ async def validate_business_category(
         raise HTTPException(status_code=500, detail="Validation failed")
 
 
-@router.get(
-    "/business-categories/search",
-    response_model=List[BusinessCategoryCode],
-    summary="사업 분야 검색",
-    description="쿼리 문자열로 사업 분야를 검색합니다.",
-    responses=COMMON_ERROR_RESPONSES
-)
-async def search_business_categories(
-    q: str = Query(..., description="검색어", example="교육"),
-    fields: Optional[List[str]] = Query(None, description="검색할 필드 목록", example=["name", "description"]),
-    limit: int = Query(10, ge=1, le=50, description="최대 결과 수", example=10),
-    service: ClassificationService = Depends(get_classification_service)
-) -> List[BusinessCategoryCode]:
-    """Search business categories."""
-    try:
-        return await service.search_business_categories(
-            query=q,
-            search_fields=fields,
-            limit=limit
-        )
-    except Exception as e:
-        logger.error(f"Error searching business categories: {e}")
-        raise HTTPException(status_code=500, detail="Search failed")
-
-
 # Content Category Endpoints
 
 @router.get(
@@ -176,6 +176,31 @@ async def get_content_categories(
     except Exception as e:
         logger.error(f"Error retrieving content categories: {e}")
         raise HTTPException(status_code=500, detail="Failed to retrieve content categories")
+
+
+@router.get(
+    "/content-categories/search",
+    response_model=List[ContentCategoryCode],
+    summary="콘텐츠 분류 검색",
+    description="쿼리 문자열로 콘텐츠 분류를 검색합니다.",
+    responses=COMMON_ERROR_RESPONSES
+)
+async def search_content_categories(
+    q: str = Query(..., description="검색어", example="정책"),
+    fields: Optional[List[str]] = Query(None, description="검색할 필드 목록", example=["name", "description"]),
+    limit: int = Query(10, ge=1, le=50, description="최대 결과 수", example=10),
+    service: ClassificationService = Depends(get_classification_service)
+) -> List[ContentCategoryCode]:
+    """Search content categories."""
+    try:
+        return await service.search_content_categories(
+            query=q,
+            search_fields=fields,
+            limit=limit
+        )
+    except Exception as e:
+        logger.error(f"Error searching content categories: {e}")
+        raise HTTPException(status_code=500, detail="Search failed")
 
 
 @router.get(
@@ -222,31 +247,6 @@ async def validate_content_category(
     except Exception as e:
         logger.error(f"Error validating content category {code}: {e}")
         raise HTTPException(status_code=500, detail="Validation failed")
-
-
-@router.get(
-    "/content-categories/search",
-    response_model=List[ContentCategoryCode],
-    summary="콘텐츠 분류 검색",
-    description="쿼리 문자열로 콘텐츠 분류를 검색합니다.",
-    responses=COMMON_ERROR_RESPONSES
-)
-async def search_content_categories(
-    q: str = Query(..., description="검색어", example="정책"),
-    fields: Optional[List[str]] = Query(None, description="검색할 필드 목록", example=["name", "description"]),
-    limit: int = Query(10, ge=1, le=50, description="최대 결과 수", example=10),
-    service: ClassificationService = Depends(get_classification_service)
-) -> List[ContentCategoryCode]:
-    """Search content categories."""
-    try:
-        return await service.search_content_categories(
-            query=q,
-            search_fields=fields,
-            limit=limit
-        )
-    except Exception as e:
-        logger.error(f"Error searching content categories: {e}")
-        raise HTTPException(status_code=500, detail="Search failed")
 
 
 # Unified Endpoints

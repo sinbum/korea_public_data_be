@@ -31,7 +31,7 @@ Task 10 has been completed with a comprehensive enhancement of the Celery task a
    - RESTful API for task control and monitoring
    - Comprehensive task lifecycle management
    - Real-time task status and result retrieval
-   - System statistics and health checks
+   - System statistics (서비스 전역 헬스체크는 `/health` 사용)
 
 5. **Legacy Compatibility** (`app/core/celery.py`)
    - Backward compatibility with existing imports
@@ -109,7 +109,8 @@ Task 10 has been completed with a comprehensive enhancement of the Celery task a
 - `GET /api/v1/tasks/workers` - List active workers and their status
 - `GET /api/v1/tasks/queues` - Queue statistics and health
 - `GET /api/v1/tasks/stats` - Comprehensive system statistics
-- `GET /api/v1/tasks/health` - Task system health check
+
+Note: 이전 버전의 `GET /api/v1/tasks/health` 엔드포인트는 제거되었습니다. 시스템 전반의 상태 확인은 전역 엔드포인트 `GET /health`를 사용하세요.
 
 ### Administrative Operations
 - `POST /api/v1/tasks/maintenance/purge-queue` - Emergency queue cleanup

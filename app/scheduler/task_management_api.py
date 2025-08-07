@@ -521,73 +521,7 @@ async def schedule_task(
     )
 
 
-@router.get(
-    "/health",
-    summary="[Deprecated] 작업 시스템 헬스 체크",
-    description=(
-        "이 엔드포인트는 더 이상 권장되지 않습니다. 시스템 상태는 `/api/v1/tasks/stats`를 사용하거나, "
-        "서비스 전역 상태 확인은 `/health`를 사용하세요. 브로커 연결 및 워커 응답 여부를 점검하는 임시 용도로만 남겨둡니다."
-    ),
-    deprecated=True,
-)
-async def health_check() -> Dict[str, Any]:
-    """
-    Check the health of the task management system.
-    
-    Returns the overall health status of the task system including
-    broker connectivity, worker availability, and system responsiveness.
-    """
-    try:
-        health_status = {
-            "status": "healthy",
-            "timestamp": datetime.utcnow().isoformat(),
-            "components": {}
-        }
-        
-        # Check broker connectivity
-        try:
-            inspect = celery_app.control.inspect(timeout=5)
-            ping_result = inspect.ping()
-            if ping_result:
-                health_status["components"]["broker"] = {
-                    "status": "healthy",
-                    "workers_responding": len(ping_result)
-                }
-            else:
-                health_status["components"]["broker"] = {
-                    "status": "no_workers",
-                    "workers_responding": 0
-                }
-                health_status["status"] = "degraded"
-        except Exception as e:
-            health_status["components"]["broker"] = {
-                "status": "unhealthy",
-                "error": str(e)
-            }
-            health_status["status"] = "unhealthy"
-        
-        # Check task registration
-        try:
-            total_tasks = len(celery_app.tasks)
-            health_status["components"]["task_registry"] = {
-                "status": "healthy",
-                "registered_tasks": total_tasks
-            }
-        except Exception as e:
-            health_status["components"]["task_registry"] = {
-                "status": "error",
-                "error": str(e)
-            }
-        
-        return health_status
-        
-    except Exception as e:
-        logger.error(f"Error in task management health check: {e}")
-        return {
-            "status": "error",
-            "timestamp": datetime.utcnow().isoformat(),
-            "error": str(e)
-        }
+# Note: 작업 시스템 헬스체크 엔드포인트(`/api/v1/tasks/health`)는 제거되었습니다.
 
 
 @router.post(

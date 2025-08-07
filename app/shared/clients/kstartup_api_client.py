@@ -123,8 +123,8 @@ class KStartupAPIClient(BaseAPIClient[PublicDataResponse]):
     def _convert_param_names(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """Convert parameter names to K-Startup API format"""
         param_mapping = {
-            "page_no": "page",
-            "num_of_rows": "perPage", 
+            "page_no": "pageNo",
+            "num_of_rows": "numOfRows", 
             "business_name": "businessName",
             "business_type": "businessType",
             "content_type": "contentType",
@@ -157,9 +157,13 @@ class KStartupAPIClient(BaseAPIClient[PublicDataResponse]):
                 import json
                 json_data = json.loads(content)
                 parsed_data = self._process_json_response(json_data)
-            except (json.JSONDecodeError, ValueError):
+            except (json.JSONDecodeError, ValueError) as json_err:
                 # Fall back to XML parsing
-                parsed_data = self._parse_response_data(content)
+                try:
+                    parsed_data = self._parse_response_data(content)
+                except DataParsingError as xml_err:
+                    # Re-raise parsing error to satisfy tests expecting DataParsingError
+                    raise xml_err
             
             # Create appropriate KStartup response based on endpoint
             endpoint_name = getattr(self, '_current_endpoint', 'unknown')

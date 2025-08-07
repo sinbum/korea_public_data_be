@@ -16,7 +16,7 @@ groups:
               to: 0
             datasourceUid: prometheus
             model:
-              expr: sum(rate(http_status_codes_total{status_code=~"5.."}[5m]))
+              expr: sum(rate(http_requests_total{status="5xx", handler=~"/api/v1/announcements.*"}[5m]))
               instant: false
               interval: ""
           - refId: B
@@ -25,7 +25,7 @@ groups:
               to: 0
             datasourceUid: prometheus
             model:
-              expr: sum(rate(http_status_codes_total[5m]))
+              expr: sum(rate(http_requests_total{handler=~"/api/v1/announcements.*"}[5m]))
               instant: false
               interval: ""
           - refId: C
@@ -56,7 +56,7 @@ groups:
               to: 0
             datasourceUid: prometheus
             model:
-              expr: sum(rate(http_status_codes_total{status_code=~"5.."}[5m]))
+              expr: sum(rate(http_requests_total{status="5xx", handler=~"/api/v1/announcements.*"}[5m]))
               instant: false
               interval: ""
           - refId: B
@@ -65,7 +65,7 @@ groups:
               to: 0
             datasourceUid: prometheus
             model:
-              expr: sum(rate(http_status_codes_total[5m]))
+              expr: sum(rate(http_requests_total{handler=~"/api/v1/announcements.*"}[5m]))
               instant: false
               interval: ""
           - refId: C
@@ -128,6 +128,399 @@ groups:
         for: 5m
         annotations:
           summary: "p99 latency > 1s"
+        labels:
+          severity: warning
+        isPaused: false
+        notification_settings:
+          receiver: slack
+
+      # Contents endpoint specific alerts (Discord)
+      - uid: contents-5xx-rate
+        title: High 5xx error rate - Contents
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: sum(rate(http_requests_total{status="5xx", handler=~"/api/v1/contents.*"}[5m]))
+              instant: false
+              interval: ""
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: sum(rate(http_requests_total{handler=~"/api/v1/contents.*"}[5m]))
+              instant: false
+              interval: ""
+          - refId: C
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: -100
+            model:
+              type: math
+              expression: A / B > 0.05
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: "Contents endpoint 5xx error rate > 5%"
+        labels:
+          severity: critical
+        isPaused: false
+        notification_settings:
+          receiver: discord
+
+      - uid: contents-5xx-rate-slack
+        title: High 5xx error rate - Contents (Slack)
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: sum(rate(http_requests_total{status="5xx", handler=~"/api/v1/contents.*"}[5m]))
+              instant: false
+              interval: ""
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: sum(rate(http_requests_total{handler=~"/api/v1/contents.*"}[5m]))
+              instant: false
+              interval: ""
+          - refId: C
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: -100
+            model:
+              type: math
+              expression: A / B > 0.05
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: "Contents endpoint 5xx error rate > 5%"
+        labels:
+          severity: critical
+        isPaused: false
+        notification_settings:
+          receiver: slack
+
+      - uid: contents-latency-p99
+        title: High latency p99 - Contents
+        condition: A
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{handler=~"/api/v1/contents.*"}[5m])) by (le)) > 1
+              instant: false
+              interval: ""
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: "Contents endpoint p99 latency > 1s"
+        labels:
+          severity: warning
+        isPaused: false
+        notification_settings:
+          receiver: discord
+
+      - uid: contents-latency-p99-slack
+        title: High latency p99 - Contents (Slack)
+        condition: A
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{handler=~"/api/v1/contents.*"}[5m])) by (le)) > 1
+              instant: false
+              interval: ""
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: "Contents endpoint p99 latency > 1s"
+        labels:
+          severity: warning
+        isPaused: false
+        notification_settings:
+          receiver: slack
+
+      # Businesses endpoint specific alerts (Discord/Slack)
+      - uid: businesses-5xx-rate
+        title: High 5xx error rate - Businesses
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: sum(rate(http_requests_total{status="5xx", handler=~"/api/v1/businesses.*"}[5m]))
+              instant: false
+              interval: ""
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: sum(rate(http_requests_total{handler=~"/api/v1/businesses.*"}[5m]))
+              instant: false
+              interval: ""
+          - refId: C
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: -100
+            model:
+              type: math
+              expression: A / B > 0.05
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: "Businesses endpoint 5xx error rate > 5%"
+        labels:
+          severity: critical
+        isPaused: false
+        notification_settings:
+          receiver: discord
+
+      - uid: businesses-5xx-rate-slack
+        title: High 5xx error rate - Businesses (Slack)
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: sum(rate(http_requests_total{status="5xx", handler=~"/api/v1/businesses.*"}[5m]))
+              instant: false
+              interval: ""
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: sum(rate(http_requests_total{handler=~"/api/v1/businesses.*"}[5m]))
+              instant: false
+              interval: ""
+          - refId: C
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: -100
+            model:
+              type: math
+              expression: A / B > 0.05
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: "Businesses endpoint 5xx error rate > 5%"
+        labels:
+          severity: critical
+        isPaused: false
+        notification_settings:
+          receiver: slack
+
+      - uid: businesses-latency-p99
+        title: High latency p99 - Businesses
+        condition: A
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{handler=~"/api/v1/businesses.*"}[5m])) by (le)) > 1
+              instant: false
+              interval: ""
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: "Businesses endpoint p99 latency > 1s"
+        labels:
+          severity: warning
+        isPaused: false
+        notification_settings:
+          receiver: discord
+
+      - uid: businesses-latency-p99-slack
+        title: High latency p99 - Businesses (Slack)
+        condition: A
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{handler=~"/api/v1/businesses.*"}[5m])) by (le)) > 1
+              instant: false
+              interval: ""
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: "Businesses endpoint p99 latency > 1s"
+        labels:
+          severity: warning
+        isPaused: false
+        notification_settings:
+          receiver: slack
+
+      # Statistics endpoint specific alerts (Discord/Slack)
+      - uid: statistics-5xx-rate
+        title: High 5xx error rate - Statistics
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: sum(rate(http_requests_total{status="5xx", handler=~"/api/v1/statistics.*"}[5m]))
+              instant: false
+              interval: ""
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: sum(rate(http_requests_total{handler=~"/api/v1/statistics.*"}[5m]))
+              instant: false
+              interval: ""
+          - refId: C
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: -100
+            model:
+              type: math
+              expression: A / B > 0.05
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: "Statistics endpoint 5xx error rate > 5%"
+        labels:
+          severity: critical
+        isPaused: false
+        notification_settings:
+          receiver: discord
+
+      - uid: statistics-5xx-rate-slack
+        title: High 5xx error rate - Statistics (Slack)
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: sum(rate(http_requests_total{status="5xx", handler=~"/api/v1/statistics.*"}[5m]))
+              instant: false
+              interval: ""
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: sum(rate(http_requests_total{handler=~"/api/v1/statistics.*"}[5m]))
+              instant: false
+              interval: ""
+          - refId: C
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: -100
+            model:
+              type: math
+              expression: A / B > 0.05
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: "Statistics endpoint 5xx error rate > 5%"
+        labels:
+          severity: critical
+        isPaused: false
+        notification_settings:
+          receiver: slack
+
+      - uid: statistics-latency-p99
+        title: High latency p99 - Statistics
+        condition: A
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{handler=~"/api/v1/statistics.*"}[5m])) by (le)) > 1
+              instant: false
+              interval: ""
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: "Statistics endpoint p99 latency > 1s"
+        labels:
+          severity: warning
+        isPaused: false
+        notification_settings:
+          receiver: discord
+
+      - uid: statistics-latency-p99-slack
+        title: High latency p99 - Statistics (Slack)
+        condition: A
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{handler=~"/api/v1/statistics.*"}[5m])) by (le)) > 1
+              instant: false
+              interval: ""
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: "Statistics endpoint p99 latency > 1s"
         labels:
           severity: warning
         isPaused: false

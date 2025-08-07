@@ -135,6 +135,7 @@ class BaseAPIClient(ABC, Generic[T]):
             try:
                 yield self
             finally:
+                # Ensure we restore the previous client reference
                 self.client = old_client
     
     # Template method pattern implementation
