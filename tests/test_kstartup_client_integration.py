@@ -130,6 +130,8 @@ class TestKStartupClientAsyncMethods:
             mock_client_instance.async_get = AsyncMock()
             
             # Create a proper async context manager
+            from contextlib import asynccontextmanager
+            @asynccontextmanager
             async def async_context_manager():
                 yield mock_client_instance
             
@@ -168,6 +170,8 @@ class TestKStartupClientAsyncMethods:
             mock_client_instance = AsyncMock()
             mock_client_instance.async_get = AsyncMock()
             
+            from contextlib import asynccontextmanager
+            @asynccontextmanager
             async def async_context_manager():
                 yield mock_client_instance
             
@@ -180,8 +184,10 @@ class TestKStartupClientAsyncMethods:
                 APIResponse(success=True, data=Mock(), status_code=200)
             ]
             
-            # Mock asyncio.gather to return our mock responses
-            with patch('asyncio.gather', return_value=mock_responses):
+            # Mock asyncio.gather to return awaitable that yields our mock responses
+            async def _dummy_gather(*args, **kwargs):
+                return mock_responses
+            with patch('asyncio.gather', _dummy_gather):
                 endpoints = ["getAnnouncementInformation01", "getBusinessInformation01"]
                 params_list = [{"page_no": 1}, {"page_no": 1}]
                 
@@ -335,7 +341,6 @@ class TestKStartupClientContextManagers:
             
             mock_async_client.return_value.__aenter__ = AsyncMock(return_value=mock_client_instance)
             mock_async_client.return_value.__aexit__ = AsyncMock(return_value=None)
-            mock_async_client.return_value = async_client_context()
             
             async with mock_kstartup_client.async_client() as client:
                 assert client == mock_kstartup_client

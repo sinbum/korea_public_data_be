@@ -527,3 +527,51 @@ groups:
         notification_settings:
           receiver: slack
 
+      # --- Test alerts (use temporarily to verify Discord/Slack delivery) ---
+      - uid: test-discord
+        title: Test alert - Discord
+        condition: A
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: -100
+            model:
+              type: math
+              expression: 1
+        noDataState: NoData
+        execErrState: Error
+        for: 1m
+        annotations:
+          summary: "This is a test alert to verify Discord webhook delivery"
+        labels:
+          severity: info
+        isPaused: false
+        notification_settings:
+          receiver: discord
+
+        
+      - uid: test-slack
+        title: Test alert - Slack
+        condition: A
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: -100
+            model:
+              type: math
+              expression: 1
+        noDataState: NoData
+        execErrState: Error
+        for: 1m
+        annotations:
+          summary: "This is a test alert to verify Slack webhook delivery"
+        labels:
+          severity: info
+        isPaused: false
+        notification_settings:
+          receiver: slack
+

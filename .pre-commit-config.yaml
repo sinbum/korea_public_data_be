@@ -1,0 +1,10 @@
+repos:
+  - repo: local
+    hooks:
+      - id: check-root-files
+        name: check-root-files
+        entry: bash scripts/hooks/check-root-files.sh
+        language: system
+        pass_filenames: false
+
+

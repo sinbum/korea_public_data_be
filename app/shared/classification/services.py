@@ -395,8 +395,19 @@ class ClassificationService:
         try:
             results = []
             
+            # Normalize code_type aliases for robustness
+            code_type = request.code_type
+            if code_type:
+                alias_map = {
+                    "business": ClassificationCodeType.BUSINESS_CATEGORY.value,
+                    "content": ClassificationCodeType.CONTENT_CATEGORY.value,
+                    "biz": ClassificationCodeType.BUSINESS_CATEGORY.value,
+                    "cts": ClassificationCodeType.CONTENT_CATEGORY.value,
+                }
+                code_type = alias_map.get(code_type, code_type)
+
             # Search business categories if no type specified or type matches
-            if not request.code_type or request.code_type == ClassificationCodeType.BUSINESS_CATEGORY.value:
+            if not code_type or code_type == ClassificationCodeType.BUSINESS_CATEGORY.value:
                 business_results = await self.search_business_categories(
                     request.query,
                     request.fields,
@@ -405,7 +416,7 @@ class ClassificationService:
                 results.extend(business_results)
             
             # Search content categories if no type specified or type matches
-            if not request.code_type or request.code_type == ClassificationCodeType.CONTENT_CATEGORY.value:
+            if not code_type or code_type == ClassificationCodeType.CONTENT_CATEGORY.value:
                 content_results = await self.search_content_categories(
                     request.query,
                     request.fields,

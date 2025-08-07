@@ -399,7 +399,16 @@ async def get_code_recommendations(
 ) -> List[Dict[str, Any]]:
     """Get code recommendations based on context."""
     try:
-        # Validate code_type if provided
+        # Normalize and validate code_type if provided
+        if code_type:
+            alias_map = {
+                "business": ClassificationCodeType.BUSINESS_CATEGORY.value,
+                "content": ClassificationCodeType.CONTENT_CATEGORY.value,
+                "biz": ClassificationCodeType.BUSINESS_CATEGORY.value,
+                "cts": ClassificationCodeType.CONTENT_CATEGORY.value,
+            }
+            code_type = alias_map.get(code_type, code_type)
+
         if code_type and code_type not in ClassificationCodeType.get_all_types():
             raise HTTPException(
                 status_code=400,

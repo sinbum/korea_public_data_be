@@ -18,6 +18,11 @@ from ...shared.exceptions import (
     create_api_exception_from_response,
     create_network_exception_from_httpx_error
 )
+from ...shared.exceptions.data_exceptions import (
+    DataParsingError,
+    DataTransformationError,
+    DataValidationError,
+)
 from ...core.request_context import get_request_id
 from .retry_strategies import (
     RetryStrategy,
@@ -166,8 +171,12 @@ class BaseAPIClient(ABC, Generic[T]):
             # Step 2: Apply authentication strategy
             request_params = self.auth_strategy.apply_auth(request_params)
             
-            # Step 3: Make HTTP request with retry logic
-            response = self._make_request_with_retry(request_params)
+            # Step 3: Make HTTP request with retry logic via RetryExecutor,
+            # wrapping the overridable _make_request_with_retry so tests can patch it
+            def _op() -> httpx.Response:
+                return self._make_request_with_retry(request_params)
+            operation_name = f"{request_params.get('method', 'REQUEST')} {request_params.get('url', 'unknown')}"
+            response = self.retry_executor.execute_sync(_op, operation_name)
             
             # Step 4: Post-process response (hook method)
             processed_response = self._postprocess_response(response)
@@ -175,6 +184,8 @@ class BaseAPIClient(ABC, Generic[T]):
             # Step 5: Transform to domain model (hook method)
             return self._transform_response(processed_response)
             
+        except (DataParsingError, DataTransformationError, DataValidationError):
+            raise
         except Exception as e:
             logger.error(f"API request failed: {e}")
             status_code = getattr(e, 'status_code', None)
@@ -243,10 +254,15 @@ class BaseAPIClient(ABC, Generic[T]):
     
     def _postprocess_response(self, response: httpx.Response) -> Dict[str, Any]:
         """Hook method for response post-processing"""
+        raw_headers = getattr(response, 'headers', {})
+        try:
+            headers = dict(raw_headers)
+        except Exception:
+            headers = {}
         return {
-            "status_code": response.status_code,
-            "content": response.text,
-            "headers": dict(response.headers)
+            "status_code": getattr(response, 'status_code', 500),
+            "content": getattr(response, 'text', ""),
+            "headers": headers
         }
     
     @abstractmethod
@@ -308,6 +324,8 @@ class BaseAPIClient(ABC, Generic[T]):
             # Step 5: Transform to domain model (hook method)
             return self._transform_response(processed_response)
             
+        except (DataParsingError, DataTransformationError, DataValidationError):
+            raise
         except Exception as e:
             logger.error(f"Async API request failed: {e}")
             status_code = getattr(e, 'status_code', None)

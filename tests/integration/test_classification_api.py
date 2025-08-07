@@ -187,6 +187,19 @@ def test_recommendations_invalid_code_type_returns_400(client):
     assert r.status_code == 400
 
 
+def test_recommendations_with_business_alias(client):
+    r = client.get(
+        "/api/v1/classification/recommendations",
+        params={"context": "해외 진출 관련 지원", "code_type": "business", "limit": 5},
+    )
+    assert r.status_code == 200
+    items = r.json()
+    assert isinstance(items, list)
+    # expect only business_category results
+    for item in items:
+        assert item["type"] == "business_category"
+
+
 def test_statistics(client):
     r = client.get("/api/v1/classification/statistics")
     assert r.status_code == 200
