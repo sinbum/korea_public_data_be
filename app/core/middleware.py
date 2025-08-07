@@ -13,6 +13,7 @@ from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
+from .rate_limit import RedisRateLimitMiddleware  # optional redis-backed limiter
 
 from ..shared.exceptions import DataValidationError, KoreanPublicAPIError
 from ..shared.schemas import ErrorResponse
@@ -41,13 +42,7 @@ class RequestValidationMiddleware(BaseHTTPMiddleware):
         logger.info(f"Request: {request.method} {request.url.path}")
         
         try:
-            # 요청 본문 읽기 (POST, PUT, PATCH) - 조심스럽게 처리
-            if request.method in ["POST", "PUT", "PATCH"]:
-                # 요청 스트림을 소비하지 않고 로깅만 수행
-                # request.body()를 호출하면 스트림이 소비되어 FastAPI가 파싱할 수 없음
-                logger.debug(f"Processing {request.method} request to {request.url.path}")
-            
-            # 다음 미들웨어 또는 엔드포인트 호출
+            # 요청 본문은 소비하지 않고 메타만 기록
             response = await call_next(request)
             
             # 응답 시간 계산
@@ -55,9 +50,18 @@ class RequestValidationMiddleware(BaseHTTPMiddleware):
             response.headers["X-Process-Time"] = str(process_time)
             
             # 응답 로깅
+            # 요청 ID를 로깅에 포함
+            request_id = getattr(request.state, "request_id", None)
+            extra = {
+                "request_id": request_id,
+                "method": request.method,
+                "path": request.url.path,
+                "status_code": response.status_code,
+                "duration_ms": int(process_time * 1000),
+            }
             logger.info(
-                f"Response: {request.method} {request.url.path} "
-                f"- Status: {response.status_code} - Time: {process_time:.3f}s"
+                "Request completed",
+                extra=extra,
             )
             
             return response

@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     
     # Redis
     redis_url: str = "redis://localhost:6379/0"
+
+    # Rate limit
+    rl_per_minute: int = 60
+    rl_per_hour: int = 1000
     
     # Logging
     log_level: str = "INFO"

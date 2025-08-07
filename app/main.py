@@ -17,6 +17,8 @@ from .core.middleware import (
     HealthCheckMiddleware,
     RequestIdMiddleware
 )
+from .core.rate_limit import RedisRateLimitMiddleware
+from .core.logging_config import setup_logging
 from .domains.announcements.router import router as announcements_router
 from .domains.businesses.router import router as businesses_router
 from .domains.contents.router import router as contents_router
@@ -42,11 +44,8 @@ from .shared.exceptions.data_exceptions import DataValidationError
 from .shared.swagger_config import tags_metadata, swagger_ui_parameters
 from .shared.security.schemas import SECURITY_SCHEMES
 
-# 로깅 설정
-logging.basicConfig(
-    level=getattr(logging, settings.log_level),
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+# 로깅 설정 (JSON in prod, pretty in dev)
+setup_logging(debug=bool(settings.debug), level=str(settings.log_level))
 
 logger = logging.getLogger(__name__)
 
@@ -244,9 +243,21 @@ app.openapi = custom_openapi
 # 미들웨어 등록 (순서 중요: 먼저 등록된 미들웨어가 나중에 실행됨)
 app.add_middleware(ResponseValidationMiddleware)
 app.add_middleware(RequestValidationMiddleware)
-app.add_middleware(RateLimitMiddleware, calls_per_minute=60, calls_per_hour=1000)
+app.add_middleware(RateLimitMiddleware, calls_per_minute=settings.rl_per_minute, calls_per_hour=settings.rl_per_hour)
 app.add_middleware(HealthCheckMiddleware)
 app.add_middleware(RequestIdMiddleware)
+
+# Redis 기반 분산 레이트리밋(가능 시 자동 활성화)
+try:
+    app.add_middleware(
+        RedisRateLimitMiddleware,
+        redis_url=settings.redis_url,
+        calls_per_minute=settings.rl_per_minute,
+        calls_per_hour=settings.rl_per_hour,
+    )
+    logger.info("RedisRateLimitMiddleware enabled")
+except Exception as e:
+    logger.warning(f"RedisRateLimitMiddleware disabled: {e}")
 
 # API 버전 미들웨어 (요청 초기에 처리)
 app.add_middleware(
@@ -265,7 +276,7 @@ app.add_middleware(
 # CORS 설정
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.allowed_origins,  # 프론트엔드 도메인 허용
+    allow_origins=settings.allowed_origins if settings.debug else [o for o in settings.allowed_origins if o != "*"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
