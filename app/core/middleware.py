@@ -8,6 +8,7 @@ import time
 import json
 import logging
 from typing import Callable, Any, Dict, Optional
+import uuid
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -327,15 +328,26 @@ class HealthCheckMiddleware(BaseHTTPMiddleware):
         Returns:
             HTTP 응답
         """
-        # 헬스체크 경로
-        if request.url.path == "/health":
-            return JSONResponse(
-                status_code=200,
-                content={
-                    "status": "healthy",
-                    "timestamp": time.time(),
-                    "service": "Korean Public API Platform"
-                }
-            )
-        
+        # NOTE: 실제 헬스체크는 라우트(`/health`)에서 DB ping 포함해 처리합니다.
+        # 이 미들웨어는 통과만 시킵니다.
         return await call_next(request)
+
+
+class RequestIdMiddleware(BaseHTTPMiddleware):
+    """요청 추적을 위한 Request ID 헤더 추가 미들웨어"""
+
+    HEADER_NAME = "X-Request-ID"
+
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        # 기존/클라이언트 제공 ID 수용, 없으면 생성
+        request_id = request.headers.get(self.HEADER_NAME) or str(uuid.uuid4())
+
+        # 요청 컨텍스트에 보관
+        request.state.request_id = request_id
+
+        # 다음 체인 호출
+        response = await call_next(request)
+
+        # 응답 헤더에 반영
+        response.headers[self.HEADER_NAME] = request_id
+        return response

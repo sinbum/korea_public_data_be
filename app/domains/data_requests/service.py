@@ -42,7 +42,11 @@ class DataRequestService:
         # 카테고리 존재 확인
         category = await self.category_repo.find_by_id(request_data.category_id)
         if not category:
-            raise BaseAPIException(f"카테고리를 찾을 수 없습니다: {request_data.category_id}")
+            raise BaseAPIException(
+                status_code=404,
+                error_code="CATEGORY_NOT_FOUND",
+                message=f"카테고리를 찾을 수 없습니다: {request_data.category_id}"
+            )
         
         # 데이터 요청 생성
         data_request_data = DataRequestData(
@@ -53,7 +57,8 @@ class DataRequestService:
             user_name=user_name,
             user_email=user_email,
             priority=request_data.priority or DataRequestPriority.MEDIUM,
-            tags=request_data.tags or []
+            tags=request_data.tags or [],
+            reference_data_url=request_data.reference_data_url
         )
         
         data_request = DataRequest(
@@ -75,7 +80,11 @@ class DataRequestService:
         """데이터 요청 상세 조회"""
         data_request = await self.data_request_repo.find_by_id(request_id)
         if not data_request:
-            raise BaseAPIException(f"데이터 요청을 찾을 수 없습니다: {request_id}")
+            raise BaseAPIException(
+                status_code=404,
+                error_code="DATA_REQUEST_NOT_FOUND",
+                message=f"데이터 요청을 찾을 수 없습니다: {request_id}"
+            )
         
         return await self._build_response(data_request, user_id=user_id)
     
@@ -101,7 +110,7 @@ class DataRequestService:
             data=response_items,
             total=paginated_result.total,
             page=paginated_result.page,
-            limit=paginated_result.limit,
+            limit=pagination.size,
             total_pages=paginated_result.total_pages,
             has_next=paginated_result.has_next,
             has_previous=paginated_result.has_previous
@@ -116,11 +125,19 @@ class DataRequestService:
         """데이터 요청 수정"""
         data_request = await self.data_request_repo.find_by_id(request_id)
         if not data_request:
-            raise BaseAPIException(f"데이터 요청을 찾을 수 없습니다: {request_id}")
+            raise BaseAPIException(
+                status_code=404,
+                error_code="DATA_REQUEST_NOT_FOUND",
+                message=f"데이터 요청을 찾을 수 없습니다: {request_id}"
+            )
         
         # 권한 확인 (요청자만 수정 가능)
         if data_request.data.user_id != user_id:
-            raise BaseAPIException("수정 권한이 없습니다.")
+            raise BaseAPIException(
+                status_code=403,
+                error_code="ACCESS_DENIED",
+                message="수정 권한이 없습니다."
+            )
         
         # 업데이트 데이터 적용
         update_dict = update_data.model_dump(exclude_unset=True)
@@ -130,7 +147,11 @@ class DataRequestService:
             if "category_id" in update_dict:
                 category = await self.category_repo.find_by_id(update_dict["category_id"])
                 if not category:
-                    raise BaseAPIException(f"카테고리를 찾을 수 없습니다: {update_dict['category_id']}")
+                    raise BaseAPIException(
+                        status_code=404,
+                        error_code="CATEGORY_NOT_FOUND",
+                        message=f"카테고리를 찾을 수 없습니다: {update_dict['category_id']}"
+                    )
             
             # 업데이트 실행
             for key, value in update_dict.items():
@@ -146,11 +167,19 @@ class DataRequestService:
         """데이터 요청 삭제"""
         data_request = await self.data_request_repo.find_by_id(request_id)
         if not data_request:
-            raise BaseAPIException(f"데이터 요청을 찾을 수 없습니다: {request_id}")
+            raise BaseAPIException(
+                status_code=404,
+                error_code="DATA_REQUEST_NOT_FOUND",
+                message=f"데이터 요청을 찾을 수 없습니다: {request_id}"
+            )
         
         # 권한 확인 (요청자만 삭제 가능)
         if data_request.data.user_id != user_id:
-            raise BaseAPIException("삭제 권한이 없습니다.")
+            raise BaseAPIException(
+                status_code=403,
+                error_code="ACCESS_DENIED",
+                message="삭제 권한이 없습니다."
+            )
         
         return await self.data_request_repo.delete(request_id)
     
@@ -164,7 +193,11 @@ class DataRequestService:
         # 요청 존재 확인
         data_request = await self.data_request_repo.find_by_id(request_id)
         if not data_request:
-            raise BaseAPIException(f"데이터 요청을 찾을 수 없습니다: {request_id}")
+            raise BaseAPIException(
+                status_code=404,
+                error_code="DATA_REQUEST_NOT_FOUND",
+                message=f"데이터 요청을 찾을 수 없습니다: {request_id}"
+            )
         
         # 기존 투표 확인
         existing_vote = await self.vote_repo.find_by_request_and_user(request_id, user_id)
@@ -221,7 +254,11 @@ class DataRequestService:
         """데이터 요청 상태 변경 (관리자용)"""
         data_request = await self.data_request_repo.find_by_id(request_id)
         if not data_request:
-            raise BaseAPIException(f"데이터 요청을 찾을 수 없습니다: {request_id}")
+            raise BaseAPIException(
+                status_code=404,
+                error_code="DATA_REQUEST_NOT_FOUND",
+                message=f"데이터 요청을 찾을 수 없습니다: {request_id}"
+            )
         
         success = await self.data_request_repo.update_status(
             request_id,
@@ -231,7 +268,11 @@ class DataRequestService:
         )
         
         if not success:
-            raise BaseAPIException("상태 업데이트에 실패했습니다.")
+            raise BaseAPIException(
+                status_code=500,
+                error_code="UPDATE_FAILED",
+                message="상태 업데이트에 실패했습니다."
+            )
         
         # 업데이트된 요청 조회
         updated_request = await self.data_request_repo.find_by_id(request_id)
@@ -267,7 +308,7 @@ class DataRequestService:
             data=response_items,
             total=paginated_result.total,
             page=paginated_result.page,
-            limit=paginated_result.limit,
+            limit=paginated_result.size,
             total_pages=paginated_result.total_pages,
             has_next=paginated_result.has_next,
             has_previous=paginated_result.has_previous
@@ -340,6 +381,7 @@ class DataRequestService:
             user_voted=user_voted,
             user_vote_type=user_vote_type,
             tags=data_request.data.tags,
+            reference_data_url=data_request.data.reference_data_url,
             admin_notes=data_request.data.admin_notes,
             estimated_completion=data_request.data.estimated_completion,
             actual_completion=data_request.data.actual_completion,
@@ -359,7 +401,11 @@ class CategoryService:
         # 중복 이름 확인
         existing = await self.category_repo.find_by_name(request_data.name)
         if existing:
-            raise BaseAPIException(f"이미 존재하는 카테고리입니다: {request_data.name}")
+            raise BaseAPIException(
+                status_code=409,
+                error_code="CATEGORY_ALREADY_EXISTS",
+                message=f"이미 존재하는 카테고리입니다: {request_data.name}"
+            )
         
         # 카테고리 생성
         category = Category(
@@ -399,7 +445,11 @@ class CategoryService:
         """카테고리 상세 조회"""
         category = await self.category_repo.find_by_id(category_id)
         if not category:
-            raise BaseAPIException(f"카테고리를 찾을 수 없습니다: {category_id}")
+            raise BaseAPIException(
+                status_code=404,
+                error_code="CATEGORY_NOT_FOUND",
+                message=f"카테고리를 찾을 수 없습니다: {category_id}"
+            )
         
         return CategoryResponse(
             id=category.id,

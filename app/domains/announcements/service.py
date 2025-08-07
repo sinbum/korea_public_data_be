@@ -428,10 +428,14 @@ class AnnouncementService(BaseService[Announcement, AnnouncementCreate, Announce
             
             # 마감임박순 선택 시 마감일이 오늘 이후인 공고만 필터링
             if sort_by == "end_date":
-                from datetime import datetime, timezone
-                today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                from datetime import datetime
+                from zoneinfo import ZoneInfo
+                
+                # 한국시간(Asia/Seoul) 기준으로 오늘 날짜 계산
+                korea_tz = ZoneInfo("Asia/Seoul")
+                today = datetime.now(korea_tz).strftime("%Y-%m-%d")
                 filters.gte("announcement_data.end_date", today)
-                logger.info(f"마감임박순 정렬: 오늘({today}) 이후 마감인 공고만 필터링")
+                logger.info(f"마감임박순 정렬: 오늘({today}, KST) 이후 마감인 공고만 필터링")
             
             # 정렬 설정 (sort_by 파라미터에 따라 announcement_date 또는 end_date 기준)
             from ...core.interfaces.base_repository import SortOption

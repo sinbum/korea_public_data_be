@@ -14,7 +14,8 @@ from .core.middleware import (
     RequestValidationMiddleware,
     ResponseValidationMiddleware,
     RateLimitMiddleware,
-    HealthCheckMiddleware
+    HealthCheckMiddleware,
+    RequestIdMiddleware
 )
 from .domains.announcements.router import router as announcements_router
 from .domains.businesses.router import router as businesses_router
@@ -245,6 +246,7 @@ app.add_middleware(ResponseValidationMiddleware)
 app.add_middleware(RequestValidationMiddleware)
 app.add_middleware(RateLimitMiddleware, calls_per_minute=60, calls_per_hour=1000)
 app.add_middleware(HealthCheckMiddleware)
+app.add_middleware(RequestIdMiddleware)
 
 # API 버전 미들웨어 (요청 초기에 처리)
 app.add_middleware(

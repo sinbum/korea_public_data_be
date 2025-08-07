@@ -40,7 +40,13 @@ class Settings(BaseSettings):
     
     # Frontend CORS
     frontend_url: str = "http://localhost:3000"
-    allowed_origins: list[str] = ["http://localhost:3000", "http://localhost:3001"]
+    allowed_origins: list[str] = [
+        "http://localhost:3000",
+        "http://localhost:3001", 
+        "http://192.168.0.5:*",
+        "http://192.168.0.7:*",
+        "http://localhost:*"
+    ]
     
     class Config:
         env_file = ".env"

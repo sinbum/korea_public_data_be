@@ -105,14 +105,28 @@ class DataRequestRepository:
         sort_order = sort_mapping.get(filters.sort, sort_mapping["likes"])
         
         # 총 개수 조회
-        total = await self.collection.count_documents(query)
+        try:
+            total = await self.collection.count_documents(query)
+        except Exception as e:
+            print(f"Error counting documents: {e}")
+            total = 0
         
         # 페이지네이션 적용
-        skip = (pagination.page - 1) * pagination.limit
-        cursor = self.collection.find(query).sort(sort_order).skip(skip).limit(pagination.limit)
-        documents = await cursor.to_list(length=pagination.limit)
+        try:
+            skip = (pagination.page - 1) * pagination.size
+            cursor = self.collection.find(query).sort(sort_order).skip(skip).limit(pagination.size)
+            documents = await cursor.to_list(length=pagination.size)
+        except Exception as e:
+            print(f"Error fetching documents: {e}")
+            documents = []
         
-        items = [DataRequest(**doc) for doc in documents]
+        items = []
+        for doc in documents:
+            try:
+                items.append(DataRequest(**doc))
+            except Exception as e:
+                print(f"Error creating DataRequest from document: {e}")
+                continue
         
         return paginate_query_result(items, total, pagination)
     
@@ -139,9 +153,9 @@ class DataRequestRepository:
         total = await self.collection.count_documents(query)
         
         # 페이지네이션 적용
-        skip = (pagination.page - 1) * pagination.limit
-        cursor = self.collection.find(query).sort(sort_order).skip(skip).limit(pagination.limit)
-        documents = await cursor.to_list(length=pagination.limit)
+        skip = (pagination.page - 1) * pagination.size
+        cursor = self.collection.find(query).sort(sort_order).skip(skip).limit(pagination.size)
+        documents = await cursor.to_list(length=pagination.size)
         
         items = [DataRequest(**doc) for doc in documents]
         
@@ -179,9 +193,7 @@ class DataRequestRepository:
         ]
         
         status_counts = {}
-        # Note: Using synchronous iteration with Motor's aggregate 
-        # This gets converted to async internally by Motor
-        for doc in self.collection.aggregate(pipeline):
+        async for doc in self.collection.aggregate(pipeline):
             status_counts[doc["_id"]] = doc
         
         # 카테고리별 통계
@@ -195,7 +207,9 @@ class DataRequestRepository:
             }
         ]
         
-        category_counts = list(self.collection.aggregate(category_pipeline))
+        category_counts = []
+        async for doc in self.collection.aggregate(category_pipeline):
+            category_counts.append(doc)
         
         total_requests = sum(doc["count"] for doc in status_counts.values())
         total_votes = sum(doc["total_votes"] for doc in status_counts.values())
@@ -314,7 +328,9 @@ class VoteRepository:
             }
         ]
         
-        results = list(self.collection.aggregate(pipeline))
+        results = []
+        async for doc in self.collection.aggregate(pipeline):
+            results.append(doc)
         
         counts = {"like": 0, "dislike": 0}
         for result in results:

@@ -15,6 +15,7 @@ class DataRequestCreateRequest(BaseModel):
     category_id: str = Field(..., description="카테고리 ID", example="transport")
     priority: Optional[DataRequestPriority] = Field(default=DataRequestPriority.MEDIUM, description="우선순위")
     tags: Optional[List[str]] = Field(default_factory=list, description="태그 목록", example=["wifi", "공공", "서울"])
+    reference_data_url: Optional[str] = Field(None, description="참고 공공데이터 링크 주소", example="https://data.go.kr/dataset/example")
 
 
 class DataRequestUpdateRequest(BaseModel):
@@ -26,6 +27,7 @@ class DataRequestUpdateRequest(BaseModel):
     category_id: Optional[str] = Field(None, description="카테고리 ID")
     priority: Optional[DataRequestPriority] = Field(None, description="우선순위")
     tags: Optional[List[str]] = Field(None, description="태그 목록")
+    reference_data_url: Optional[str] = Field(None, description="참고 공공데이터 링크 주소")
 
 
 class DataRequestStatusUpdateRequest(BaseModel):
@@ -93,6 +95,7 @@ class DataRequestResponse(BaseModel):
     user_voted: Optional[bool] = Field(None, description="현재 사용자 투표 여부")
     user_vote_type: Optional[VoteType] = Field(None, description="현재 사용자 투표 타입")
     tags: List[str] = Field(default_factory=list, description="태그 목록")
+    reference_data_url: Optional[str] = Field(None, description="참고 공공데이터 링크 주소")
     admin_notes: Optional[str] = Field(None, description="관리자 메모")
     estimated_completion: Optional[datetime] = Field(None, description="예상 완료일")
     actual_completion: Optional[datetime] = Field(None, description="실제 완료일")

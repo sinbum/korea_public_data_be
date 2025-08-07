@@ -92,6 +92,9 @@ class DataRequestData(BaseModel):
     # === 검색/필터링용 필드 ===
     tags: List[str] = Field(default_factory=list, description="태그 목록")
     search_keywords: Optional[str] = Field(None, description="검색 키워드")
+    
+    # === 참고 데이터 링크 ===
+    reference_data_url: Optional[str] = Field(None, description="참고 공공데이터 링크 주소")
 
 
 class DataRequest(BaseDocument):
