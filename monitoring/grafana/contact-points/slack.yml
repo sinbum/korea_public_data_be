@@ -1,0 +1,15 @@
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: slack-webhook
+    receivers:
+      - uid: slack
+        type: slack
+        settings:
+          url: ${SLACK_WEBHOOK_URL}
+          title: '{{ template "slack.default.title" . }}'
+          text: '{{ template "slack.default.text" . }}'
+          mentionChannel: false
+        disableResolveMessage: false
+

@@ -14,6 +14,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 from .rate_limit import RedisRateLimitMiddleware  # optional redis-backed limiter
+from .request_context import set_request_id, clear_request_context
 
 from ..shared.exceptions import DataValidationError, KoreanPublicAPIError
 from ..shared.schemas import ErrorResponse
@@ -348,10 +349,12 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
 
         # 요청 컨텍스트에 보관
         request.state.request_id = request_id
+        set_request_id(request_id)
 
         # 다음 체인 호출
         response = await call_next(request)
 
         # 응답 헤더에 반영
         response.headers[self.HEADER_NAME] = request_id
+        clear_request_context()
         return response

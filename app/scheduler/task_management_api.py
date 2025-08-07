@@ -20,12 +20,12 @@ from .monitoring_tasks import get_monitoring_tasks
 logger = logging.getLogger(__name__)
 
 # Create router
-router = APIRouter(prefix="/api/v1/tasks", tags=["Task Management"])
+router = APIRouter(prefix="/api/v1/tasks", tags=["작업 관리"]) 
 
 
 # Pydantic models for API
 class TaskStatus(str, Enum):
-    """Task execution status."""
+    """작업 실행 상태."""
     PENDING = "PENDING"
     STARTED = "STARTED"
     SUCCESS = "SUCCESS"
@@ -35,7 +35,7 @@ class TaskStatus(str, Enum):
 
 
 class TaskPriority(str, Enum):
-    """Task priority levels."""
+    """작업 우선순위 레벨."""
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -43,7 +43,7 @@ class TaskPriority(str, Enum):
 
 
 class TaskCategory(str, Enum):
-    """Task categories."""
+    """작업 카테고리."""
     DATA_COLLECTION = "data_collection"
     VALIDATION = "validation"
     MAINTENANCE = "maintenance"
@@ -54,18 +54,18 @@ class TaskCategory(str, Enum):
 
 
 class TaskExecutionRequest(BaseModel):
-    """Request model for task execution."""
-    task_name: str = Field(..., description="Name of the task to execute")
-    args: List[Any] = Field(default=[], description="Task arguments")
-    kwargs: Dict[str, Any] = Field(default={}, description="Task keyword arguments")
-    queue: Optional[str] = Field(None, description="Specific queue to use")
-    priority: Optional[TaskPriority] = Field(TaskPriority.MEDIUM, description="Task priority")
-    countdown: Optional[int] = Field(None, description="Delay in seconds before execution")
-    eta: Optional[datetime] = Field(None, description="Estimated time of arrival for execution")
+    """작업 실행 요청 모델."""
+    task_name: str = Field(..., description="실행할 작업의 이름 (등록된 Celery task 명)")
+    args: List[Any] = Field(default=[], description="작업에 전달할 위치 기반 인자 (list)")
+    kwargs: Dict[str, Any] = Field(default={}, description="작업에 전달할 키워드 인자 (dict)")
+    queue: Optional[str] = Field(None, description="작업을 보낼 큐 이름 (미지정 시 기본 큐)")
+    priority: Optional[TaskPriority] = Field(TaskPriority.MEDIUM, description="작업 우선순위 (low/medium/high/critical)")
+    countdown: Optional[int] = Field(None, description="실행까지 지연할 초(second)")
+    eta: Optional[datetime] = Field(None, description="지정 시각(UTC) 이후 실행")
 
 
 class TaskInfo(BaseModel):
-    """Task information model."""
+    """작업 정보 모델."""
     name: str
     description: str
     category: TaskCategory
@@ -76,7 +76,7 @@ class TaskInfo(BaseModel):
 
 
 class TaskResult(BaseModel):
-    """Task execution result model."""
+    """작업 실행 결과 모델."""
     task_id: str
     task_name: str
     status: TaskStatus
@@ -88,7 +88,7 @@ class TaskResult(BaseModel):
 
 
 class QueueInfo(BaseModel):
-    """Queue information model."""
+    """큐 정보 모델."""
     name: str
     length: int
     consumers: int
@@ -97,7 +97,7 @@ class QueueInfo(BaseModel):
 
 
 class WorkerInfo(BaseModel):
-    """Worker information model."""
+    """워커 정보 모델."""
     name: str
     status: str
     active_tasks: int
@@ -106,7 +106,7 @@ class WorkerInfo(BaseModel):
 
 
 class SystemStats(BaseModel):
-    """System statistics model."""
+    """시스템 통계 모델."""
     total_workers: int
     total_queues: int
     active_tasks: int
@@ -118,7 +118,15 @@ class SystemStats(BaseModel):
 
 # API Endpoints
 
-@router.get("/", response_model=List[TaskInfo])
+@router.get(
+    "/",
+    response_model=List[TaskInfo],
+    summary="사용 가능한 작업 목록 조회",
+    description=(
+        "등록된 모든 작업을 조회합니다. 카테고리로 필터링할 수 있으며, "
+        "스케줄에 등록된 작업 여부와 스케줄 세부정보도 함께 제공합니다."
+    ),
+)
 async def list_available_tasks(
     category: Optional[TaskCategory] = Query(None, description="Filter by task category"),
     include_scheduled: bool = Query(True, description="Include scheduled task information")
@@ -185,7 +193,15 @@ async def list_available_tasks(
         raise HTTPException(status_code=500, detail=f"Failed to list tasks: {str(e)}")
 
 
-@router.post("/execute", response_model=Dict[str, Any])
+@router.post(
+    "/execute",
+    response_model=Dict[str, Any],
+    summary="작업 실행 요청",
+    description=(
+        "지정한 작업을 비동기로 실행합니다. 큐, 우선순위, 지연 실행(countdown)/ETA를 설정할 수 있으며, "
+        "응답으로 추적 가능한 task_id를 반환합니다."
+    ),
+)
 async def execute_task(request: TaskExecutionRequest) -> Dict[str, Any]:
     """
     Execute a task asynchronously.
@@ -249,7 +265,14 @@ async def execute_task(request: TaskExecutionRequest) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Failed to execute task: {str(e)}")
 
 
-@router.get("/status/{task_id}", response_model=TaskResult)
+@router.get(
+    "/status/{task_id}",
+    response_model=TaskResult,
+    summary="작업 상태 및 결과 조회",
+    description=(
+        "특정 task_id에 대한 현재 상태와 결과(완료 시), 실패 정보(실패 시), 실행 시간 등을 반환합니다."
+    ),
+)
 async def get_task_status(task_id: str) -> TaskResult:
     """
     Get the status and result of a specific task.
@@ -294,7 +317,13 @@ async def get_task_status(task_id: str) -> TaskResult:
         raise HTTPException(status_code=500, detail=f"Failed to get task status: {str(e)}")
 
 
-@router.delete("/cancel/{task_id}")
+@router.delete(
+    "/cancel/{task_id}",
+    summary="작업 취소",
+    description=(
+        "대기 중이거나 실행 중인 작업을 취소합니다. 이미 실행 중인 작업은 즉시 중단되지 않을 수 있습니다."
+    ),
+)
 async def cancel_task(task_id: str) -> Dict[str, Any]:
     """
     Cancel a pending or running task.
@@ -321,7 +350,15 @@ async def cancel_task(task_id: str) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Failed to cancel task: {str(e)}")
 
 
-@router.get("/queues", response_model=List[QueueInfo])
+@router.get(
+    "/queues",
+    response_model=List[QueueInfo],
+    summary="큐 상태 조회",
+    description=(
+        "구성된 모든 큐의 현재 상태(메시지 수, 소비자 수 등)를 조회합니다. 브로커에 따라 "
+        "일부 통계는 제한될 수 있습니다."
+    ),
+)
 async def list_queues() -> List[QueueInfo]:
     """
     List all configured queues with their current status.
@@ -370,7 +407,14 @@ async def list_queues() -> List[QueueInfo]:
         raise HTTPException(status_code=500, detail=f"Failed to list queues: {str(e)}")
 
 
-@router.get("/workers", response_model=List[WorkerInfo])
+@router.get(
+    "/workers",
+    response_model=List[WorkerInfo],
+    summary="워커 상태 조회",
+    description=(
+        "활성화된 모든 워커와 각 워커의 활성 작업 수, 처리 통계, 부하 지표 등을 조회합니다."
+    ),
+)
 async def list_workers() -> List[WorkerInfo]:
     """
     List all active workers with their current status.
@@ -406,7 +450,14 @@ async def list_workers() -> List[WorkerInfo]:
         raise HTTPException(status_code=500, detail=f"Failed to list workers: {str(e)}")
 
 
-@router.get("/stats", response_model=SystemStats)
+@router.get(
+    "/stats",
+    response_model=SystemStats,
+    summary="시스템 통계 조회",
+    description=(
+        "작업 시스템 전반의 통계(워커 수, 활성 작업 수, 예약 작업 수 등)를 제공합니다."
+    ),
+)
 async def get_system_stats() -> SystemStats:
     """
     Get comprehensive system statistics.
@@ -441,13 +492,20 @@ async def get_system_stats() -> SystemStats:
         raise HTTPException(status_code=500, detail=f"Failed to get system stats: {str(e)}")
 
 
-@router.post("/schedule")
+@router.post(
+    "/schedule",
+    summary="주기적 작업 스케줄 등록 (미구현)",
+    description=(
+        "작업을 크론 표현식으로 주기 실행하도록 등록하는 기능입니다. 현재 버전에서는 "
+        "지속 스케줄 저장소가 없어 501 Not Implemented를 반환합니다."
+    ),
+)
 async def schedule_task(
-    task_name: str = Body(..., description="Name of the task to schedule"),
-    cron_expression: str = Body(..., description="Cron expression for scheduling"),
-    args: List[Any] = Body(default=[], description="Task arguments"),
-    kwargs: Dict[str, Any] = Body(default={}, description="Task keyword arguments"),
-    queue: Optional[str] = Body(None, description="Queue to use")
+    task_name: str = Body(..., description="스케줄링할 작업 이름"),
+    cron_expression: str = Body(..., description="크론 표현식 (예: '0 */6 * * *')"),
+    args: List[Any] = Body(default=[], description="작업 인자 (list)"),
+    kwargs: Dict[str, Any] = Body(default={}, description="작업 키워드 인자 (dict)"),
+    queue: Optional[str] = Body(None, description="사용할 큐 이름")
 ) -> Dict[str, Any]:
     """
     Schedule a task for periodic execution (not implemented in this version).
@@ -463,7 +521,15 @@ async def schedule_task(
     )
 
 
-@router.get("/health")
+@router.get(
+    "/health",
+    summary="[Deprecated] 작업 시스템 헬스 체크",
+    description=(
+        "이 엔드포인트는 더 이상 권장되지 않습니다. 시스템 상태는 `/api/v1/tasks/stats`를 사용하거나, "
+        "서비스 전역 상태 확인은 `/health`를 사용하세요. 브로커 연결 및 워커 응답 여부를 점검하는 임시 용도로만 남겨둡니다."
+    ),
+    deprecated=True,
+)
 async def health_check() -> Dict[str, Any]:
     """
     Check the health of the task management system.
@@ -524,9 +590,15 @@ async def health_check() -> Dict[str, Any]:
         }
 
 
-@router.post("/maintenance/purge-queue")
+@router.post(
+    "/maintenance/purge-queue",
+    summary="큐 비우기 (긴급 관리)",
+    description=(
+        "지정한 큐의 모든 대기 메시지를 즉시 삭제합니다. 되돌릴 수 없으므로 주의해서 사용하세요."
+    ),
+)
 async def purge_queue(
-    queue_name: str = Body(..., description="Name of the queue to purge")
+    queue_name: str = Body(..., description="비울 큐 이름")
 ) -> Dict[str, Any]:
     """
     Purge all messages from a specific queue.
@@ -552,10 +624,17 @@ async def purge_queue(
         raise HTTPException(status_code=500, detail=f"Failed to purge queue: {str(e)}")
 
 
-@router.get("/logs/{task_id}")
+@router.get(
+    "/logs/{task_id}",
+    summary="작업 로그 조회 (플레이스홀더)",
+    description=(
+        "특정 작업에 대한 로그를 조회합니다. 중앙집중식 로그 수집 인프라가 필요하여 현재는 "
+        "플레이스홀더 응답만 제공합니다."
+    ),
+)
 async def get_task_logs(
     task_id: str,
-    limit: int = Query(100, description="Maximum number of log entries to return")
+    limit: int = Query(100, description="반환할 최대 로그 개수")
 ) -> Dict[str, Any]:
     """
     Get logs for a specific task (placeholder implementation).

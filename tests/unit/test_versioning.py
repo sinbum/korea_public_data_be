@@ -6,7 +6,7 @@ and middleware functionality.
 """
 
 import pytest
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from fastapi import Request, HTTPException
 from unittest.mock import Mock, MagicMock
 from pydantic import ValidationError
@@ -169,7 +169,8 @@ class TestAPIVersion:
             major=1,
             minor=0,
             patch=0,
-            sunset_date=date(today.year, today.month, today.day + 30 if today.day <= 15 else today.day - 15)
+            # 날짜 연산을 안전하게 처리하기 위해 timedelta 사용
+            sunset_date=today + timedelta(days=30)
         )
         assert future_sunset.days_until_sunset is not None
         

@@ -5,7 +5,7 @@ Provides RESTful endpoints for classification code management and validation.
 """
 
 from typing import List, Dict, Any, Optional
-from fastapi import APIRouter, HTTPException, Query, Path, Depends
+from fastapi import APIRouter, HTTPException, Query, Path, Depends, Body
 from fastapi.responses import JSONResponse
 import logging
 
@@ -16,15 +16,24 @@ from .models import (
     ClassificationCodeValidationResult, ClassificationCodeStats
 )
 from .enums import BusinessCategory, ContentCategory, ClassificationCodeType
+from ..responses import ErrorResponse, ValidationErrorResponse
 
 logger = logging.getLogger(__name__)
 
 # Create router
 router = APIRouter(
     prefix="/classification",
-    tags=["Classification Codes"],
-    responses={404: {"description": "Not found"}}
+    tags=["분류 코드"],
+    responses={404: {"description": "리소스를 찾을 수 없습니다"}}
 )
+
+# 공통 에러 응답 스키마 (Swagger용)
+COMMON_ERROR_RESPONSES = {
+    400: {"model": ErrorResponse, "description": "잘못된 요청"},
+    404: {"model": ErrorResponse, "description": "리소스를 찾을 수 없습니다"},
+    422: {"model": ValidationErrorResponse, "description": "유효성 검사 실패"},
+    500: {"model": ErrorResponse, "description": "서버 내부 오류"},
+}
 
 # Dependency injection
 def get_classification_service() -> ClassificationService:
@@ -34,8 +43,8 @@ def get_classification_service() -> ClassificationService:
 
 @router.get(
     "/health",
-    summary="Health check for classification service",
-    description="Check the health status of the classification service"
+    summary="분류 코드 서비스 헬스 체크",
+    description="분류 코드 서비스의 상태를 확인합니다."
 )
 async def health_check(
     service: ClassificationService = Depends(get_classification_service)
@@ -53,8 +62,9 @@ async def health_check(
 @router.get(
     "/business-categories",
     response_model=List[BusinessCategoryCode],
-    summary="Get all business category codes",
-    description="Retrieve all business category codes with optional filtering"
+    summary="사업 분야 코드 전체 조회",
+    description="옵션 필터를 적용하여 모든 사업 분야 코드를 조회합니다.",
+    responses=COMMON_ERROR_RESPONSES
 )
 async def get_business_categories(
     active_only: bool = Query(True, description="Filter to active categories only"),
@@ -75,11 +85,12 @@ async def get_business_categories(
 @router.get(
     "/business-categories/{code}",
     response_model=BusinessCategoryCode,
-    summary="Get business category by code",
-    description="Retrieve a specific business category by its code"
+    summary="사업 분야 단일 조회",
+    description="코드 값으로 특정 사업 분야를 조회합니다.",
+    responses=COMMON_ERROR_RESPONSES
 )
 async def get_business_category(
-    code: str = Path(..., description="Business category code (e.g., cmrczn_tab1)"),
+    code: str = Path(..., description="사업 분야 코드 (예: cmrczn_tab1)", example="cmrczn_tab1"),
     service: ClassificationService = Depends(get_classification_service)
 ) -> BusinessCategoryCode:
     """Get a specific business category by code."""
@@ -101,11 +112,12 @@ async def get_business_category(
 @router.post(
     "/business-categories/validate",
     response_model=ClassificationCodeValidationResult,
-    summary="Validate business category code",
-    description="Validate a business category code and get suggestions if invalid"
+    summary="사업 분야 코드 검증",
+    description="사업 분야 코드를 검증하고, 유효하지 않은 경우 제안 코드를 제공합니다.",
+    responses=COMMON_ERROR_RESPONSES
 )
 async def validate_business_category(
-    code: str = Query(..., description="Business category code to validate"),
+    code: str = Query(..., description="검증할 사업 분야 코드", example="cmrczn_tab1"),
     service: ClassificationService = Depends(get_classification_service)
 ) -> ClassificationCodeValidationResult:
     """Validate a business category code."""
@@ -119,13 +131,14 @@ async def validate_business_category(
 @router.get(
     "/business-categories/search",
     response_model=List[BusinessCategoryCode],
-    summary="Search business categories",
-    description="Search business categories by query string"
+    summary="사업 분야 검색",
+    description="쿼리 문자열로 사업 분야를 검색합니다.",
+    responses=COMMON_ERROR_RESPONSES
 )
 async def search_business_categories(
-    q: str = Query(..., description="Search query"),
-    fields: Optional[List[str]] = Query(None, description="Fields to search in"),
-    limit: int = Query(10, ge=1, le=50, description="Maximum number of results"),
+    q: str = Query(..., description="검색어", example="교육"),
+    fields: Optional[List[str]] = Query(None, description="검색할 필드 목록", example=["name", "description"]),
+    limit: int = Query(10, ge=1, le=50, description="최대 결과 수", example=10),
     service: ClassificationService = Depends(get_classification_service)
 ) -> List[BusinessCategoryCode]:
     """Search business categories."""
@@ -145,8 +158,9 @@ async def search_business_categories(
 @router.get(
     "/content-categories",
     response_model=List[ContentCategoryCode],
-    summary="Get all content category codes",
-    description="Retrieve all content category codes with optional filtering"
+    summary="콘텐츠 분류 코드 전체 조회",
+    description="옵션 필터를 적용하여 모든 콘텐츠 분류 코드를 조회합니다.",
+    responses=COMMON_ERROR_RESPONSES
 )
 async def get_content_categories(
     active_only: bool = Query(True, description="Filter to active categories only"),
@@ -167,11 +181,12 @@ async def get_content_categories(
 @router.get(
     "/content-categories/{code}",
     response_model=ContentCategoryCode,
-    summary="Get content category by code",
-    description="Retrieve a specific content category by its code"
+    summary="콘텐츠 분류 단일 조회",
+    description="코드 값으로 특정 콘텐츠 분류를 조회합니다.",
+    responses=COMMON_ERROR_RESPONSES
 )
 async def get_content_category(
-    code: str = Path(..., description="Content category code (e.g., notice_matr)"),
+    code: str = Path(..., description="콘텐츠 분류 코드 (예: notice_matr)", example="notice_matr"),
     service: ClassificationService = Depends(get_classification_service)
 ) -> ContentCategoryCode:
     """Get a specific content category by code."""
@@ -193,11 +208,12 @@ async def get_content_category(
 @router.post(
     "/content-categories/validate",
     response_model=ClassificationCodeValidationResult,
-    summary="Validate content category code",
-    description="Validate a content category code and get suggestions if invalid"
+    summary="콘텐츠 분류 코드 검증",
+    description="콘텐츠 분류 코드를 검증하고, 유효하지 않은 경우 제안 코드를 제공합니다.",
+    responses=COMMON_ERROR_RESPONSES
 )
 async def validate_content_category(
-    code: str = Query(..., description="Content category code to validate"),
+    code: str = Query(..., description="검증할 콘텐츠 분류 코드", example="notice_matr"),
     service: ClassificationService = Depends(get_classification_service)
 ) -> ClassificationCodeValidationResult:
     """Validate a content category code."""
@@ -211,13 +227,14 @@ async def validate_content_category(
 @router.get(
     "/content-categories/search",
     response_model=List[ContentCategoryCode],
-    summary="Search content categories",
-    description="Search content categories by query string"
+    summary="콘텐츠 분류 검색",
+    description="쿼리 문자열로 콘텐츠 분류를 검색합니다.",
+    responses=COMMON_ERROR_RESPONSES
 )
 async def search_content_categories(
-    q: str = Query(..., description="Search query"),
-    fields: Optional[List[str]] = Query(None, description="Fields to search in"),
-    limit: int = Query(10, ge=1, le=50, description="Maximum number of results"),
+    q: str = Query(..., description="검색어", example="정책"),
+    fields: Optional[List[str]] = Query(None, description="검색할 필드 목록", example=["name", "description"]),
+    limit: int = Query(10, ge=1, le=50, description="최대 결과 수", example=10),
     service: ClassificationService = Depends(get_classification_service)
 ) -> List[ContentCategoryCode]:
     """Search content categories."""
@@ -237,11 +254,12 @@ async def search_content_categories(
 @router.post(
     "/validate",
     response_model=ClassificationCodeValidationResult,
-    summary="Validate any classification code",
-    description="Validate any classification code (auto-detects type)"
+    summary="분류 코드 자동 검증",
+    description="분류 코드 유형을 자동으로 판별하여 검증합니다.",
+    responses=COMMON_ERROR_RESPONSES
 )
 async def validate_any_code(
-    code: str = Query(..., description="Classification code to validate"),
+    code: str = Query(..., description="검증할 분류 코드", example="cmrczn_tab1"),
     service: ClassificationService = Depends(get_classification_service)
 ) -> ClassificationCodeValidationResult:
     """Validate any classification code with auto-detection."""
@@ -255,11 +273,16 @@ async def validate_any_code(
 @router.post(
     "/validate-batch",
     response_model=Dict[str, ClassificationCodeValidationResult],
-    summary="Validate multiple classification codes",
-    description="Validate multiple classification codes in one request"
+    summary="분류 코드 배치 검증",
+    description="한 번의 요청으로 여러 분류 코드를 검증합니다.",
+    responses=COMMON_ERROR_RESPONSES
 )
 async def validate_batch(
-    codes: List[str],
+    codes: List[str] = Body(
+        ...,
+        description="검증할 코드 배열 (최대 100개)",
+        example=["cmrczn_tab1", "notice_matr", "invalid_code"]
+    ),
     service: ClassificationService = Depends(get_classification_service)
 ) -> Dict[str, ClassificationCodeValidationResult]:
     """Validate multiple classification codes."""
@@ -281,11 +304,12 @@ async def validate_batch(
 @router.get(
     "/detect-type/{code}",
     response_model=Dict[str, Optional[str]],
-    summary="Detect classification code type",
-    description="Detect the type of a classification code"
+    summary="분류 코드 유형 판별",
+    description="분류 코드의 유형을 판별합니다.",
+    responses=COMMON_ERROR_RESPONSES
 )
 async def detect_code_type(
-    code: str = Path(..., description="Classification code to analyze"),
+    code: str = Path(..., description="분석할 분류 코드", example="cmrczn_tab1"),
     service: ClassificationService = Depends(get_classification_service)
 ) -> Dict[str, Optional[str]]:
     """Detect the type of a classification code."""
@@ -303,11 +327,35 @@ async def detect_code_type(
 @router.post(
     "/search",
     response_model=ClassificationCodeSearchResponse,
-    summary="Search all classification codes",
-    description="Search across all classification code types"
+    summary="통합 분류 코드 검색",
+    description="모든 분류 코드 유형을 대상으로 통합 검색을 수행합니다.",
+    responses=COMMON_ERROR_RESPONSES
 )
 async def search_all_categories(
-    request: ClassificationCodeSearchRequest,
+    request: ClassificationCodeSearchRequest = Body(
+        ...,
+        description="통합 검색 요청",
+        examples={
+            "business_keyword": {
+                "summary": "사업 분야 키워드 검색",
+                "value": {
+                    "query": "교육",
+                    "code_type": "business",
+                    "fields": ["name", "description"],
+                    "limit": 10
+                }
+            },
+            "content_keyword": {
+                "summary": "콘텐츠 분류 키워드 검색",
+                "value": {
+                    "query": "정책",
+                    "code_type": "content",
+                    "fields": ["name"],
+                    "limit": 5
+                }
+            }
+        }
+    ),
     service: ClassificationService = Depends(get_classification_service)
 ) -> ClassificationCodeSearchResponse:
     """Search across all classification categories."""
@@ -321,8 +369,9 @@ async def search_all_categories(
 @router.get(
     "/codes",
     response_model=Dict[str, List[str]],
-    summary="Get all valid codes",
-    description="Get all valid classification codes organized by type"
+    summary="유효 코드 전체 조회",
+    description="유형별로 정리된 모든 유효 분류 코드를 조회합니다.",
+    responses=COMMON_ERROR_RESPONSES
 )
 async def get_all_valid_codes(
     service: ClassificationService = Depends(get_classification_service)
@@ -338,13 +387,14 @@ async def get_all_valid_codes(
 @router.get(
     "/recommendations",
     response_model=List[Dict[str, Any]],
-    summary="Get code recommendations",
-    description="Get classification code recommendations based on context"
+    summary="코드 추천",
+    description="컨텍스트에 기반하여 분류 코드 추천을 제공합니다.",
+    responses=COMMON_ERROR_RESPONSES
 )
 async def get_code_recommendations(
-    context: str = Query(..., description="Context description for recommendations"),
-    code_type: Optional[str] = Query(None, description="Type of codes to recommend"),
-    limit: int = Query(5, ge=1, le=20, description="Maximum number of recommendations"),
+    context: str = Query(..., description="추천을 위한 컨텍스트 설명", example="해외 진출 관련 지원"),
+    code_type: Optional[str] = Query(None, description="추천할 코드 유형", example="business"),
+    limit: int = Query(5, ge=1, le=20, description="최대 추천 개수", example=5),
     service: ClassificationService = Depends(get_classification_service)
 ) -> List[Dict[str, Any]]:
     """Get code recommendations based on context."""
@@ -373,8 +423,9 @@ async def get_code_recommendations(
 @router.get(
     "/statistics",
     response_model=ClassificationCodeStats,
-    summary="Get classification code statistics",
-    description="Get comprehensive statistics about classification codes"
+    summary="분류 코드 통계",
+    description="분류 코드에 대한 종합 통계를 제공합니다.",
+    responses=COMMON_ERROR_RESPONSES
 )
 async def get_classification_statistics(
     service: ClassificationService = Depends(get_classification_service)
@@ -391,8 +442,9 @@ async def get_classification_statistics(
 
 @router.post(
     "/cache/clear",
-    summary="Clear classification service cache",
-    description="Clear all cached data in the classification service"
+    summary="분류 코드 캐시 초기화",
+    description="분류 코드 서비스의 모든 캐시 데이터를 초기화합니다.",
+    responses=COMMON_ERROR_RESPONSES
 )
 async def clear_cache(
     service: ClassificationService = Depends(get_classification_service)
@@ -411,8 +463,9 @@ async def clear_cache(
 @router.get(
     "/reference/business-categories",
     response_model=List[Dict[str, Any]],
-    summary="Get business category reference data",
-    description="Get comprehensive reference information for all business categories"
+    summary="사업 분야 참조 데이터",
+    description="모든 사업 분야에 대한 참조 정보를 제공합니다.",
+    responses=COMMON_ERROR_RESPONSES
 )
 async def get_business_category_reference() -> List[Dict[str, Any]]:
     """Get business category reference data."""
@@ -426,8 +479,9 @@ async def get_business_category_reference() -> List[Dict[str, Any]]:
 @router.get(
     "/reference/content-categories",
     response_model=List[Dict[str, Any]],
-    summary="Get content category reference data",
-    description="Get comprehensive reference information for all content categories"
+    summary="콘텐츠 분류 참조 데이터",
+    description="모든 콘텐츠 분류에 대한 참조 정보를 제공합니다.",
+    responses=COMMON_ERROR_RESPONSES
 )
 async def get_content_category_reference() -> List[Dict[str, Any]]:
     """Get content category reference data."""
@@ -441,8 +495,9 @@ async def get_content_category_reference() -> List[Dict[str, Any]]:
 @router.get(
     "/reference/types",
     response_model=List[str],
-    summary="Get classification code types",
-    description="Get all supported classification code types"
+    summary="분류 코드 유형 목록",
+    description="지원되는 모든 분류 코드 유형을 조회합니다.",
+    responses=COMMON_ERROR_RESPONSES
 )
 async def get_classification_types() -> List[str]:
     """Get all classification code types."""

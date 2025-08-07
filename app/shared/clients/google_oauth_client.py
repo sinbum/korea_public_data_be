@@ -29,8 +29,7 @@ class GoogleOAuthClient:
         self.userinfo_url = "https://www.googleapis.com/oauth2/v2/userinfo"
         self.tokeninfo_url = "https://oauth2.googleapis.com/tokeninfo"
         
-        # HTTP client for API calls
-        self.http_client = httpx.AsyncClient(timeout=30.0)
+        # HTTP client will be created per request to avoid closed-client reuse issues
     
     def get_authorization_url(self, state: Optional[str] = None, redirect_url: Optional[str] = None) -> Dict[str, str]:
         """
@@ -60,7 +59,8 @@ class GoogleOAuthClient:
         # Build authorization URL parameters
         params = {
             "client_id": self.client_id,
-            "redirect_uri": self.redirect_uri,
+            # Prefer request-scoped redirect URL (FE callback) if provided; fallback to default
+            "redirect_uri": redirect_url or self.redirect_uri,
             "scope": self.scope,
             "response_type": "code",
             "state": state,
@@ -91,18 +91,24 @@ class GoogleOAuthClient:
         if not state_data:
             raise ValueError("Invalid or expired state parameter")
         
+        # Determine redirect_uri used during authorization
+        # Must match exactly what was used to obtain the authorization code
+        redirect_uri_for_exchange = None
+        if state_data and isinstance(state_data, dict):
+            redirect_uri_for_exchange = state_data.get("redirect_url")
+
         # Exchange code for tokens
         token_data = {
             "client_id": self.client_id,
             "client_secret": self.client_secret,
             "code": code,
             "grant_type": "authorization_code",
-            "redirect_uri": self.redirect_uri
+            "redirect_uri": redirect_uri_for_exchange or self.redirect_uri
         }
         
         try:
             # Get access token
-            async with self.http_client as client:
+            async with httpx.AsyncClient(timeout=30.0) as client:
                 token_response = await client.post(
                     self.token_url,
                     data=token_data,
@@ -142,7 +148,7 @@ class GoogleOAuthClient:
             User profile information
         """
         try:
-            async with self.http_client as client:
+            async with httpx.AsyncClient(timeout=30.0) as client:
                 headers = {"Authorization": f"Bearer {access_token}"}
                 response = await client.get(self.userinfo_url, headers=headers)
                 response.raise_for_status()
@@ -180,7 +186,7 @@ class GoogleOAuthClient:
             Token info if valid, None if invalid
         """
         try:
-            async with self.http_client as client:
+            async with httpx.AsyncClient(timeout=30.0) as client:
                 params = {"access_token": access_token}
                 response = await client.get(self.tokeninfo_url, params=params)
                 response.raise_for_status()
@@ -224,7 +230,7 @@ class GoogleOAuthClient:
         }
         
         try:
-            async with self.http_client as client:
+            async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
                     self.token_url,
                     data=token_data,
@@ -257,7 +263,7 @@ class GoogleOAuthClient:
             True if revocation successful
         """
         try:
-            async with self.http_client as client:
+            async with httpx.AsyncClient(timeout=30.0) as client:
                 params = {"token": token}
                 response = await client.post(
                     "https://oauth2.googleapis.com/revoke",
@@ -272,8 +278,8 @@ class GoogleOAuthClient:
             return False
     
     async def close(self):
-        """Close HTTP client"""
-        await self.http_client.aclose()
+        """No-op; kept for backward compatibility"""
+        return
 
 
 # Global Google OAuth client instance

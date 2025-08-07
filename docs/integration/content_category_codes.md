@@ -47,3 +47,12 @@
   - 창업 생태계 이슈
   - 글로벌 스타트업 트렌드
   - 산업별 시장 전망
+
+## 연관 API 엔드포인트
+
+- `GET /api/v1/classification/content-categories`
+- `GET /api/v1/classification/content-categories/{code}`
+- `POST /api/v1/classification/content-categories/validate`
+- `GET /api/v1/classification/content-categories/search`
+
+자세한 예시와 에러 응답 스펙은 Swagger UI(`http://localhost:8000/docs`)의 `분류 코드` 섹션에서 확인할 수 있습니다.

@@ -18,6 +18,7 @@ from ...shared.exceptions import (
     create_api_exception_from_response,
     create_network_exception_from_httpx_error
 )
+from ...core.request_context import get_request_id
 from .retry_strategies import (
     RetryStrategy,
     ExponentialBackoffStrategy,
@@ -208,6 +209,11 @@ class BaseAPIClient(ABC, Generic[T]):
             "User-Agent": "Korea-Public-API-Client/1.0",
             "Accept": "application/json,application/xml"
         })
+
+        # Propagate request id for tracing if available
+        req_id = get_request_id()
+        if req_id:
+            request_params["headers"]["X-Request-ID"] = req_id
         
         return request_params
     

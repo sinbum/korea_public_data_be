@@ -424,17 +424,49 @@ GET /api/v1/statistics/report/monthly/{year}/{month}
 GET /api/v1/statistics/report/yearly/{year}
 ```
 
-### 🏷️ 분류 시스템 (Classification) - 🔄 개발 중
+### 🏷️ 분류 코드 (Classification) - ✅ API 완성
 
 ```bash
-# 🤖 자동 사업 분류
-POST /api/v1/classification/business
+# 📚 사업 분야 코드
+GET  /api/v1/classification/business-categories
+GET  /api/v1/classification/business-categories/{code}
+POST /api/v1/classification/business-categories/validate
+GET  /api/v1/classification/business-categories/search
 
-# 🤖 자동 콘텐츠 분류  
-POST /api/v1/classification/content
+# 📰 콘텐츠 분류 코드
+GET  /api/v1/classification/content-categories
+GET  /api/v1/classification/content-categories/{code}
+POST /api/v1/classification/content-categories/validate
+GET  /api/v1/classification/content-categories/search
 
-# 📊 분류 통계
-GET /api/v1/classification/statistics
+# 🔎 통합 기능
+POST /api/v1/classification/validate
+POST /api/v1/classification/validate-batch
+GET  /api/v1/classification/detect-type/{code}
+POST /api/v1/classification/search
+GET  /api/v1/classification/codes
+GET  /api/v1/classification/recommendations
+
+# 📊 통계/레퍼런스/운영
+GET  /api/v1/classification/statistics
+GET  /api/v1/classification/health
+GET  /api/v1/classification/reference/business-categories
+GET  /api/v1/classification/reference/content-categories
+POST /api/v1/classification/cache/clear
+```
+
+예시 요청
+
+```bash
+# 배치 검증
+curl -X POST "http://localhost:8000/api/v1/classification/validate-batch" \
+  -H "Content-Type: application/json" \
+  -d '["cmrczn_tab1","notice_matr","invalid_code"]'
+
+# 통합 검색
+curl -X POST "http://localhost:8000/api/v1/classification/search" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"교육","code_type":"business","fields":["name","description"],"limit":10}'
 ```
 
 ## ⚙️ 환경변수 설정

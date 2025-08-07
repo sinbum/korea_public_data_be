@@ -258,6 +258,24 @@ print(f"Recommended: {recommendations[0]['code']}")
 ```
 
 ### Batch Operations
+### Error Responses (Standardized)
+
+모든 엔드포인트는 표준 에러 응답 포맷을 사용합니다.
+
+```json
+{
+  "success": false,
+  "errors": [
+    { "code": "VALIDATION_ERROR", "message": "Invalid input data", "field": "code" }
+  ],
+  "message": "Request failed due to validation errors",
+  "timestamp": "2025-01-25T12:00:00Z",
+  "status": "error"
+}
+```
+
+적용 상태: 400, 404, 422, 500에 대한 Swagger 문서화가 모든 분류 코드 엔드포인트에 반영되었습니다.
+
 ```python
 # Validate multiple codes
 codes = ["cmrczn_tab1", "notice_matr", "invalid_code"]

@@ -19,11 +19,24 @@ from .core.middleware import (
 )
 from .core.rate_limit import RedisRateLimitMiddleware
 from .core.logging_config import setup_logging
+from .core.metrics import init_metrics
+import os
+
+def _is_redis_available(url: str) -> bool:
+    try:
+        import redis  # type: ignore
+        client = redis.from_url(url)
+        client.ping()
+        return True
+    except Exception:
+        return False
 from .domains.announcements.router import router as announcements_router
 from .domains.businesses.router import router as businesses_router
 from .domains.contents.router import router as contents_router
 from .domains.statistics.router import router as statistics_router
 from .domains.users.router import router as users_router
+from .domains.keys.router import router as keys_router
+from .domains.usage.router import router as usage_router
 from .domains.data_requests.router import router as data_requests_router
 # from .domains.data_sources.router import router as data_sources_router
 from .shared.classification.router import router as classification_router
@@ -243,21 +256,27 @@ app.openapi = custom_openapi
 # 미들웨어 등록 (순서 중요: 먼저 등록된 미들웨어가 나중에 실행됨)
 app.add_middleware(ResponseValidationMiddleware)
 app.add_middleware(RequestValidationMiddleware)
-app.add_middleware(RateLimitMiddleware, calls_per_minute=settings.rl_per_minute, calls_per_hour=settings.rl_per_hour)
+# 레이트리밋: Redis 사용 가능 시 분산 미들웨어만 활성화
+redis_enabled = _is_redis_available(settings.redis_url)
+if not redis_enabled:
+    app.add_middleware(RateLimitMiddleware, calls_per_minute=settings.rl_per_minute, calls_per_hour=settings.rl_per_hour)
 app.add_middleware(HealthCheckMiddleware)
 app.add_middleware(RequestIdMiddleware)
 
-# Redis 기반 분산 레이트리밋(가능 시 자동 활성화)
-try:
-    app.add_middleware(
-        RedisRateLimitMiddleware,
-        redis_url=settings.redis_url,
-        calls_per_minute=settings.rl_per_minute,
-        calls_per_hour=settings.rl_per_hour,
-    )
-    logger.info("RedisRateLimitMiddleware enabled")
-except Exception as e:
-    logger.warning(f"RedisRateLimitMiddleware disabled: {e}")
+if redis_enabled:
+    try:
+        app.add_middleware(
+            RedisRateLimitMiddleware,
+            redis_url=settings.redis_url,
+            calls_per_minute=settings.rl_per_minute,
+            calls_per_hour=settings.rl_per_hour,
+        )
+        logger.info("RedisRateLimitMiddleware enabled")
+    except Exception as e:
+        logger.warning(f"RedisRateLimitMiddleware disabled: {e}")
+
+# Metrics
+init_metrics(app, enabled=True, endpoint="/metrics")
 
 # API 버전 미들웨어 (요청 초기에 처리)
 app.add_middleware(
@@ -301,6 +320,8 @@ app.include_router(statistics_router, prefix="/api/v1")
 app.include_router(users_router, prefix="/api/v1")
 app.include_router(data_requests_router, prefix="/api/v1")
 app.include_router(classification_router, prefix="/api/v1")
+app.include_router(keys_router, prefix="/api/v1")
+app.include_router(usage_router, prefix="/api/v1")
 app.include_router(get_task_management_router())
 # app.include_router(data_sources_router, prefix="/api/v1")
 

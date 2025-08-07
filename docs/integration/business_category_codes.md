@@ -110,6 +110,15 @@
 - **대소문자 구분**에 주의 (모두 소문자 사용)
 - 복수 선택 가능한 경우 **배열 형태**로 전달
 
+### 2. 연관 API 엔드포인트
+
+- `GET /api/v1/classification/business-categories`
+- `GET /api/v1/classification/business-categories/{code}`
+- `POST /api/v1/classification/business-categories/validate`
+- `GET /api/v1/classification/business-categories/search`
+
+요청/응답 예시는 Swagger UI(`http://localhost:8000/docs`)의 `분류 코드` 섹션에 포함되어 있습니다.
+
 ## 코드 테이블 요약
 
 | 코드 | 카테고리명 | 주요 특징 |
