@@ -5,15 +5,21 @@ Handles user CRUD operations, OAuth account linking, and user profile management
 """
 
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
-from pymongo import MongoClient
+import asyncio
+from contextlib import asynccontextmanager
+from pymongo import MongoClient, errors as mongo_errors
 from pymongo.collection import Collection
-from pymongo.errors import DuplicateKeyError
+from pymongo.errors import DuplicateKeyError, ConnectionFailure, OperationFailure
 from bson import ObjectId
+from bson.errors import InvalidId
 
 from ...core.database import get_database
-from .models import User, UserCreate, SocialUserCreate, UserUpdate, AuthProvider
+from .models import (
+    User, UserCreate, SocialUserCreate, UserUpdate, AuthProvider,
+    UserSettings, UserSettingsUpdate
+)
 
 logger = logging.getLogger(__name__)
 
@@ -26,10 +32,11 @@ class UserRepository:
             db_client = get_database()
         self.db = db_client
         self.collection: Collection = self.db.users
+        self.settings_collection: Collection = self.db.user_settings
 
-        # Skip index creation during initialization for performance
-        # Indexes should be created during application startup or database migration
-        # self._create_indexes()
+        # Enable index creation for better performance
+        # Call during application startup for production environments
+        self._create_indexes()
 
     def _create_indexes(self):
         """Create database indexes for user collection"""
@@ -53,6 +60,11 @@ class UserRepository:
             # Index for email verification status
             if "is_verified_1" not in existing_indexes:
                 self.collection.create_index("is_verified", background=True)
+
+            # Settings indexes
+            settings_indexes = [idx['name'] for idx in self.settings_collection.list_indexes()]
+            if "user_id_1" not in settings_indexes:
+                self.settings_collection.create_index("user_id", unique=True, background=True)
 
         except Exception as e:
             # Log the error but don't fail the repository initialization
@@ -79,8 +91,8 @@ class UserRepository:
                 "is_active": True,
                 "is_verified": False,
                 "is_premium": False,
-                "created_at": datetime.utcnow(),
-                "updated_at": datetime.utcnow(),
+                "created_at": datetime.now(timezone.utc),
+                "updated_at": datetime.now(timezone.utc),
                 "last_login": None,
                 "consent_marketing": user_create.consent_marketing,
                 "consent_data_processing": user_create.consent_data_processing
@@ -110,9 +122,9 @@ class UserRepository:
                 "is_active": True,
                 "is_verified": True,  # OAuth users are pre-verified
                 "is_premium": False,
-                "created_at": datetime.utcnow(),
-                "updated_at": datetime.utcnow(),
-                "last_login": datetime.utcnow(),
+                "created_at": datetime.now(timezone.utc),
+                "updated_at": datetime.now(timezone.utc),
+                "last_login": datetime.now(timezone.utc),
                 "consent_marketing": False,  # Default to False for OAuth
                 "consent_data_processing": social_user.consent_data_processing
             }
@@ -191,12 +203,53 @@ class UserRepository:
             logger.error(f"Error updating user: {e}")
             return None
 
+    # ===== User Settings CRUD =====
+    def get_user_settings(self, user_id: str) -> UserSettings:
+        try:
+            doc = self.settings_collection.find_one({"user_id": user_id})
+            if not doc:
+                # create default settings on first read
+                default = {
+                    "user_id": user_id,
+                    "notifications": UserSettings().notifications.model_dump(),
+                    "interests": UserSettings().interests.model_dump(),
+                    "location": UserSettings().location.model_dump(),
+                }
+                self.settings_collection.insert_one(default)
+                doc = default
+            return UserSettings(**{k: v for k, v in doc.items() if k != "_id" and k != "user_id"})
+        except Exception as e:
+            logger.error(f"Error getting user settings: {e}")
+            return UserSettings()
+
+    def update_user_settings(self, user_id: str, update: UserSettingsUpdate) -> UserSettings:
+        try:
+            payload: Dict[str, Any] = {}
+            if update.notifications is not None:
+                payload["notifications"] = update.notifications.model_dump()
+            if update.interests is not None:
+                payload["interests"] = update.interests.model_dump()
+            if update.location is not None:
+                payload["location"] = update.location.model_dump()
+
+            if payload:
+                self.settings_collection.update_one(
+                    {"user_id": user_id},
+                    {"$set": payload},
+                    upsert=True,
+                )
+
+            return self.get_user_settings(user_id)
+        except Exception as e:
+            logger.error(f"Error updating user settings: {e}")
+            return self.get_user_settings(user_id)
+
     def update_last_login(self, user_id: str) -> bool:
         """Update user's last login timestamp"""
         try:
             result = self.collection.update_one(
                 {"_id": ObjectId(user_id)},
-                {"$set": {"last_login": datetime.utcnow()}}
+                {"$set": {"last_login": datetime.now(timezone.utc)}}
             )
             return result.modified_count > 0
         except Exception as e:

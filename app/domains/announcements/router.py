@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Path, status
+from fastapi.responses import ORJSONResponse
 from typing import List, Optional
 from .service import AnnouncementService
 from .models import AnnouncementResponse, AnnouncementCreate, AnnouncementUpdate
@@ -188,6 +189,7 @@ async def fetch_announcements(
 @router.get(
     "/",
     response_model=PaginatedResponse[AnnouncementResponseSchema],
+    response_class=ORJSONResponse,
     summary="사업공고 목록 조회",
     description="""
     저장된 사업공고 목록을 페이지네이션과 함께 조회합니다.

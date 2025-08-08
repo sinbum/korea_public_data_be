@@ -8,6 +8,8 @@ user profile management, and token operations.
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Response, Request, Cookie
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from pydantic import ValidationError
+import logging
 
 from .models import (
     UserCreate, UserLogin, UserLoginRequest, UserUpdate, UserResponse, 
@@ -16,10 +18,25 @@ from .models import (
 from .service import UserService
 from ...shared.clients.google_oauth_client import google_oauth_client
 from ...core.dependencies import get_service_dependency
+from ...core.config import settings
+from urllib.parse import urlparse
 
 # Router setup
-router = APIRouter(prefix="/auth", tags=["Authentication"])
+router = APIRouter(
+    prefix="/auth", 
+    tags=["Authentication"],
+    responses={
+        400: {"description": "Bad request - validation error"},
+        401: {"description": "Unauthorized - invalid credentials"},
+        403: {"description": "Forbidden - insufficient permissions"},
+        404: {"description": "Not found - user not found"},
+        409: {"description": "Conflict - user already exists"},
+        422: {"description": "Validation error - invalid input data"},
+        500: {"description": "Internal server error"}
+    }
+)
 security_scheme = HTTPBearer(auto_error=False)
+logger = logging.getLogger(__name__)
 
 # Dependency injection
 get_user_service = get_service_dependency(UserService)
@@ -46,7 +63,17 @@ async def get_current_user(
     return await user_service.get_current_user(token)
 
 
-@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register", 
+    response_model=TokenResponse, 
+    status_code=status.HTTP_201_CREATED,
+    summary="Register new user",
+    description="Register a new user with email and password authentication",
+    responses={
+        201: {"description": "User successfully registered", "model": TokenResponse},
+        409: {"description": "User already exists with this email"},
+        422: {"description": "Validation error - check password requirements"}
+    }
+)
 async def register(
     user_create: UserCreate,
     user_service: UserService = Depends(get_user_service)
@@ -54,90 +81,281 @@ async def register(
     """
     Register a new user with email and password
     
-    - **email**: Valid email address
-    - **name**: User's full name (2-50 characters)
-    - **password**: Strong password (min 8 chars, uppercase, lowercase, number)
+    **Required Fields:**
+    - **email**: Valid email address (must be unique)
+    - **name**: User's full name (2-50 characters, Korean/English supported)
+    - **password**: Strong password meeting security requirements:
+        - Minimum 8 characters, maximum 128 characters
+        - Must include 3 of 4 character types: uppercase, lowercase, numbers, special characters
+        - Cannot be common passwords (password, 12345678, etc.)
     - **consent_data_processing**: Must be true for GDPR compliance
-    - **consent_marketing**: Optional marketing consent
+    
+    **Optional Fields:**
+    - **consent_marketing**: Marketing email consent (default: false)
+    
+    **Returns:**
+    - Access token (15 minutes validity)
+    - Refresh token (7 days validity)
+    - User profile information
     """
-    return await user_service.register_local_user(user_create)
+    try:
+        result = await user_service.register_local_user(user_create)
+        logger.info(f"User registered successfully: {user_create.email}")
+        return result
+    except ValidationError as e:
+        logger.warning(f"Validation error during registration: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="입력 데이터 유효성 검사 실패"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error during registration: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="회원가입 처리 중 오류가 발생했습니다"
+        )
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login", 
+    response_model=TokenResponse,
+    summary="User login",
+    description="Authenticate user with email and password",
+    responses={
+        200: {"description": "Login successful", "model": TokenResponse},
+        401: {"description": "Invalid credentials"},
+        404: {"description": "User not found"}
+    }
+)
 async def login(
     user_login: UserLoginRequest,
     response: Response,
+    request: Request,
     user_service: UserService = Depends(get_user_service)
 ):
     """
     Authenticate user with email and password
     
+    **Required Fields:**
     - **email**: Registered email address
     - **password**: User's password
+    - **remember**: Remember login (extends cookie expiration)
     
-    Returns JWT access token (15 min) and refresh token (7 days)
+    **Security Features:**
+    - Rate limiting protection
+    - Secure HTTP-only cookies for web clients
+    - JWT tokens for API clients
+    - Automatic last login timestamp update
+    
+    **Returns:**
+    - Access token (15 minutes validity)
+    - Refresh token (7 days validity, 30 days if remember=true)
+    - User profile information
+    
+    **Headers Set:**
+    - Set-Cookie: access_token (HTTP-only, Secure)
+    - Set-Cookie: refresh_token (HTTP-only, Secure)
     """
-    result = await user_service.login_local_user(UserLogin(email=user_login.email, password=user_login.password))
-    _set_auth_cookies(response, result.access_token, result.refresh_token, remember=user_login.remember)
-    return result
+    try:
+        # Log login attempt (without password)
+        client_ip = request.client.host if request.client else "unknown"
+        user_agent = request.headers.get("user-agent", "unknown")
+        logger.info(f"Login attempt: {user_login.email} from {client_ip}")
+        
+        result = await user_service.login_local_user(UserLogin(email=user_login.email, password=user_login.password))
+        _set_auth_cookies(response, result.access_token, result.refresh_token, remember=user_login.remember)
+        
+        logger.info(f"Login successful: {user_login.email} from {client_ip}")
+        return result
+    except HTTPException:
+        logger.warning(f"Login failed: {user_login.email} from {client_ip}")
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error during login: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="로그인 처리 중 오류가 발생했습니다"
+        )
 
 
-@router.get("/google/login")
+@router.get("/google/login",
+    summary="Google OAuth login",
+    description="Initiate Google OAuth 2.0 authentication flow",
+    responses={
+        200: {
+            "description": "OAuth URL generated successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "authorization_url": "https://accounts.google.com/o/oauth2/auth?...",
+                        "state": "secure_random_state_token"
+                    }
+                }
+            }
+        },
+        500: {"description": "OAuth initialization failed"}
+    }
+)
 async def google_login(
-    redirect_url: Optional[str] = None
+    request: Request,
+    redirect_to: Optional[str] = None,
+    remember: Optional[int] = None,
 ):
     """
     Initiate Google OAuth 2.0 login flow
     
-    - **redirect_url**: Optional URL to redirect after authentication
+    **Parameters:**
+    - **redirect_to**: Optional URL to redirect after successful authentication (relative paths only)
+    - **remember**: Set to 1 for extended session (30 days instead of 7 days)
     
-    Redirects to Google OAuth consent screen
+    **Security Features:**
+    - CSRF protection via state parameter
+    - Secure state storage with expiration
+    - URL validation to prevent open redirect attacks
+    
+    **Returns:**
+    - **authorization_url**: Google OAuth consent screen URL
+    - **state**: CSRF protection token (store this for callback validation)
+    
+    **Usage:**
+    1. Call this endpoint to get authorization URL
+    2. Redirect user to the authorization URL
+    3. Google will redirect back to /auth/google/callback with code and state
     """
     try:
+        # Log OAuth initiation
+        client_ip = request.client.host if request.client else "unknown"
+        logger.info(f"Google OAuth login initiated from {client_ip}")
+        
+        # Validate redirect_to parameter
+        if redirect_to:
+            parsed = urlparse(redirect_to)
+            if parsed.scheme in ['http', 'https']:  # Prevent open redirects
+                redirect_to = parsed.path or '/'
+                logger.warning(f"OAuth redirect sanitized: {redirect_to}")
+        
         oauth_data = google_oauth_client.get_authorization_url(
-            redirect_url=redirect_url
+            redirect_to=redirect_to,
+            remember=(remember == 1) if remember is not None else None,
         )
+        
         return {
             "authorization_url": oauth_data["authorization_url"],
             "state": oauth_data["state"]
         }
     except Exception as e:
+        logger.error(f"Google OAuth initialization failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Google OAuth 초기화 실패: {str(e)}"
+            detail="Google OAuth 초기화 실패"
         )
 
 
-@router.get("/google/callback")
+@router.get("/google/callback",
+    summary="Google OAuth callback",
+    description="Handle Google OAuth 2.0 authorization callback",
+    responses={
+        302: {"description": "Successful authentication, redirect to frontend"},
+        400: {"description": "Missing or invalid authorization code/state"},
+        401: {"description": "OAuth authentication failed"},
+        500: {"description": "OAuth processing error"}
+    }
+)
 async def google_callback(
     code: str,
     state: str,
     response: Response,
+    request: Request,
     user_service: UserService = Depends(get_user_service)
 ):
     """
-    Handle Google OAuth 2.0 callback
+    Handle Google OAuth 2.0 callback and complete authentication
     
-    - **code**: Authorization code from Google
-    - **state**: State parameter for CSRF protection
+    **Query Parameters:**
+    - **code**: Authorization code from Google (required)
+    - **state**: CSRF protection token from initial request (required)
     
-    Creates or authenticates user and returns JWT tokens
+    **Process:**
+    1. Validates authorization code and state parameter
+    2. Exchanges code for Google access token
+    3. Fetches user profile from Google
+    4. Creates new user or authenticates existing user
+    5. Sets secure HTTP-only cookies
+    6. Redirects to frontend with authentication cookies
+    
+    **Security Features:**
+    - CSRF protection via state validation
+    - Secure cookie settings (HTTP-only, Secure, SameSite)
+    - Open redirect protection
+    - State parameter cleanup after use
+    
+    **Automatic Redirect:**
+    - Redirects to frontend URL specified in initial request
+    - Fallback to homepage if no redirect specified
+    - Relative paths only for security
     """
+    client_ip = request.client.host if request.client else "unknown"
+    
     if not code:
+        logger.warning(f"Google OAuth callback missing code from {client_ip}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Authorization code가 없습니다"
         )
     
     if not state:
+        logger.warning(f"Google OAuth callback missing state from {client_ip}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="State parameter가 없습니다"
         )
     
-    result = await user_service.google_oauth_login(code, state)
-    _set_auth_cookies(response, result.access_token, result.refresh_token, remember=True)
-    return result
+    try:
+        logger.info(f"Processing Google OAuth callback from {client_ip}")
+    
+        # Perform login
+        token_result, state_data = await user_service.google_oauth_login(code, state)
+        logger.info(f"Google OAuth login successful for user: {token_result.user.email}")
+
+        # Choose cookie persistence by state.remember (default True for OAuth)
+        remember_flag = True
+        if state_data and isinstance(state_data, dict):
+            remember_value = state_data.get("remember")
+            if isinstance(remember_value, bool):
+                remember_flag = remember_value
+
+        # Determine redirect target (security: relative paths only)
+        redirect_target = "/"
+        if state_data and isinstance(state_data, dict):
+            redirect_candidate = state_data.get("post_login_redirect")
+            if isinstance(redirect_candidate, str) and len(redirect_candidate) > 0:
+                redirect_target = redirect_candidate
+
+        # Normalize redirect (prevent open redirect attacks)
+        if isinstance(redirect_target, str) and redirect_target.startswith("http"):
+            path = urlparse(redirect_target).path or "/"
+            redirect_target = path
+            logger.info(f"OAuth redirect sanitized to: {redirect_target}")
+
+        # Build final redirect URL
+        frontend_base = settings.frontend_url.rstrip("/") if isinstance(settings.frontend_url, str) else ""
+        path_only = redirect_target if isinstance(redirect_target, str) and redirect_target.startswith("/") else f"/{redirect_target}"
+        final_redirect_url = f"{frontend_base}{path_only}"
+
+        from fastapi.responses import RedirectResponse
+        redirect_response = RedirectResponse(url=final_redirect_url, status_code=302)
+        _set_auth_cookies(redirect_response, token_result.access_token, token_result.refresh_token, remember=remember_flag)
+        
+        logger.info(f"Google OAuth redirect to: {final_redirect_url}")
+        return redirect_response
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Google OAuth callback error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Google OAuth 처리 중 오류가 발생했습니다"
+        )
 
 
 @router.post("/refresh", response_model=TokenResponse)
@@ -227,6 +445,31 @@ async def update_profile(
     Requires valid access token in Authorization header
     """
     return await user_service.update_user_profile(current_user.id, user_update)
+
+
+@router.get("/settings")
+async def get_user_settings(
+    current_user = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service)
+):
+    """
+    Get current user's settings (notifications/interests/location)
+    """
+    return await user_service.get_user_settings(current_user.id)
+
+
+@router.put("/settings")
+async def update_user_settings(
+    settings_update: dict,
+    current_user = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service)
+):
+    """
+    Update current user's settings
+    """
+    from .models import UserSettingsUpdate
+    update_model = UserSettingsUpdate(**settings_update)
+    return await user_service.update_user_settings(current_user.id, update_model)
 
 
 @router.post("/link-google")
@@ -349,29 +592,56 @@ async def auth_status():
 def _set_auth_cookies(response: Response, access_token: str, refresh_token: str, remember: bool = True):
     access_max_age = 15 * 60
     refresh_max_age = (30 if remember else 7) * 24 * 60 * 60
+
+    # Compute cookie attributes based on frontend URL (cross-site in prod)
+    secure = False
+    samesite = "lax"
+    cookie_domain = None
+    try:
+        fe = str(settings.frontend_url)
+        u = urlparse(fe)
+        host = u.hostname
+        if host and host not in ("localhost", "127.0.0.1"):
+            secure = True
+            samesite = "none"  # cross-site cookie for separate FE domain
+            cookie_domain = host
+    except Exception:
+        pass
     response.set_cookie(
         key="access_token",
         value=access_token,
         max_age=access_max_age,
         httponly=True,
-        samesite="lax",
-        secure=False,
+        samesite=samesite,
+        secure=secure,
         path="/",
+        domain=cookie_domain,
     )
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         max_age=refresh_max_age,
         httponly=True,
-        samesite="lax",
-        secure=False,
+        samesite=samesite,
+        secure=secure,
         path="/",
+        domain=cookie_domain,
     )
 
 
 def _clear_auth_cookies(response: Response):
+    # Use same domain attributes as set
+    cookie_domain = None
+    try:
+        fe = str(settings.frontend_url)
+        u = urlparse(fe)
+        host = u.hostname
+        if host and host not in ("localhost", "127.0.0.1"):
+            cookie_domain = host
+    except Exception:
+        pass
     for key in ("access_token", "refresh_token"):
-        response.delete_cookie(key=key, path="/")
+        response.delete_cookie(key=key, path="/", domain=cookie_domain)
 
 
 @router.post("/test-register")

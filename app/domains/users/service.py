@@ -11,7 +11,8 @@ from fastapi import HTTPException, status
 
 from .models import (
     User, UserCreate, SocialUserCreate, UserUpdate, UserLogin,
-    UserResponse, TokenResponse, AuthProvider
+    UserResponse, TokenResponse, AuthProvider,
+    UserSettings, UserSettingsUpdate
 )
 from .repository import UserRepository
 from ...core.security import (
@@ -118,7 +119,7 @@ class UserService:
             user=self._to_user_response(user)
         )
 
-    async def google_oauth_login(self, code: str, state: str) -> TokenResponse:
+    async def google_oauth_login(self, code: str, state: str):
         """
         Handle Google OAuth login callback
 
@@ -184,10 +185,13 @@ class UserService:
             # Update last login
             self.user_repository.update_last_login(user.id)
 
-            return TokenResponse(
+            token_response = TokenResponse(
                 **tokens,
                 user=self._to_user_response(user)
             )
+
+            # Return token response and state data for router to handle cookies/redirect
+            return token_response, oauth_data.get("state_data")
 
         except HTTPException:
             raise
@@ -352,6 +356,16 @@ class UserService:
             )
 
         return self._to_user_response(user)
+
+    # ===== User Settings =====
+    async def get_user_settings(self, user_id: str) -> UserSettings:
+        return self.user_repository.get_user_settings(user_id)
+
+    async def update_user_settings(self, user_id: str, update: UserSettingsUpdate) -> UserSettings:
+        # Optionally update name together if provided
+        if update.name is not None:
+            self.user_repository.update_user(user_id, UserUpdate(name=update.name))
+        return self.user_repository.update_user_settings(user_id, update)
 
     async def delete_user_account(self, user_id: str) -> bool:
         """
