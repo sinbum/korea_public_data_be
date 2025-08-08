@@ -371,34 +371,9 @@ async def list_queues() -> List[QueueInfo]:
         queue_config = get_queue_info()
         
         # Get active queue statistics
-        try:
-            inspect = celery_app.control.inspect(timeout=10)
-            
-            # Get queue lengths (this might not work with Redis broker)
-            queue_lengths = {}
-            try:
-                # Try to get queue lengths from broker
-                pass  # Would implement broker-specific queue length checking
-            except Exception:
-                pass
-            
-            # Build queue info list
-            queue_infos = []
-            for queue_name in queue_config.get("queues", []):
-                queue_info = QueueInfo(
-                    name=queue_name,
-                    length=queue_lengths.get(queue_name, 0),
-                    consumers=1  # Default assumption
-                )
-                queue_infos.append(queue_info)
-        
-        except Exception as e:
-            logger.warning(f"Could not get detailed queue statistics: {e}")
-            # Return basic queue info from configuration
-            queue_infos = [
-                QueueInfo(name=queue_name, length=0, consumers=0)
-                for queue_name in queue_config.get("queues", [])
-            ]
+        # Avoid blocking inspect calls when no broker/workers are available
+        queue_names = queue_config.get("queues", [])
+        queue_infos = [QueueInfo(name=qn, length=0, consumers=0) for qn in queue_names]
         
         return queue_infos
         
@@ -423,26 +398,26 @@ async def list_workers() -> List[WorkerInfo]:
     task loads, processing statistics, and health status.
     """
     try:
-        inspect = celery_app.control.inspect(timeout=10)
-        
-        # Get active workers
-        active_workers = inspect.active() or {}
-        stats = inspect.stats() or {}
+        # If broker/workers are not running, return an empty list quickly
+        try:
+            inspect = celery_app.control.inspect(timeout=3)
+            active_workers = inspect.active() or {}
+            stats = inspect.stats() or {}
+        except Exception:
+            active_workers = {}
+            stats = {}
         
         worker_infos = []
         for worker_name in active_workers.keys():
             active_tasks = active_workers.get(worker_name, [])
             worker_stats = stats.get(worker_name, {})
-            
-            worker_info = WorkerInfo(
+            worker_infos.append(WorkerInfo(
                 name=worker_name,
                 status="active",
                 active_tasks=len(active_tasks),
                 processed_tasks=worker_stats.get("total", {}).get("tasks.total", 0),
                 load_average=worker_stats.get("rusage", {}).get("load_average", [])
-            )
-            worker_infos.append(worker_info)
-        
+            ))
         return worker_infos
         
     except Exception as e:
@@ -466,26 +441,26 @@ async def get_system_stats() -> SystemStats:
     counts, queue utilization, task completion rates, and performance metrics.
     """
     try:
-        inspect = celery_app.control.inspect(timeout=10)
-        
-        # Get basic statistics
-        active_workers = inspect.active() or {}
-        scheduled_tasks = inspect.scheduled() or {}
+        # Non-blocking stats when broker/workers are absent
+        try:
+            inspect = celery_app.control.inspect(timeout=3)
+            active_workers = inspect.active() or {}
+            scheduled_tasks = inspect.scheduled() or {}
+        except Exception:
+            active_workers = {}
+            scheduled_tasks = {}
         
         total_active_tasks = sum(len(tasks) for tasks in active_workers.values())
         total_scheduled_tasks = sum(len(tasks) for tasks in scheduled_tasks.values())
         
-        # Get queue information
         queue_info = get_queue_info()
         
-        stats = SystemStats(
+        return SystemStats(
             total_workers=len(active_workers),
             total_queues=queue_info.get("total_queues", 0),
             active_tasks=total_active_tasks,
             scheduled_tasks=total_scheduled_tasks
         )
-        
-        return stats
         
     except Exception as e:
         logger.error(f"Error getting system stats: {e}")

@@ -192,3 +192,4 @@ node_modules/
 # tasks/ 
 
 .mcp.json
+volumes/

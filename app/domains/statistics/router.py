@@ -198,14 +198,27 @@ async def get_statistics(
         
         result = await service.get_statistics_paginated(pagination, filters)
         
-        items = [StatisticsResponse(
-            id=str(s.id),
-            statistical_data=s.statistical_data,
-            source_url=s.source_url,
-            is_active=s.is_active,
-            created_at=s.created_at,
-            updated_at=s.updated_at
-        ) for s in result.items]
+        items = []
+        for s in result.items:
+            # Ensure statistical_data is a plain dict for schema compatibility
+            if hasattr(s.statistical_data, 'model_dump'):
+                statistical_data_dict = s.statistical_data.model_dump(mode='json')
+            elif isinstance(s.statistical_data, dict):
+                statistical_data_dict = s.statistical_data
+            else:
+                try:
+                    statistical_data_dict = dict(s.statistical_data) if s.statistical_data else {}
+                except Exception:
+                    statistical_data_dict = {}
+            
+            items.append(StatisticsResponse(
+                id=str(s.id),
+                statistical_data=statistical_data_dict,
+                source_url=s.source_url,
+                is_active=s.is_active,
+                created_at=s.created_at,
+                updated_at=s.updated_at
+            ))
         
         return PaginatedResponse(
             success=True,

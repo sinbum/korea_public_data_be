@@ -210,7 +210,7 @@ services:
     container_name: korea_grafana_prod
     restart: always
     ports:
-      - "3000:3000"
+      - "3030:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
       - GF_PATHS_PROVISIONING=/etc/grafana/provisioning

@@ -113,6 +113,13 @@ class UserLogin(BaseModel):
     password: str = Field(..., description="비밀번호")
 
 
+class UserLoginRequest(BaseModel):
+    """User login schema with remember flag for cookie-based auth"""
+    email: EmailStr = Field(..., description="이메일 주소")
+    password: str = Field(..., description="비밀번호")
+    remember: bool = Field(False, description="로그인 유지 여부(쿠키 수명 연장)")
+
+
 class UserResponse(BaseModel):
     """User response schema (excluding sensitive data)"""
     id: str = Field(..., description="사용자 ID")

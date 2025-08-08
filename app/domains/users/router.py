@@ -6,11 +6,11 @@ user profile management, and token operations.
 """
 
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request, Cookie
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from .models import (
-    UserCreate, UserLogin, UserUpdate, UserResponse, 
+    UserCreate, UserLogin, UserLoginRequest, UserUpdate, UserResponse, 
     TokenResponse, TokenRefresh, AccountLinkRequest
 )
 from .service import UserService
@@ -19,18 +19,30 @@ from ...core.dependencies import get_service_dependency
 
 # Router setup
 router = APIRouter(prefix="/auth", tags=["Authentication"])
-security_scheme = HTTPBearer()
+security_scheme = HTTPBearer(auto_error=False)
 
 # Dependency injection
 get_user_service = get_service_dependency(UserService)
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme),
+    access_token_cookie: Optional[str] = Cookie(default=None, alias="access_token"),
     user_service: UserService = Depends(get_user_service)
 ):
-    """Dependency to get current authenticated user"""
-    token = credentials.credentials
+    """Dependency to get current authenticated user (Authorization header or HttpOnly cookie)"""
+    token: Optional[str] = None
+    if credentials and credentials.credentials:
+        token = credentials.credentials
+    elif access_token_cookie:
+        token = access_token_cookie
+    else:
+        token = request.cookies.get("access_token")
+
+    if not token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="인증 토큰이 없습니다")
+
     return await user_service.get_current_user(token)
 
 
@@ -53,7 +65,8 @@ async def register(
 
 @router.post("/login", response_model=TokenResponse)
 async def login(
-    user_login: UserLogin,
+    user_login: UserLoginRequest,
+    response: Response,
     user_service: UserService = Depends(get_user_service)
 ):
     """
@@ -64,7 +77,9 @@ async def login(
     
     Returns JWT access token (15 min) and refresh token (7 days)
     """
-    return await user_service.login_local_user(user_login)
+    result = await user_service.login_local_user(UserLogin(email=user_login.email, password=user_login.password))
+    _set_auth_cookies(response, result.access_token, result.refresh_token, remember=user_login.remember)
+    return result
 
 
 @router.get("/google/login")
@@ -97,6 +112,7 @@ async def google_login(
 async def google_callback(
     code: str,
     state: str,
+    response: Response,
     user_service: UserService = Depends(get_user_service)
 ):
     """
@@ -119,12 +135,16 @@ async def google_callback(
             detail="State parameter가 없습니다"
         )
     
-    return await user_service.google_oauth_login(code, state)
+    result = await user_service.google_oauth_login(code, state)
+    _set_auth_cookies(response, result.access_token, result.refresh_token, remember=True)
+    return result
 
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh_token(
-    token_refresh: TokenRefresh,
+    token_refresh: Optional[TokenRefresh] = None,
+    request: Request = None,
+    response: Response = None,
     user_service: UserService = Depends(get_user_service)
 ):
     """
@@ -134,12 +154,25 @@ async def refresh_token(
     
     Returns new access token and refresh token pair
     """
-    return await user_service.refresh_token(token_refresh.refresh_token)
+    refresh_token_str: Optional[str] = None
+    if token_refresh and token_refresh.refresh_token:
+        refresh_token_str = token_refresh.refresh_token
+    else:
+        refresh_token_str = request.cookies.get("refresh_token") if request else None
+
+    if not refresh_token_str:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="리프레시 토큰이 없습니다")
+
+    result = await user_service.refresh_token(refresh_token_str)
+    _set_auth_cookies(response, result.access_token, result.refresh_token, remember=True)
+    return result
 
 
 @router.post("/logout")
 async def logout(
-    credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
+    request: Request,
+    response: Response,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme),
     refresh_token: Optional[str] = None,
     user_service: UserService = Depends(get_user_service)
 ):
@@ -151,10 +184,11 @@ async def logout(
     
     Adds tokens to blacklist to prevent further use
     """
-    access_token = credentials.credentials
-    success = await user_service.logout(access_token, refresh_token)
+    token = credentials.credentials if credentials else request.cookies.get("access_token")
+    success = await user_service.logout(token, refresh_token or request.cookies.get("refresh_token"))
     
     if success:
+        _clear_auth_cookies(response)
         return {"message": "로그아웃되었습니다"}
     else:
         raise HTTPException(
@@ -309,6 +343,35 @@ async def auth_status():
             "logout": "/auth/logout"
         }
     }
+
+
+# Helpers for cookie-based auth
+def _set_auth_cookies(response: Response, access_token: str, refresh_token: str, remember: bool = True):
+    access_max_age = 15 * 60
+    refresh_max_age = (30 if remember else 7) * 24 * 60 * 60
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        max_age=access_max_age,
+        httponly=True,
+        samesite="lax",
+        secure=False,
+        path="/",
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        max_age=refresh_max_age,
+        httponly=True,
+        samesite="lax",
+        secure=False,
+        path="/",
+    )
+
+
+def _clear_auth_cookies(response: Response):
+    for key in ("access_token", "refresh_token"):
+        response.delete_cookie(key=key, path="/")
 
 
 @router.post("/test-register")

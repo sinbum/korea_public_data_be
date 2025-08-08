@@ -424,6 +424,53 @@ GET /api/v1/statistics/report/monthly/{year}/{month}
 GET /api/v1/statistics/report/yearly/{year}
 ```
 
+### 🧰 작업 관리 (Task Management) - 운영/모니터링
+
+- 주요 엔드포인트
+  - `GET  /api/v1/tasks/` — 등록된 작업 목록 조회 (카테고리 필터, 스케줄 정보 포함)
+  - `POST /api/v1/tasks/execute` — 작업 비동기 실행 요청 (queue/priority/countdown/eta 지원)
+  - `GET  /api/v1/tasks/status/{task_id}` — 작업 상태/결과 조회
+  - `DELETE /api/v1/tasks/cancel/{task_id}` — 작업 취소 요청
+  - `GET  /api/v1/tasks/queues` — 큐 현황 조회
+  - `GET  /api/v1/tasks/workers` — 워커 현황 조회
+  - `GET  /api/v1/tasks/stats` — 시스템 통계 (워커/큐/활성/예약 작업)
+
+예시 요청
+
+```bash
+# ✅ 사용 가능한 작업 목록
+curl -s "http://localhost:8000/api/v1/tasks/" | jq '.'
+
+# ▶️ 작업 실행 (우선순위/큐/지연 실행 설정 가능)
+curl -s -X POST "http://localhost:8000/api/v1/tasks/execute" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "task_name": "fetch_announcements_comprehensive",
+    "args": [1, 5, true],
+    "kwargs": {},
+    "queue": "announcements",
+    "priority": "high",
+    "countdown": 0
+  }'
+
+# 🔎 작업 상태/결과 조회
+curl -s "http://localhost:8000/api/v1/tasks/status/<task_id>"
+
+# 🛑 작업 취소
+curl -s -X DELETE "http://localhost:8000/api/v1/tasks/cancel/<task_id>"
+
+# 📨 큐 현황
+curl -s "http://localhost:8000/api/v1/tasks/queues"
+
+# 👷 워커 현황
+curl -s "http://localhost:8000/api/v1/tasks/workers"
+
+# 📈 시스템 통계
+curl -s "http://localhost:8000/api/v1/tasks/stats"
+```
+
+참고: 서비스 전역 상태 확인은 `GET /health`를 사용하세요.
+
 ### 🏷️ 분류 코드 (Classification) - ✅ API 완성
 
 ```bash

@@ -145,10 +145,11 @@ class APIVersionMiddleware(BaseHTTPMiddleware):
         
         # Use default version if no version could be determined
         if not error_version:
-            error_version = self.version_registry.get_default_version()
+            # Try to use any available version (latest) as a fallback
+            error_version = self.version_registry.get_latest_version() or self.version_registry.get_default_version()
         
         # Create error response in appropriate format
-        if error_version and error_version.major == 1:
+        if error_version and getattr(error_version, 'major', 1) == 1:
             # V1 error format
             content = {
                 "status": "error",
@@ -159,7 +160,7 @@ class APIVersionMiddleware(BaseHTTPMiddleware):
         else:
             # V2+ error format
             content = {
-                "success": false,
+                "success": False,
                 "message": error.detail,
                 "errors": [
                     {
