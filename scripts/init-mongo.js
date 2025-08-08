@@ -27,11 +27,12 @@ try {
     // announcements 컬렉션 생성
     db.createCollection('announcements');
     
-    // 인덱스 생성 (중복 허용)
+    // 인덱스 생성 (백그라운드)
     db.announcements.createIndex({ 'announcement_data.business_id': 1 }, { background: true });
     db.announcements.createIndex({ 'announcement_data.business_name': 1 }, { background: true });
-    db.announcements.createIndex({ 'created_at': 1 }, { background: true });
-    db.announcements.createIndex({ 'is_active': 1 }, { background: true });
+    db.announcements.createIndex({ 'is_active': 1, 'announcement_data.announcement_date': -1 }, { background: true });
+    db.announcements.createIndex({ 'is_active': 1, 'announcement_data.end_date': 1 }, { background: true });
+    db.announcements.createIndex({ 'created_at': -1 }, { background: true });
     
     print('Announcements collection and indexes created successfully');
 } catch (error) {

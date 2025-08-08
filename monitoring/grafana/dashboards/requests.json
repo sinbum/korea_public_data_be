@@ -35,6 +35,58 @@
       ],
       "gridPos": {"h": 8, "w": 24, "x": 0, "y": 16}
     }
+    ,
+    {
+      "type": "timeseries",
+      "title": "Tasks: request rate (req/s)",
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{handler=~\"/api/v1/tasks.*\"}[1m]))",
+          "legendFormat": "tasks"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 24}
+    },
+    {
+      "type": "timeseries",
+      "title": "Tasks: latency p50/p90/p99 (s)",
+      "targets": [
+        {"expr": "histogram_quantile(0.5, sum(rate(http_request_duration_seconds_bucket{handler=~\"/api/v1/tasks.*\"}[5m])) by (le))", "legendFormat": "p50"},
+        {"expr": "histogram_quantile(0.9, sum(rate(http_request_duration_seconds_bucket{handler=~\"/api/v1/tasks.*\"}[5m])) by (le))", "legendFormat": "p90"},
+        {"expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{handler=~\"/api/v1/tasks.*\"}[5m])) by (le))", "legendFormat": "p99"}
+      ],
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 32}
+    },
+    {
+      "type": "timeseries",
+      "title": "Tasks: error rate (req/s)",
+      "targets": [
+        {"expr": "sum(rate(http_requests_total{status=\"4xx\", handler=~\"/api/v1/tasks.*\"}[1m]))", "legendFormat": "4xx"},
+        {"expr": "sum(rate(http_requests_total{status=\"5xx\", handler=~\"/api/v1/tasks.*\"}[1m]))", "legendFormat": "5xx"}
+      ],
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 40}
+    }
+    ,
+    {
+      "type": "stat",
+      "title": "Celery: workers / queues",
+      "targets": [
+        {"expr": "korea_celery_workers_total", "legendFormat": "workers"},
+        {"expr": "korea_celery_queues_total", "legendFormat": "queues"}
+      ],
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}},
+      "gridPos": {"h": 6, "w": 12, "x": 0, "y": 48}
+    },
+    {
+      "type": "stat",
+      "title": "Celery: active / scheduled tasks",
+      "targets": [
+        {"expr": "korea_celery_tasks_active_total", "legendFormat": "active"},
+        {"expr": "korea_celery_tasks_scheduled_total", "legendFormat": "scheduled"}
+      ],
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}},
+      "gridPos": {"h": 6, "w": 12, "x": 12, "y": 48}
+    }
   ],
   "schemaVersion": 36,
   "style": "dark",
