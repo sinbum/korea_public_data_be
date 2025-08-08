@@ -39,6 +39,8 @@ services:
     restart: unless-stopped
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
       - MONGODB_URL=mongodb://api_user:api_password@mongodb:27017/korea_public_api
       - REDIS_URL=redis://redis:6379/0

@@ -17,18 +17,22 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+# uv 설치 및 경로 설정
+ENV PATH="/root/.local/bin:${PATH}"
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+
 # Python 의존성 설치
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN uv pip install --system -r requirements.txt
 
 # 포트 노출
 EXPOSE 8000
 
 # Development stage
-FROM base as development
+FROM base AS development
 
 # 개발용 추가 패키지
-RUN pip install --no-cache-dir \
+RUN uv pip install --system \
     watchdog \
     debugpy
 
@@ -46,10 +50,10 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--log-level", "debug"]
 
 # Production stage
-FROM base as production
+FROM base AS production
 
 # 프로덕션용 추가 패키지
-RUN pip install --no-cache-dir \
+RUN uv pip install --system \
     gunicorn
 
 # 비root 사용자 생성
