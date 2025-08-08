@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import ORJSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -19,7 +20,7 @@ from .core.middleware import (
 )
 from .core.rate_limit import RedisRateLimitMiddleware
 from .core.logging_config import setup_logging
-from .core.metrics import init_metrics
+from .core.metrics import init_metrics, poll_celery_metrics
 import os
 
 def _is_redis_available(url: str) -> bool:
@@ -56,6 +57,7 @@ from .shared.exceptions.api_exceptions import KoreanPublicAPIError
 from .shared.exceptions.data_exceptions import DataValidationError
 from .shared.swagger_config import tags_metadata, swagger_ui_parameters
 from .shared.security.schemas import SECURITY_SCHEMES
+from starlette.middleware.gzip import GZipMiddleware
 
 # 로깅 설정 (JSON in prod, pretty in dev)
 setup_logging(debug=bool(settings.debug), level=str(settings.log_level))
@@ -102,6 +104,15 @@ async def lifespan(app: FastAPI):
         raise
     
     logger.info("애플리케이션 시작 완료")
+    # Start background Celery metrics poller
+    stop_metrics = None
+    try:
+        import asyncio as _asyncio
+        stop_metrics = _asyncio.Event()
+        _asyncio.create_task(poll_celery_metrics(stop_metrics, interval_seconds=15))
+        logger.info("Celery metrics poller started")
+    except Exception as e:
+        logger.warning(f"Celery metrics poller disabled: {e}")
     
     yield
     
@@ -111,6 +122,11 @@ async def lifespan(app: FastAPI):
         close_mongo_connection()
     except Exception as e:
         logger.error(f"MongoDB 연결 종료 중 오류: {e}")
+    try:
+        if stop_metrics is not None:
+            stop_metrics.set()  # type: ignore
+    except Exception:
+        pass
     logger.info("애플리케이션 종료 완료")
 
 
@@ -278,6 +294,9 @@ if redis_enabled:
 # Metrics
 init_metrics(app, enabled=True, endpoint="/metrics")
 
+# GZip compression for large JSON responses (improves LCP)
+app.add_middleware(GZipMiddleware, minimum_size=500)
+
 # API 버전 미들웨어 (요청 초기에 처리)
 app.add_middleware(
     create_deprecation_middleware(
@@ -287,7 +306,7 @@ app.add_middleware(
 )
 app.add_middleware(
     create_version_middleware(
-        skip_paths=["/docs", "/redoc", "/openapi.json", "/favicon.ico", "/health", "/", "/version"],
+        skip_paths=["/docs", "/redoc", "/openapi.json", "/favicon.ico", "/health", "/"],
         add_version_headers=True
     )
 )

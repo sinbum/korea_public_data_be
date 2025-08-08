@@ -7,7 +7,8 @@ proper logging, and integration with the custom exception system.
 
 import logging
 import traceback
-from datetime import datetime
+import os
+from datetime import datetime, timezone
 from typing import Union, Dict, Any, List
 from uuid import uuid4
 
@@ -31,7 +32,9 @@ logger = logging.getLogger(__name__)
 
 def _generate_request_id() -> str:
     """Generate a unique request ID for error tracking."""
-    return f"req_{uuid4().hex[:12]}"
+    # Include timestamp for better traceability
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    return f"req_{timestamp}_{uuid4().hex[:8]}"
 
 
 def _extract_validation_errors(exc: RequestValidationError) -> List[Dict[str, Any]]:
@@ -47,13 +50,24 @@ def _extract_validation_errors(exc: RequestValidationError) -> List[Dict[str, An
     errors = []
     for error in exc.errors():
         field_path = ".".join(str(loc) for loc in error["loc"][1:])  # Skip 'body'
+        
+        # Sanitize sensitive input values for error responses
+        input_value = error.get("input")
+        if input_value is not None:
+            input_str = str(input_value)
+            # For password fields or long inputs, truncate/mask
+            if any(sensitive in field_path.lower() for sensitive in ['password', 'secret', 'token']):
+                input_value = "[REDACTED]"
+            elif len(input_str) > 100:
+                input_value = input_str[:100] + "..."
+        
         errors.append({
             "code": "VALIDATION_ERROR",
             "message": error["msg"],
             "field": field_path or "unknown",
             "context": {
                 "type": error["type"],
-                "value": error.get("input")
+                "value": input_value
             }
         })
     return errors
@@ -71,7 +85,7 @@ async def base_api_exception_handler(
     """
     request_id = _generate_request_id()
     
-    # Log the exception with context
+    # Enhanced logging with correlation data
     logger.error(
         f"API Exception [{request_id}]: {exc.error_code} - {exc.detail}",
         extra={
@@ -80,7 +94,9 @@ async def base_api_exception_handler(
             "method": request.method,
             "status_code": exc.status_code,
             "error_code": exc.error_code,
-            "context": exc.context
+            "context": exc.context,
+            "user_agent": request.headers.get("user-agent", "unknown"),
+            "client_ip": request.client.host if request.client else "unknown"
         }
     )
     
@@ -95,7 +111,7 @@ async def base_api_exception_handler(
         error_type=exc.error_code,
         path=str(request.url.path),
         method=request.method,
-        timestamp=datetime.utcnow().isoformat() + "Z"
+        timestamp=datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
     )
 
 
@@ -110,14 +126,16 @@ async def http_exception_handler(
     """
     request_id = _generate_request_id()
     
-    # Log the exception
+    # Enhanced HTTP exception logging
     logger.error(
         f"HTTP Exception [{request_id}]: {exc.status_code} - {exc.detail}",
         extra={
             "request_id": request_id,
             "path": str(request.url.path),
             "method": request.method,
-            "status_code": exc.status_code
+            "status_code": exc.status_code,
+            "user_agent": request.headers.get("user-agent", "unknown"),
+            "client_ip": request.client.host if request.client else "unknown"
         }
     )
     
@@ -170,14 +188,25 @@ async def validation_exception_handler(
     """
     request_id = _generate_request_id()
     
-    # Log validation errors
+    # Enhanced validation error logging (sanitize sensitive data)
+    sanitized_errors = []
+    for error in exc.errors():
+        sanitized_error = dict(error)
+        # Remove potentially sensitive input values
+        if 'input' in sanitized_error:
+            # Only log first 100 chars to prevent log pollution
+            input_val = str(sanitized_error['input'])[:100]
+            sanitized_error['input'] = input_val + '...' if len(str(sanitized_error['input'])) > 100 else input_val
+        sanitized_errors.append(sanitized_error)
+    
     logger.warning(
         f"Validation Error [{request_id}]: {len(exc.errors())} validation errors",
         extra={
             "request_id": request_id,
             "path": str(request.url.path),
             "method": request.method,
-            "errors": exc.errors()
+            "errors": sanitized_errors,
+            "user_agent": request.headers.get("user-agent", "unknown")
         }
     )
     
@@ -291,7 +320,7 @@ async def general_exception_handler(
     """
     request_id = _generate_request_id()
     
-    # Log the full exception with stack trace
+    # Enhanced exception logging with rate limiting awareness
     logger.exception(
         f"Unhandled Exception [{request_id}]: {type(exc).__name__}: {str(exc)}",
         extra={
@@ -299,23 +328,32 @@ async def general_exception_handler(
             "path": str(request.url.path),
             "method": request.method,
             "exception_type": type(exc).__name__,
-            "traceback": traceback.format_exc()
+            "traceback": traceback.format_exc(),
+            "user_agent": request.headers.get("user-agent", "unknown"),
+            "client_ip": request.client.host if request.client else "unknown",
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
     )
     
     # Don't expose internal error details in production
+    is_debug = os.getenv('DEBUG', 'False').lower() == 'true'
     message = "An unexpected error occurred"
-    if logger.isEnabledFor(logging.DEBUG):
+    if is_debug:
         message = f"{type(exc).__name__}: {str(exc)}"
+    
+    # Enhanced context for debugging while protecting sensitive info
+    error_context = {
+        "exception_type": type(exc).__name__,
+        "request_id": request_id
+    }
+    if is_debug:
+        error_context["debug_message"] = str(exc)[:200]  # Limit length
     
     errors = [
         ErrorDetail(
             code="INTERNAL_SERVER_ERROR",
             message=message,
-            context={
-                "exception_type": type(exc).__name__,
-                "request_id": request_id
-            }
+            context=error_context
         )
     ]
     

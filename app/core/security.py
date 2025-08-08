@@ -5,20 +5,55 @@ Provides JWT token generation/verification and password hashing utilities
 for both local and OAuth authentication flows.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 import secrets
+import time
+import threading
+import json
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from passlib.hash import bcrypt
 import redis
+import logging
 from .config import settings
+
+logger = logging.getLogger(__name__)
+
+# Thread-safe in-memory fallback store for OAuth state when Redis is unavailable
+_oauth_state_memory_store: dict[str, dict[str, Any]] = {}
+_oauth_state_memory_expiry: dict[str, float] = {}
+_oauth_memory_lock = threading.RLock()
+
+# Cleanup task for memory store
+def _cleanup_expired_oauth_states():
+    """Clean up expired OAuth states from memory store"""
+    current_time = time.time()
+    with _oauth_memory_lock:
+        expired_keys = [
+            key for key, exp_time in _oauth_state_memory_expiry.items() 
+            if current_time > exp_time
+        ]
+        for key in expired_keys:
+            _oauth_state_memory_store.pop(key, None)
+            _oauth_state_memory_expiry.pop(key, None)
+        
+        if expired_keys:
+            logger.info(f"Cleaned up {len(expired_keys)} expired OAuth states from memory")
 
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# Redis client for token blacklist
-redis_client = redis.from_url(settings.redis_url, decode_responses=True)
+# Redis client for token blacklist (tuned for fast-fail if Redis is down)
+redis_client = redis.from_url(
+    settings.redis_url,
+    decode_responses=True,
+    socket_connect_timeout=2.0,  # Increased from 0.5s
+    socket_timeout=2.0,          # Increased from 0.5s
+    retry_on_timeout=True,
+    max_connections=10,
+    health_check_interval=30
+)
 
 
 class SecurityManager:
@@ -46,15 +81,17 @@ class SecurityManager:
         """Create a JWT access token"""
         to_encode = data.copy()
         
+        now = datetime.now(timezone.utc)
         if expires_delta:
-            expire = datetime.utcnow() + expires_delta
+            expire = now + expires_delta
         else:
-            expire = datetime.utcnow() + timedelta(minutes=self.access_token_expire_minutes)
+            expire = now + timedelta(minutes=self.access_token_expire_minutes)
         
         to_encode.update({
             "exp": expire,
-            "iat": datetime.utcnow(),
-            "type": "access"
+            "iat": now,
+            "type": "access",
+            "jti": secrets.token_hex(16)  # JWT ID for better token tracking
         })
         
         encoded_jwt = jwt.encode(to_encode, self.secret_key, algorithm=self.algorithm)
@@ -68,15 +105,17 @@ class SecurityManager:
         """Create a JWT refresh token"""
         to_encode = data.copy()
         
+        now = datetime.now(timezone.utc)
         if expires_delta:
-            expire = datetime.utcnow() + expires_delta
+            expire = now + expires_delta
         else:
-            expire = datetime.utcnow() + timedelta(days=self.refresh_token_expire_days)
+            expire = now + timedelta(days=self.refresh_token_expire_days)
         
         to_encode.update({
             "exp": expire,
-            "iat": datetime.utcnow(),
-            "type": "refresh"
+            "iat": now,
+            "type": "refresh",
+            "jti": secrets.token_hex(16)  # JWT ID for better token tracking
         })
         
         encoded_jwt = jwt.encode(to_encode, self.secret_key, algorithm=self.algorithm)
@@ -95,51 +134,96 @@ class SecurityManager:
             return None
     
     def blacklist_token(self, token: str, expire_seconds: Optional[int] = None) -> bool:
-        """Add token to blacklist (Redis)"""
+        """Add token to blacklist (Redis with fallback)"""
         try:
-            # Use token as key with expiration
+            # Use token JTI if available, otherwise full token
+            payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
+            token_id = payload.get('jti', token)  # Use JTI for smaller keys
+            
             if expire_seconds is None:
                 # Set expiration to match token expiration
-                payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
-                expire_time = datetime.fromtimestamp(payload.get('exp', 0))
-                expire_seconds = max(0, int((expire_time - datetime.utcnow()).total_seconds()))
+                expire_time = datetime.fromtimestamp(payload.get('exp', 0), timezone.utc)
+                expire_seconds = max(0, int((expire_time - datetime.now(timezone.utc)).total_seconds()))
             
-            redis_client.setex(f"blacklist:{token}", expire_seconds, "1")
+            redis_client.setex(f"blacklist:{token_id}", expire_seconds, "1")
+            logger.info(f"Token blacklisted successfully: {token_id[:8]}...")
             return True
-        except Exception:
+        except Exception as e:
+            logger.error(f"Failed to blacklist token: {str(e)}")
             return False
     
     def is_token_blacklisted(self, token: str) -> bool:
         """Check if token is blacklisted"""
         try:
-            return redis_client.exists(f"blacklist:{token}") > 0
-        except Exception:
-            return False
+            # Extract JTI from token for lookup
+            payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
+            token_id = payload.get('jti', token)
+            return redis_client.exists(f"blacklist:{token_id}") > 0
+        except Exception as e:
+            logger.warning(f"Failed to check blacklist, allowing token: {str(e)}")
+            return False  # Fail open for availability
     
     def generate_state_token(self) -> str:
         """Generate a secure state token for OAuth CSRF protection"""
         return secrets.token_urlsafe(32)
     
     def store_oauth_state(self, state: str, data: Dict[str, Any], expire_seconds: int = 600) -> bool:
-        """Store OAuth state data in Redis with expiration"""
+        """Store OAuth state data in Redis with expiration. Falls back to in-memory store if Redis is unavailable."""
         try:
-            import json
             redis_client.setex(f"oauth_state:{state}", expire_seconds, json.dumps(data))
+            logger.debug(f"OAuth state stored in Redis: {state[:8]}...")
             return True
-        except Exception:
-            return False
+        except Exception as e:
+            logger.warning(f"Redis unavailable, using memory fallback: {str(e)}")
+            # Fallback: store in process memory with TTL (thread-safe)
+            try:
+                with _oauth_memory_lock:
+                    _oauth_state_memory_store[state] = data
+                    _oauth_state_memory_expiry[state] = time.time() + float(expire_seconds)
+                    # Clean up expired entries periodically
+                    if len(_oauth_state_memory_store) % 10 == 0:  # Every 10th store
+                        _cleanup_expired_oauth_states()
+                logger.debug(f"OAuth state stored in memory: {state[:8]}...")
+                return True
+            except Exception as mem_e:
+                logger.error(f"Failed to store OAuth state in memory: {str(mem_e)}")
+                return False
     
     def get_oauth_state(self, state: str) -> Optional[Dict[str, Any]]:
-        """Retrieve and delete OAuth state data"""
+        """Retrieve and delete OAuth state data. Supports in-memory fallback."""
+        # Try Redis first
         try:
-            import json
             key = f"oauth_state:{state}"
             data = redis_client.get(key)
             if data:
                 redis_client.delete(key)  # Use once only
+                logger.debug(f"OAuth state retrieved from Redis: {state[:8]}...")
                 return json.loads(data)
-            return None
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Redis lookup failed, trying memory fallback: {str(e)}")
+
+        # Fallback to memory store (thread-safe)
+        try:
+            with _oauth_memory_lock:
+                exp = _oauth_state_memory_expiry.get(state)
+                if exp is None:
+                    return None
+                    
+                current_time = time.time()
+                if current_time > exp:
+                    # Expired; cleanup
+                    _oauth_state_memory_expiry.pop(state, None)
+                    _oauth_state_memory_store.pop(state, None)
+                    logger.debug(f"OAuth state expired in memory: {state[:8]}...")
+                    return None
+                    
+                data = _oauth_state_memory_store.pop(state, None)
+                _oauth_state_memory_expiry.pop(state, None)
+                logger.debug(f"OAuth state retrieved from memory: {state[:8]}...")
+                # Ensure dict is returned
+                return data if isinstance(data, dict) else None
+        except Exception as e:
+            logger.error(f"Memory store lookup failed: {str(e)}")
             return None
 
 

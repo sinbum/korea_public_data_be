@@ -31,13 +31,19 @@ class GoogleOAuthClient:
         
         # HTTP client will be created per request to avoid closed-client reuse issues
     
-    def get_authorization_url(self, state: Optional[str] = None, redirect_url: Optional[str] = None) -> Dict[str, str]:
+    def get_authorization_url(
+        self,
+        state: Optional[str] = None,
+        redirect_to: Optional[str] = None,
+        remember: Optional[bool] = None,
+    ) -> Dict[str, str]:
         """
         Generate Google OAuth authorization URL with CSRF protection
         
         Args:
             state: Optional state parameter for additional CSRF protection
-            redirect_url: Optional URL to redirect after authentication
+            redirect_to: Optional path (or URL) to redirect client after successful authentication
+            remember: Optional flag that indicates persistent login preference
             
         Returns:
             Dict containing authorization URL and state token
@@ -49,18 +55,23 @@ class GoogleOAuthClient:
         if state is None:
             state = security.generate_state_token()
         
-        # Store state data in Redis for verification
+        # Store state data in Redis for verification (used by callback)
         state_data = {
             "timestamp": datetime.utcnow().isoformat(),
-            "redirect_url": redirect_url
+            # post-login redirection target for FE (path or absolute URL)
+            "post_login_redirect": redirect_to,
+            # remember-me preference for cookie max-age handling
+            "remember": bool(remember) if remember is not None else None,
+            # store redirect_uri actually used during authorization for exact match in token exchange
+            "redirect_url": self.redirect_uri,
         }
         security.store_oauth_state(state, state_data, expire_seconds=600)  # 10 minutes
         
         # Build authorization URL parameters
         params = {
             "client_id": self.client_id,
-            # Prefer request-scoped redirect URL (FE callback) if provided; fallback to default
-            "redirect_uri": redirect_url or self.redirect_uri,
+            # Always use backend callback as redirect_uri for Google
+            "redirect_uri": self.redirect_uri,
             "scope": self.scope,
             "response_type": "code",
             "state": state,
