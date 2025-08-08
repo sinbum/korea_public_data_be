@@ -1,4 +1,5 @@
 import os
+import time
 from typing import Dict, List, Tuple, Any
 
 import pytest
@@ -10,10 +11,23 @@ OPENAPI_URL = f"{BASE_URL}/openapi.json"
 
 
 def _fetch_openapi() -> Dict:
-    with httpx.Client(timeout=10) as client:
-        resp = client.get(OPENAPI_URL)
-        resp.raise_for_status()
-        return resp.json()
+    # 서버 기동 지연을 고려해 재시도
+    max_wait = int(os.getenv("E2E_WAIT_STARTUP", "20"))
+    deadline = time.time() + max_wait
+    last_err: Exception | None = None
+    while time.time() < deadline:
+        try:
+            with httpx.Client(timeout=5) as client:
+                resp = client.get(OPENAPI_URL)
+                resp.raise_for_status()
+                return resp.json()
+        except Exception as e:
+            last_err = e
+            time.sleep(0.5)
+    # 마지막 시도 후에도 실패하면 예외 전파
+    if last_err:
+        raise last_err
+    raise RuntimeError("Failed to fetch OpenAPI within wait window")
 
 
 def _is_auth_path(path: str) -> bool:

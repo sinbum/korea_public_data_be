@@ -4,13 +4,20 @@ Pytest configuration and shared fixtures.
 Provides common test setup, fixtures, and utilities.
 """
 
+import os
+import sys
 import pytest
 import pytest_asyncio
 import asyncio
-from unittest.mock import Mock, AsyncMock, MagicMock
+from unittest.mock import Mock, AsyncMock, MagicMock, patch
 from typing import Dict, Any, Optional
 import httpx
 from datetime import datetime
+from pathlib import Path
+
+# Configure test environment before importing app modules
+os.environ.setdefault('ENV_FILE', str(Path(__file__).parent / '.env.test'))
+os.environ.setdefault('TESTING', '1')
 
 from app.shared.clients.kstartup_api_client import KStartupAPIClient
 from app.shared.clients.strategies import GovernmentAPIKeyStrategy
@@ -26,15 +33,40 @@ from app.shared.models.kstartup import (
 @pytest.fixture(scope="session")
 def event_loop():
     """Create an instance of the default event loop for the test session."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
+    try:
+        loop = asyncio.get_event_loop_policy().new_event_loop()
+        yield loop
+    finally:
+        loop.close()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_test_environment():
+    """Setup test environment configuration"""
+    # Ensure test environment variables are set
+    test_env = {
+        'MONGODB_URL': 'mongodb://localhost:27017',
+        'DATABASE_NAME': 'korea_public_api_test',
+        'JWT_SECRET_KEY': 'test_jwt_secret_key_for_testing_minimum_32_chars_long_abcdef123456',
+        'PUBLIC_DATA_API_KEY': 'test_api_key_minimum_32_characters_long',
+        'REDIS_URL': 'redis://localhost:6379/1',
+        'DEBUG': 'true',
+        'TESTING': '1'
+    }
+    
+    for key, value in test_env.items():
+        os.environ.setdefault(key, value)
+    
+    yield
+    
+    # Cleanup if needed
+    pass
 
 
 @pytest.fixture
 def mock_api_key():
-    """Mock API key for testing"""
-    return "test_api_key_12345"
+    """Mock API key for testing (meets minimum length requirements)"""
+    return "test_api_key_minimum_32_characters_long"
 
 
 @pytest.fixture
@@ -218,9 +250,10 @@ def sample_statistics_data():
 
 @pytest.fixture
 def mock_kstartup_client(mock_api_key):
-    """Mock K-Startup API client"""
-    client = KStartupAPIClient(api_key=mock_api_key)
-    return client
+    """Mock K-Startup API client with enhanced test setup"""
+    with patch('app.core.config.settings.public_data_api_key', mock_api_key):
+        client = KStartupAPIClient(api_key=mock_api_key)
+        return client
 
 
 @pytest.fixture
