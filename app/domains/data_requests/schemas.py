@@ -39,7 +39,7 @@ class DataRequestStatusUpdateRequest(BaseModel):
 
 class VoteRequest(BaseModel):
     """투표 요청 스키마"""
-    request_id: str = Field(..., description="요청 ID")
+    request_id: Optional[str] = Field(None, description="요청 ID (URL에서 자동 설정)")
     vote_type: VoteType = Field(..., description="투표 타입")
 
 

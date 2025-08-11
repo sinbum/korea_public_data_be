@@ -104,16 +104,15 @@ class DataRequest(BaseDocument):
     data: DataRequestData = Field(..., description="데이터 요청 정보")
     
     # BaseDocument에서 상속받는 필드들:
-    # - _id: ObjectId
+    # - id: ObjectId (aliased as _id)
     # - created_at: datetime  
     # - updated_at: datetime
-    # - is_active: bool
-    # - metadata: Dict[str, Any]
     
     # 추가 메타데이터
     source: str = Field(default="web", description="요청 출처")
     ip_address: Optional[str] = Field(None, description="요청자 IP")
     user_agent: Optional[str] = Field(None, description="사용자 에이전트")
+    is_active: bool = Field(default=True, description="활성 상태")
     
     model_config = ConfigDict(
         from_attributes=True,
@@ -121,37 +120,29 @@ class DataRequest(BaseDocument):
         populate_by_name=True
     )
     
-    @property
-    def id(self) -> str:
+    def get_id(self) -> str:
         """문서 ID를 문자열로 반환"""
-        return str(self._id)
+        return str(self.id)
     
-    @property
-    def title(self) -> str:
+    def get_title(self) -> str:
         return self.data.title
     
-    @property
-    def description(self) -> str:
+    def get_description(self) -> str:
         return self.data.description
     
-    @property
-    def status(self) -> DataRequestStatus:
+    def get_status(self) -> DataRequestStatus:
         return self.data.status
     
-    @property
-    def priority(self) -> DataRequestPriority:
+    def get_priority(self) -> DataRequestPriority:
         return self.data.priority
     
-    @property
-    def vote_count(self) -> int:
+    def get_vote_count(self) -> int:
         return self.data.vote_count
     
-    @property
-    def category_id(self) -> str:
+    def get_category_id(self) -> str:
         return self.data.category_id
     
-    @property
-    def user_id(self) -> str:
+    def get_user_id(self) -> str:
         return self.data.user_id
 
 
@@ -159,6 +150,7 @@ class CategoryDocument(BaseDocument):
     """카테고리 MongoDB 문서 모델"""
     
     data: Category = Field(..., description="카테고리 정보")
+    is_active: bool = Field(default=True, description="활성 상태")
     
     model_config = ConfigDict(
         from_attributes=True,
@@ -166,12 +158,10 @@ class CategoryDocument(BaseDocument):
         populate_by_name=True
     )
     
-    @property
-    def id(self) -> str:
-        return str(self._id)
+    def get_id(self) -> str:
+        return str(self.id)
     
-    @property
-    def name(self) -> str:
+    def get_name(self) -> str:
         return self.data.name
 
 
@@ -179,6 +169,7 @@ class VoteDocument(BaseDocument):
     """투표 MongoDB 문서 모델"""
     
     data: Vote = Field(..., description="투표 정보")
+    is_active: bool = Field(default=True, description="활성 상태")
     
     model_config = ConfigDict(
         from_attributes=True,
@@ -186,18 +177,14 @@ class VoteDocument(BaseDocument):
         populate_by_name=True
     )
     
-    @property
-    def id(self) -> str:
-        return str(self._id)
+    def get_id(self) -> str:
+        return str(self.id)
     
-    @property
-    def request_id(self) -> str:
+    def get_request_id(self) -> str:
         return self.data.request_id
     
-    @property
-    def user_id(self) -> str:
+    def get_user_id(self) -> str:
         return self.data.user_id
     
-    @property
-    def vote_type(self) -> VoteType:
+    def get_vote_type(self) -> VoteType:
         return self.data.vote_type

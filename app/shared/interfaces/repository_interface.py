@@ -235,7 +235,7 @@ class MongoRepository(BaseRepository[T]):
     @property
     def collection(self):
         """Get MongoDB collection instance."""
-        if not self._collection and self._database:
+        if self._collection is None and self._database is not None:
             self._collection = self._database[self._collection_name]
         return self._collection
     

@@ -11,7 +11,7 @@ db = db.getSiblingDB('korea_public_api');
 try {
     db.createUser({
         user: 'api_user',
-        pwd: 'api_password',
+        pwd: 'api_prod_password_2024',
         roles: [
             { role: 'readWrite', db: 'korea_public_api' },
             { role: 'dbAdmin', db: 'korea_public_api' }

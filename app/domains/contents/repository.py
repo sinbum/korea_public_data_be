@@ -21,7 +21,7 @@ class ContentRepository(BaseRepository[Content, ContentCreate, ContentUpdate]):
     
     def __init__(self, db: Optional[Database] = None):
         """Initialize content repository"""
-        super().__init__(db or get_database(), "contents")
+        super().__init__(db if db is not None else get_database(), "contents")
     
     def _to_domain_model(self, doc: Dict[str, Any]) -> Content:
         """Convert MongoDB document to Content domain model"""

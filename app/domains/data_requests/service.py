@@ -40,7 +40,7 @@ class DataRequestService:
     ) -> DataRequestResponse:
         """데이터 요청 생성"""
         # 카테고리 존재 확인
-        category = await self.category_repo.find_by_id(request_data.category_id)
+        category = self.category_repo.find_by_id(request_data.category_id)
         if not category:
             raise BaseAPIException(
                 status_code=404,
@@ -67,7 +67,7 @@ class DataRequestService:
         )
         
         # 저장
-        saved_request = await self.data_request_repo.create(data_request)
+        saved_request = self.data_request_repo.create(data_request)
         
         # 응답 생성
         return await self._build_response(saved_request, category=category)
@@ -78,7 +78,7 @@ class DataRequestService:
         user_id: Optional[str] = None
     ) -> DataRequestResponse:
         """데이터 요청 상세 조회"""
-        data_request = await self.data_request_repo.find_by_id(request_id)
+        data_request = self.data_request_repo.find_by_id(request_id)
         if not data_request:
             raise BaseAPIException(
                 status_code=404,
@@ -96,7 +96,7 @@ class DataRequestService:
         """데이터 요청 목록 조회"""
         pagination = PaginationParams(page=filters.page, size=filters.limit)
         
-        paginated_result = await self.data_request_repo.find_by_filters(
+        paginated_result = self.data_request_repo.find_by_filters(
             filters, pagination, user_id
         )
         
@@ -123,7 +123,7 @@ class DataRequestService:
         user_id: str
     ) -> DataRequestResponse:
         """데이터 요청 수정"""
-        data_request = await self.data_request_repo.find_by_id(request_id)
+        data_request = self.data_request_repo.find_by_id(request_id)
         if not data_request:
             raise BaseAPIException(
                 status_code=404,
@@ -145,7 +145,7 @@ class DataRequestService:
         if update_dict:
             # 카테고리 변경 시 유효성 확인
             if "category_id" in update_dict:
-                category = await self.category_repo.find_by_id(update_dict["category_id"])
+                category = self.category_repo.find_by_id(update_dict["category_id"])
                 if not category:
                     raise BaseAPIException(
                         status_code=404,
@@ -158,14 +158,14 @@ class DataRequestService:
                 if hasattr(data_request.data, key):
                     setattr(data_request.data, key, value)
             
-            updated_request = await self.data_request_repo.update(request_id, data_request)
+            updated_request = self.data_request_repo.update(request_id, data_request)
             return await self._build_response(updated_request, user_id=user_id)
         
         return await self._build_response(data_request, user_id=user_id)
     
     async def delete_data_request(self, request_id: str, user_id: str) -> bool:
         """데이터 요청 삭제"""
-        data_request = await self.data_request_repo.find_by_id(request_id)
+        data_request = self.data_request_repo.find_by_id(request_id)
         if not data_request:
             raise BaseAPIException(
                 status_code=404,
@@ -181,7 +181,7 @@ class DataRequestService:
                 message="삭제 권한이 없습니다."
             )
         
-        return await self.data_request_repo.delete(request_id)
+        return self.data_request_repo.delete(request_id)
     
     async def vote_data_request(
         self,
@@ -191,7 +191,7 @@ class DataRequestService:
     ) -> VoteResponse:
         """데이터 요청에 투표"""
         # 요청 존재 확인
-        data_request = await self.data_request_repo.find_by_id(request_id)
+        data_request = self.data_request_repo.find_by_id(request_id)
         if not data_request:
             raise BaseAPIException(
                 status_code=404,
@@ -200,18 +200,18 @@ class DataRequestService:
             )
         
         # 기존 투표 확인
-        existing_vote = await self.vote_repo.find_by_request_and_user(request_id, user_id)
+        existing_vote = self.vote_repo.find_by_request_and_user(request_id, user_id)
         
         if existing_vote:
             # 같은 타입의 투표라면 투표 취소
             if existing_vote.data.vote_type == vote_data.vote_type:
-                await self.vote_repo.delete_by_request_and_user(request_id, user_id)
+                self.vote_repo.delete_by_request_and_user(request_id, user_id)
                 user_voted = False
                 user_vote_type = None
             else:
                 # 다른 타입의 투표라면 변경
                 existing_vote.data.vote_type = vote_data.vote_type
-                await self.vote_repo.update(str(existing_vote._id), existing_vote)
+                self.vote_repo.update(existing_vote.get_id(), existing_vote)
                 user_voted = True
                 user_vote_type = vote_data.vote_type
         else:
@@ -224,13 +224,13 @@ class DataRequestService:
             )
             
             vote_document = VoteDocument(data=vote)
-            await self.vote_repo.create(vote_document)
+            self.vote_repo.create(vote_document)
             user_voted = True
             user_vote_type = vote_data.vote_type
         
         # 투표 수 업데이트
-        vote_counts = await self.vote_repo.get_vote_counts(request_id)
-        await self.data_request_repo.update_vote_count(
+        vote_counts = self.vote_repo.get_vote_counts(request_id)
+        self.data_request_repo.update_vote_count(
             request_id,
             vote_counts["total_count"],
             vote_counts["likes_count"],
@@ -252,7 +252,7 @@ class DataRequestService:
         status_data: DataRequestStatusUpdateRequest
     ) -> DataRequestResponse:
         """데이터 요청 상태 변경 (관리자용)"""
-        data_request = await self.data_request_repo.find_by_id(request_id)
+        data_request = self.data_request_repo.find_by_id(request_id)
         if not data_request:
             raise BaseAPIException(
                 status_code=404,
@@ -260,7 +260,7 @@ class DataRequestService:
                 message=f"데이터 요청을 찾을 수 없습니다: {request_id}"
             )
         
-        success = await self.data_request_repo.update_status(
+        success = self.data_request_repo.update_status(
             request_id,
             status_data.status,
             status_data.admin_notes,
@@ -275,12 +275,12 @@ class DataRequestService:
             )
         
         # 업데이트된 요청 조회
-        updated_request = await self.data_request_repo.find_by_id(request_id)
+        updated_request = self.data_request_repo.find_by_id(request_id)
         return await self._build_response(updated_request)
     
     async def get_popular_requests(self, limit: int = 10) -> List[DataRequestResponse]:
         """인기 데이터 요청 조회"""
-        popular_requests = await self.data_request_repo.find_popular(limit)
+        popular_requests = self.data_request_repo.find_popular(limit)
         
         response_items = []
         for request in popular_requests:
@@ -297,7 +297,7 @@ class DataRequestService:
     ) -> DataRequestListResponse:
         """사용자의 데이터 요청 목록 조회"""
         pagination = PaginationParams(page=page, size=limit)
-        paginated_result = await self.data_request_repo.find_by_user(user_id, pagination)
+        paginated_result = self.data_request_repo.find_by_user(user_id, pagination)
         
         response_items = []
         for request in paginated_result.items:
@@ -316,7 +316,7 @@ class DataRequestService:
     
     async def get_stats(self) -> DataRequestStatsResponse:
         """데이터 요청 통계 조회"""
-        stats = await self.data_request_repo.get_stats()
+        stats = self.data_request_repo.get_stats()
         popular_requests = await self.get_popular_requests(5)
         
         return DataRequestStatsResponse(
@@ -339,12 +339,12 @@ class DataRequestService:
         """데이터 요청 응답 객체 생성"""
         # 카테고리 정보 조회
         if not category:
-            category = await self.category_repo.find_by_id(data_request.data.category_id)
+            category = self.category_repo.find_by_id(data_request.data.category_id)
         
         category_response = None
         if category:
             category_response = CategoryResponse(
-                id=category.id,
+                id=category.get_id(),
                 name=category.data.name,
                 description=category.data.description,
                 color=category.data.color,
@@ -355,8 +355,8 @@ class DataRequestService:
         user_voted = None
         user_vote_type = None
         if user_id:
-            user_vote = await self.vote_repo.find_by_request_and_user(
-                str(data_request._id), user_id
+            user_vote = self.vote_repo.find_by_request_and_user(
+                data_request.get_id(), user_id
             )
             if user_vote:
                 user_voted = True
@@ -365,7 +365,7 @@ class DataRequestService:
                 user_voted = False
         
         return DataRequestResponse(
-            id=data_request.id,
+            id=data_request.get_id(),
             title=data_request.data.title,
             description=data_request.data.description,
             category_id=data_request.data.category_id,
@@ -399,7 +399,7 @@ class CategoryService:
     async def create_category(self, request_data: CategoryCreateRequest) -> CategoryResponse:
         """카테고리 생성"""
         # 중복 이름 확인
-        existing = await self.category_repo.find_by_name(request_data.name)
+        existing = self.category_repo.find_by_name(request_data.name)
         if existing:
             raise BaseAPIException(
                 status_code=409,
@@ -416,10 +416,10 @@ class CategoryService:
         )
         
         category_document = CategoryDocument(data=category)
-        saved_category = await self.category_repo.create(category_document)
+        saved_category = self.category_repo.create(category_document)
         
         return CategoryResponse(
-            id=saved_category.id,
+            id=saved_category.get_id(),
             name=saved_category.data.name,
             description=saved_category.data.description,
             color=saved_category.data.color,
@@ -428,11 +428,11 @@ class CategoryService:
     
     async def get_categories(self) -> List[CategoryResponse]:
         """모든 활성 카테고리 조회"""
-        categories = await self.category_repo.find_all_active()
+        categories = self.category_repo.find_all_active()
         
         return [
             CategoryResponse(
-                id=category.id,
+                id=category.get_id(),
                 name=category.data.name,
                 description=category.data.description,
                 color=category.data.color,
@@ -443,7 +443,7 @@ class CategoryService:
     
     async def get_category(self, category_id: str) -> CategoryResponse:
         """카테고리 상세 조회"""
-        category = await self.category_repo.find_by_id(category_id)
+        category = self.category_repo.find_by_id(category_id)
         if not category:
             raise BaseAPIException(
                 status_code=404,
@@ -452,7 +452,7 @@ class CategoryService:
             )
         
         return CategoryResponse(
-            id=category.id,
+            id=category.get_id(),
             name=category.data.name,
             description=category.data.description,
             color=category.data.color,

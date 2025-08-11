@@ -21,7 +21,7 @@ class StatisticsRepository(BaseRepository[Statistics, StatisticsCreate, Statisti
     
     def __init__(self, db: Optional[Database] = None):
         """Initialize statistics repository"""
-        super().__init__(db or get_database(), "statistics")
+        super().__init__(db if db is not None else get_database(), "statistics")
     
     def _to_domain_model(self, doc: Dict[str, Any]) -> Statistics:
         """Convert MongoDB document to Statistics domain model"""

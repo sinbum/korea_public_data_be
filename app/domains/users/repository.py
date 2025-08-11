@@ -224,22 +224,32 @@ class UserRepository:
 
     def update_user_settings(self, user_id: str, update: UserSettingsUpdate) -> UserSettings:
         try:
+            logger.info(f"🔄 Updating settings for user {user_id}")
+            logger.info(f"📝 Update model: {update}")
+            
             payload: Dict[str, Any] = {}
             if update.notifications is not None:
                 payload["notifications"] = update.notifications.model_dump()
+                logger.info(f"🔔 Notifications payload: {payload['notifications']}")
             if update.interests is not None:
                 payload["interests"] = update.interests.model_dump()
+                logger.info(f"🎯 Interests payload: {payload['interests']}")
             if update.location is not None:
                 payload["location"] = update.location.model_dump()
+                logger.info(f"📍 Location payload: {payload['location']}")
 
             if payload:
-                self.settings_collection.update_one(
+                logger.info(f"💾 Final MongoDB payload: {payload}")
+                result = self.settings_collection.update_one(
                     {"user_id": user_id},
                     {"$set": payload},
                     upsert=True,
                 )
+                logger.info(f"✅ MongoDB update result: matched={result.matched_count}, modified={result.modified_count}, upserted={result.upserted_id}")
 
-            return self.get_user_settings(user_id)
+            final_settings = self.get_user_settings(user_id)
+            logger.info(f"🎉 Final settings returned: {final_settings}")
+            return final_settings
         except Exception as e:
             logger.error(f"Error updating user settings: {e}")
             return self.get_user_settings(user_id)

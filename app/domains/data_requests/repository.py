@@ -14,45 +14,45 @@ class DataRequestRepository:
     """데이터 요청 저장소"""
     
     def __init__(self, db: Optional[Database] = None):
-        self.db = db or get_database()
+        self.db = db if db is not None else get_database()
         self.collection: Collection = self.db["data_requests"]
     
-    async def create(self, data_request: DataRequest) -> DataRequest:
+    def create(self, data_request: DataRequest) -> DataRequest:
         """데이터 요청 생성"""
         doc = data_request.model_dump(by_alias=True)
         doc["created_at"] = datetime.utcnow()
         doc["updated_at"] = datetime.utcnow()
         doc["is_active"] = True
         
-        result = await self.collection.insert_one(doc)
+        result = self.collection.insert_one(doc)
         doc["_id"] = result.inserted_id
         
         return DataRequest(**doc)
     
-    async def find_by_id(self, request_id: str) -> Optional[DataRequest]:
+    def find_by_id(self, request_id: str) -> Optional[DataRequest]:
         """ID로 데이터 요청 조회"""
         try:
-            doc = await self.collection.find_one({"_id": ObjectId(request_id), "is_active": True})
+            doc = self.collection.find_one({"_id": ObjectId(request_id), "is_active": True})
             return DataRequest(**doc) if doc else None
         except Exception:
             return None
     
-    async def update(self, request_id: str, data_request: DataRequest) -> DataRequest:
+    def update(self, request_id: str, data_request: DataRequest) -> DataRequest:
         """데이터 요청 수정"""
         doc = data_request.model_dump(by_alias=True, exclude={"_id"})
         doc["updated_at"] = datetime.utcnow()
         
-        await self.collection.update_one(
+        self.collection.update_one(
             {"_id": ObjectId(request_id)},
             {"$set": doc}
         )
         
-        return await self.find_by_id(request_id)
+        return self.find_by_id(request_id)
     
-    async def delete(self, request_id: str) -> bool:
+    def delete(self, request_id: str) -> bool:
         """데이터 요청 삭제 (소프트 삭제)"""
         try:
-            result = await self.collection.update_one(
+            result = self.collection.update_one(
                 {"_id": ObjectId(request_id)},
                 {"$set": {"is_active": False, "updated_at": datetime.utcnow()}}
             )
@@ -60,7 +60,7 @@ class DataRequestRepository:
         except Exception:
             return False
     
-    async def find_by_filters(
+    def find_by_filters(
         self,
         filters: DataRequestFilters,
         pagination: PaginationParams,
@@ -106,7 +106,7 @@ class DataRequestRepository:
         
         # 총 개수 조회
         try:
-            total = await self.collection.count_documents(query)
+            total = self.collection.count_documents(query)
         except Exception as e:
             print(f"Error counting documents: {e}")
             total = 0
@@ -115,7 +115,7 @@ class DataRequestRepository:
         try:
             skip = (pagination.page - 1) * pagination.size
             cursor = self.collection.find(query).sort(sort_order).skip(skip).limit(pagination.size)
-            documents = await cursor.to_list(length=pagination.size)
+            documents = list(cursor)
         except Exception as e:
             print(f"Error fetching documents: {e}")
             documents = []
@@ -130,17 +130,17 @@ class DataRequestRepository:
         
         return paginate_query_result(items, total, pagination)
     
-    async def find_popular(self, limit: int = 10) -> List[DataRequest]:
+    def find_popular(self, limit: int = 10) -> List[DataRequest]:
         """인기 데이터 요청 조회"""
         query = {"is_active": True}
         sort_order = [("data.vote_count", -1), ("created_at", -1)]
         
         cursor = self.collection.find(query).sort(sort_order).limit(limit)
-        documents = await cursor.to_list(length=limit)
+        documents = list(cursor)
         
         return [DataRequest(**doc) for doc in documents]
     
-    async def find_by_user(
+    def find_by_user(
         self,
         user_id: str,
         pagination: PaginationParams
@@ -150,21 +150,49 @@ class DataRequestRepository:
         sort_order = [("created_at", -1)]
         
         # 총 개수 조회
-        total = await self.collection.count_documents(query)
+        total = self.collection.count_documents(query)
         
         # 페이지네이션 적용
         skip = (pagination.page - 1) * pagination.size
         cursor = self.collection.find(query).sort(sort_order).skip(skip).limit(pagination.size)
-        documents = await cursor.to_list(length=pagination.size)
+        documents = list(cursor)
         
         items = [DataRequest(**doc) for doc in documents]
         
         return paginate_query_result(items, total, pagination)
     
-    async def update_vote_count(self, request_id: str, vote_count: int, likes_count: int, dislikes_count: int) -> bool:
+    def update_status(
+        self, 
+        request_id: str, 
+        status: str, 
+        admin_notes: Optional[str] = None,
+        estimated_completion: Optional[datetime] = None
+    ) -> bool:
+        """데이터 요청 상태 업데이트"""
+        try:
+            update_doc = {
+                "data.status": status,
+                "updated_at": datetime.utcnow()
+            }
+            
+            if admin_notes:
+                update_doc["data.admin_notes"] = admin_notes
+            
+            if estimated_completion:
+                update_doc["data.estimated_completion"] = estimated_completion
+            
+            result = self.collection.update_one(
+                {"_id": ObjectId(request_id)},
+                {"$set": update_doc}
+            )
+            return result.modified_count > 0
+        except Exception:
+            return False
+    
+    def update_vote_count(self, request_id: str, vote_count: int, likes_count: int, dislikes_count: int) -> bool:
         """투표 수 업데이트"""
         try:
-            result = await self.collection.update_one(
+            result = self.collection.update_one(
                 {"_id": ObjectId(request_id)},
                 {
                     "$set": {
@@ -179,7 +207,7 @@ class DataRequestRepository:
         except Exception:
             return False
     
-    async def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> Dict[str, Any]:
         """데이터 요청 통계 조회"""
         pipeline = [
             {"$match": {"is_active": True}},
@@ -193,7 +221,7 @@ class DataRequestRepository:
         ]
         
         status_counts = {}
-        async for doc in self.collection.aggregate(pipeline):
+        for doc in self.collection.aggregate(pipeline):
             status_counts[doc["_id"]] = doc
         
         # 카테고리별 통계
@@ -208,7 +236,7 @@ class DataRequestRepository:
         ]
         
         category_counts = []
-        async for doc in self.collection.aggregate(category_pipeline):
+        for doc in self.collection.aggregate(category_pipeline):
             category_counts.append(doc)
         
         total_requests = sum(doc["count"] for doc in status_counts.values())
@@ -230,39 +258,39 @@ class CategoryRepository:
     """카테고리 저장소"""
     
     def __init__(self, db: Optional[Database] = None):
-        self.db = db or get_database()
+        self.db = db if db is not None else get_database()
         self.collection: Collection = self.db["categories"]
     
-    async def create(self, category: CategoryDocument) -> CategoryDocument:
+    def create(self, category: CategoryDocument) -> CategoryDocument:
         """카테고리 생성"""
         doc = category.model_dump(by_alias=True)
         doc["created_at"] = datetime.utcnow()
         doc["updated_at"] = datetime.utcnow()
         doc["is_active"] = True
         
-        result = await self.collection.insert_one(doc)
+        result = self.collection.insert_one(doc)
         doc["_id"] = result.inserted_id
         
         return CategoryDocument(**doc)
     
-    async def find_by_id(self, category_id: str) -> Optional[CategoryDocument]:
+    def find_by_id(self, category_id: str) -> Optional[CategoryDocument]:
         """ID로 카테고리 조회"""
         try:
-            doc = await self.collection.find_one({"_id": ObjectId(category_id), "is_active": True})
+            doc = self.collection.find_one({"_id": ObjectId(category_id), "is_active": True})
             return CategoryDocument(**doc) if doc else None
         except Exception:
             return None
     
-    async def find_by_name(self, name: str) -> Optional[CategoryDocument]:
+    def find_by_name(self, name: str) -> Optional[CategoryDocument]:
         """이름으로 카테고리 조회"""
-        doc = await self.collection.find_one({"data.name": name, "is_active": True})
+        doc = self.collection.find_one({"data.name": name, "is_active": True})
         return CategoryDocument(**doc) if doc else None
     
-    async def find_all_active(self) -> List[CategoryDocument]:
+    def find_all_active(self) -> List[CategoryDocument]:
         """활성화된 모든 카테고리 조회"""
         query = {"is_active": True}
         cursor = self.collection.find(query).sort("data.name", 1)
-        documents = await cursor.to_list(length=None)
+        documents = list(cursor)
         return [CategoryDocument(**doc) for doc in documents]
 
 
@@ -270,34 +298,34 @@ class VoteRepository:
     """투표 저장소"""
     
     def __init__(self, db: Optional[Database] = None):
-        self.db = db or get_database()
+        self.db = db if db is not None else get_database()
         self.collection: Collection = self.db["votes"]
     
-    async def create(self, vote: VoteDocument) -> VoteDocument:
+    def create(self, vote: VoteDocument) -> VoteDocument:
         """투표 생성"""
         doc = vote.model_dump(by_alias=True)
         doc["created_at"] = datetime.utcnow()
         doc["updated_at"] = datetime.utcnow()
         doc["is_active"] = True
         
-        result = await self.collection.insert_one(doc)
+        result = self.collection.insert_one(doc)
         doc["_id"] = result.inserted_id
         
         return VoteDocument(**doc)
     
-    async def update(self, vote_id: str, vote: VoteDocument) -> VoteDocument:
+    def update(self, vote_id: str, vote: VoteDocument) -> VoteDocument:
         """투표 수정"""
         doc = vote.model_dump(by_alias=True, exclude={"_id"})
         doc["updated_at"] = datetime.utcnow()
         
-        await self.collection.update_one(
+        self.collection.update_one(
             {"_id": ObjectId(vote_id)},
             {"$set": doc}
         )
         
         return vote
     
-    async def find_by_request_and_user(
+    def find_by_request_and_user(
         self,
         request_id: str,
         user_id: str
@@ -308,10 +336,10 @@ class VoteRepository:
             "data.user_id": user_id,
             "is_active": True
         }
-        doc = await self.collection.find_one(query)
+        doc = self.collection.find_one(query)
         return VoteDocument(**doc) if doc else None
     
-    async def get_vote_counts(self, request_id: str) -> Dict[str, int]:
+    def get_vote_counts(self, request_id: str) -> Dict[str, int]:
         """요청의 투표 수 통계"""
         pipeline = [
             {
@@ -329,7 +357,7 @@ class VoteRepository:
         ]
         
         results = []
-        async for doc in self.collection.aggregate(pipeline):
+        for doc in self.collection.aggregate(pipeline):
             results.append(doc)
         
         counts = {"like": 0, "dislike": 0}
@@ -342,14 +370,14 @@ class VoteRepository:
             "total_count": counts["like"] + counts["dislike"]
         }
     
-    async def delete_by_request_and_user(
+    def delete_by_request_and_user(
         self,
         request_id: str,
         user_id: str
     ) -> bool:
         """사용자의 투표 삭제 (투표 취소)"""
         try:
-            result = await self.collection.update_one(
+            result = self.collection.update_one(
                 {
                     "data.request_id": request_id,
                     "data.user_id": user_id

@@ -22,7 +22,7 @@ class DataSourceService:
     """데이터 소스 관리 서비스"""
     
     def __init__(self, db=None):
-        self.db = db or get_database()
+        self.db = db if db is not None else get_database()
         self.collection = self.db.data_sources
     
     def create_data_source(self, config: DataSourceConfig) -> DataSourceConfig:

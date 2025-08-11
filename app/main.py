@@ -59,8 +59,8 @@ from .shared.swagger_config import tags_metadata, swagger_ui_parameters
 from .shared.security.schemas import SECURITY_SCHEMES
 from starlette.middleware.gzip import GZipMiddleware
 
-# 로깅 설정 (JSON in prod, pretty in dev)
-setup_logging(debug=bool(settings.debug), level=str(settings.log_level))
+# 로깅 설정 (설정값은 내부에서 처리)
+setup_logging()
 
 logger = logging.getLogger(__name__)
 
@@ -269,6 +269,24 @@ def custom_openapi():
 
 app.openapi = custom_openapi
 
+# CORS 설정 - 반드시 가장 먼저 등록해야 함!!
+# allow_credentials=True와 함께 사용할 때는 와일드카드(*)를 사용할 수 없음
+cors_origins = [
+    "http://localhost:3000",
+    "http://localhost:3001", 
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001"
+]
+logger.info(f"CORS origins: {cors_origins}")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+)
+
 # 미들웨어 등록 (순서 중요: 먼저 등록된 미들웨어가 나중에 실행됨)
 app.add_middleware(ResponseValidationMiddleware)
 app.add_middleware(RequestValidationMiddleware)
@@ -309,15 +327,6 @@ app.add_middleware(
         skip_paths=["/docs", "/redoc", "/openapi.json", "/favicon.ico", "/health", "/"],
         add_version_headers=True
     )
-)
-
-# CORS 설정
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.allowed_origins if settings.debug else [o for o in settings.allowed_origins if o != "*"],
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
 )
 
 # 예외 핸들러 등록 (순서 중요: 구체적인 예외부터 일반적인 예외 순서로)

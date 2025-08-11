@@ -21,7 +21,7 @@ class BusinessRepository(BaseRepository[Business, BusinessCreate, BusinessUpdate
     
     def __init__(self, db: Optional[Database] = None):
         """Initialize business repository"""
-        super().__init__(db or get_database(), "businesses")
+        super().__init__(db if db is not None else get_database(), "businesses")
     
     def _to_domain_model(self, doc: Dict[str, Any]) -> Business:
         """Convert MongoDB document to Business domain model"""

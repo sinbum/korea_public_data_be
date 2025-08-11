@@ -467,9 +467,21 @@ async def update_user_settings(
     """
     Update current user's settings
     """
-    from .models import UserSettingsUpdate
-    update_model = UserSettingsUpdate(**settings_update)
-    return await user_service.update_user_settings(current_user.id, update_model)
+    logger.info(f"📤 Settings update request for user {current_user.id}")
+    logger.info(f"📋 Raw settings data: {settings_update}")
+    
+    try:
+        from .models import UserSettingsUpdate
+        update_model = UserSettingsUpdate(**settings_update)
+        logger.info(f"✅ Parsed settings model: {update_model}")
+        
+        result = await user_service.update_user_settings(current_user.id, update_model)
+        logger.info(f"🎯 Settings update result: {result}")
+        
+        return result
+    except Exception as e:
+        logger.error(f"❌ Settings update failed: {e}")
+        raise
 
 
 @router.post("/link-google")

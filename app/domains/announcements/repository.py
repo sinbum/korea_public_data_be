@@ -20,7 +20,7 @@ class AnnouncementRepository(BaseRepository[Announcement, AnnouncementCreate, An
     
     def __init__(self, db: Optional[Database] = None):
         """Initialize announcement repository"""
-        super().__init__(db or get_database(), "announcements")
+        super().__init__(db if db is not None else get_database(), "announcements")
     
     def _to_domain_model(self, doc: Dict[str, Any]) -> Announcement:
         """Convert MongoDB document to Announcement domain model"""

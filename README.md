@@ -69,7 +69,7 @@
 ## 📂 현대적 프로젝트 구조
 
 ```
-korea_public_open_api/
+be/
 ├── 📁 app/                             # 메인 애플리케이션
 │   ├── 📁 core/                        # 핵심 인프라스트럭처
 │   │   ├── config.py                   # 환경설정 및 설정 관리
@@ -148,7 +148,8 @@ korea_public_open_api/
 │   ├── logs/                         # 구조화된 로그
 │   └── backups/                      # 자동 백업
 │   
-├── 🔧 docker-compose.yml             # Docker 서비스 오케스트레이션
+├── 🔧 docker-compose.yml             # Docker 서비스 오케스트레이션 (개발)
+├── 🔧 docker-compose.prod.yml        # Docker 서비스 오케스트레이션 (프로덕션)
 ├── 🐳 Dockerfile                     # 컨테이너 이미지 정의
 ├── 📦 requirements.txt               # Python 의존성
 ├── ⚙️ .env                          # 환경변수 설정
@@ -185,11 +186,11 @@ korea_public_open_api/
 ```bash
 # 1. 저장소 클론
 git clone <repository-url>
-cd korea_public_open_api
+cd korea_public_data/be
 
 # 2. 환경변수 설정
-cp .env.example .env
-# 📝 .env 파일에서 PUBLIC_DATA_API_KEY를 실제 발급받은 키로 변경
+# (저장소에 .env.example가 없다면 아래 예시를 참고해 .env 파일을 직접 생성)
+# 📝 PUBLIC_DATA_API_KEY에 실제 발급받은 키를 설정
 
 # 3. 볼륨 및 권한 초기화 (최초 1회만)
 ./scripts/init-volumes.sh
@@ -221,9 +222,11 @@ docker-compose logs -f api celery-worker celery-beat
 | 📖 **Swagger UI** | http://localhost:8000/docs | 대화형 API 문서 (완전 한국어) |
 | 📚 **ReDoc** | http://localhost:8000/redoc | 읽기 전용 API 문서 |
 | ❤️ **Health Check** | http://localhost:8000/health | 서비스 상태 확인 |
-| 🌺 **Celery Flower** | http://localhost:5555 | 작업 큐 모니터링 |
+| 🌺 **Celery Flower (선택)** | http://localhost:5555 | 작업 큐 모니터링 (개발 환경에서는 docker-compose.yml에서 해당 서비스 주석 해제 후 사용) |
 | 🗄️ **MongoDB** | localhost:27017 | 데이터베이스 (admin/password123) |
 | 🔴 **Redis** | localhost:6379 | 캐시 및 메시지 브로커 |
+
+프로덕션 구성 사용 시 Nginx(80/443), Prometheus(9090), Grafana(3030) 포트가 추가로 노출됩니다.
 
 ### 5️⃣ API 동작 테스트
 
@@ -263,6 +266,16 @@ celery -A app.core.celery worker --loglevel=info
 
 # Celery Beat 스케줄러 실행 (별도 터미널)
 celery -A app.core.celery beat --loglevel=info
+```
+
+### 7️⃣ 프로덕션 실행 (docker-compose.prod.yml)
+
+```bash
+# .env에 프로덕션 값 설정 후 실행
+docker-compose -f docker-compose.prod.yml up -d
+
+# 상태 확인
+docker-compose -f docker-compose.prod.yml ps
 ```
 
 ## 📚 완전 한국어 API 문서
@@ -557,6 +570,23 @@ curl -X POST "http://localhost:8000/api/v1/classification/search" \
 ```bash
 # .env.example을 복사하여 실제 환경 파일 생성
 cp .env.example .env
+```
+
+또는 아래 예시를 참고해 `.env`를 직접 생성하세요:
+
+```dotenv
+# 필수
+PUBLIC_DATA_API_KEY=your-api-key-here
+
+# 개발 기본값 (필요 시 수정)
+MONGO_INITDB_ROOT_USERNAME=admin
+MONGO_INITDB_ROOT_PASSWORD=password123
+MONGO_INITDB_DATABASE=korea_public_api
+DATABASE_NAME=korea_public_api
+REDIS_URL=redis://localhost:6379/0
+API_BASE_URL=https://apis.data.go.kr/B552735/kisedKstartupService01
+DEBUG=True
+LOG_LEVEL=INFO
 ```
 
 #### 2️⃣ API 키 발급 및 설정

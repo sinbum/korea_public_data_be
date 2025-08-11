@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     # JWT Authentication  
     jwt_secret_key: str = Field(default_factory=lambda: secrets.token_urlsafe(32), min_length=32, description="JWT secret key")
     jwt_algorithm: str = Field(default="HS256", pattern=r"^HS256|HS384|HS512|RS256|RS384|RS512$", description="JWT algorithm")
-    jwt_access_token_expire_minutes: int = Field(default=15, gt=0, le=1440, description="JWT access token expiry in minutes")
+    jwt_access_token_expire_minutes: int = Field(default=120, gt=0, le=1440, description="JWT access token expiry in minutes")
     jwt_refresh_token_expire_days: int = Field(default=7, gt=0, le=30, description="JWT refresh token expiry in days")
     
     # Google OAuth 2.0
@@ -46,9 +46,11 @@ class Settings(BaseSettings):
     # Frontend CORS
     frontend_url: str = Field(default="http://localhost:3000", description="Frontend application URL")
     allowed_origins: list[str] = Field(
-        default=[
+        default_factory=lambda: [
             "http://localhost:3000",
-            "http://localhost:3001"
+            "http://localhost:3001",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:3001"
         ],
         description="Allowed CORS origins (wildcards removed for security)"
     )
