@@ -57,6 +57,13 @@ class Settings(BaseSettings):
     
     # Development CORS (wildcards only in dev mode)
     cors_allow_dev_wildcards: bool = Field(default=True, description="Allow wildcard CORS patterns in development")
+    # 보안 정책 토글: 블랙리스트 조회 실패 시 토큰 허용/거부
+    fail_close_on_blacklist_error: bool = Field(default=False, description="If true, deny tokens when blacklist check fails")
+    
+    # CSRF 보호(더블 서브밋 토큰) 설정 - 기본 비활성화하여 FE 영향 없음
+    csrf_enabled: bool = Field(default=False, description="Enable CSRF protection for state-changing requests")
+    csrf_cookie_name: str = Field(default="csrftoken", description="Cookie name for CSRF token")
+    csrf_header_name: str = Field(default="X-CSRF-Token", description="Header name to carry CSRF token")
     
     @validator('allowed_origins')
     def validate_origins(cls, v, values):

@@ -79,7 +79,7 @@ class CeleryConfig:
         # Data collection tasks
         "fetch-announcements-daily": {
             "task": "app.domains.announcements.tasks.fetch_announcements_comprehensive",
-            "schedule": timedelta(hours=6),  # Every 6 hours
+            "schedule": timedelta(hours=1),  # Every 1 hour
             "options": {"queue": "announcements", "priority": 5},
         },
         "fetch-businesses-daily": {

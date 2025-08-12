@@ -64,6 +64,8 @@ class SecurityManager:
         self.secret_key = settings.jwt_secret_key
         self.access_token_expire_minutes = settings.jwt_access_token_expire_minutes
         self.refresh_token_expire_days = settings.jwt_refresh_token_expire_days
+        # 운영 환경에서 블랙리스트 조회 실패 시 fail-close 옵션
+        self.fail_close_on_blacklist_error: bool = getattr(settings, "fail_close_on_blacklist_error", False)
     
     def hash_password(self, password: str) -> str:
         """Hash a password using bcrypt"""
@@ -160,6 +162,9 @@ class SecurityManager:
             token_id = payload.get('jti', token)
             return redis_client.exists(f"blacklist:{token_id}") > 0
         except Exception as e:
+            if self.fail_close_on_blacklist_error:
+                logger.error(f"Blacklist check failed; denying token due to fail-close policy: {str(e)}")
+                return True
             logger.warning(f"Failed to check blacklist, allowing token: {str(e)}")
             return False  # Fail open for availability
     

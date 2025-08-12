@@ -16,7 +16,8 @@ from .core.middleware import (
     ResponseValidationMiddleware,
     RateLimitMiddleware,
     HealthCheckMiddleware,
-    RequestIdMiddleware
+    RequestIdMiddleware,
+    CSRFMiddleware
 )
 from .core.rate_limit import RedisRateLimitMiddleware
 from .core.logging_config import setup_logging
@@ -270,13 +271,8 @@ def custom_openapi():
 app.openapi = custom_openapi
 
 # CORS 설정 - 반드시 가장 먼저 등록해야 함!!
-# allow_credentials=True와 함께 사용할 때는 와일드카드(*)를 사용할 수 없음
-cors_origins = [
-    "http://localhost:3000",
-    "http://localhost:3001", 
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:3001"
-]
+# 설정값 기반으로 통일하여 FE 변경 없이 동작
+cors_origins = settings.allowed_origins
 logger.info(f"CORS origins: {cors_origins}")
 app.add_middleware(
     CORSMiddleware,
@@ -296,6 +292,7 @@ if not redis_enabled:
     app.add_middleware(RateLimitMiddleware, calls_per_minute=settings.rl_per_minute, calls_per_hour=settings.rl_per_hour)
 app.add_middleware(HealthCheckMiddleware)
 app.add_middleware(RequestIdMiddleware)
+app.add_middleware(CSRFMiddleware)
 
 if redis_enabled:
     try:

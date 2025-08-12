@@ -119,7 +119,19 @@ class DynamicDataClient:
             headers["Authorization"] = f"Bearer {token}"
         
         logger.info(f"API 요청: {url}")
-        logger.debug(f"요청 파라미터: {params}")
+        # 민감 값 마스킹(예: serviceKey, Authorization, token 등)
+        try:
+            def _mask(d: Dict[str, Any]) -> Dict[str, Any]:
+                masked = {}
+                for k, v in (d or {}).items():
+                    if isinstance(v, str) and k.lower() in {"servicekey", "authorization", "access_token", "refresh_token", "token"}:
+                        masked[k] = v[:4] + "***" if len(v) > 7 else "***"
+                    else:
+                        masked[k] = v
+                return masked
+            logger.debug(f"요청 파라미터: {_mask(params or {})}")
+        except Exception:
+            logger.debug("요청 파라미터 로깅 생략(마스킹 실패)")
         
         if self.config.method.upper() == "GET":
             response = self.client.get(url, params=params, headers=headers)

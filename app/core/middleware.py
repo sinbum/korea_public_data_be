@@ -15,6 +15,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 from .rate_limit import RedisRateLimitMiddleware  # optional redis-backed limiter
 from .request_context import set_request_id, clear_request_context
+from .config import settings
 
 from ..shared.exceptions import DataValidationError, KoreanPublicAPIError
 from ..shared.schemas import ErrorResponse
@@ -88,6 +89,48 @@ class RequestValidationMiddleware(BaseHTTPMiddleware):
                 status_code=500,
                 content=error_response.model_dump()
             )
+
+
+class CSRFMiddleware(BaseHTTPMiddleware):
+    """더블 서브밋 토큰 방식의 CSRF 보호 미들웨어 (옵션)
+
+    - settings.csrf_enabled 가 True 일 때만 활성화하여 프론트 영향 최소화
+    - 읽기 메서드(GET/HEAD/OPTIONS) 제외
+    - 쿠키(settings.csrf_cookie_name)와 헤더(settings.csrf_header_name) 일치 검증
+    """
+
+    SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
+
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        # 비활성화 시 빠르게 통과
+        if not getattr(settings, "csrf_enabled", False):
+            return await call_next(request)
+
+        # 읽기 메서드 통과
+        if request.method.upper() in self.SAFE_METHODS:
+            return await call_next(request)
+
+        # API 경로만 적용
+        if not request.url.path.startswith("/api/"):
+            return await call_next(request)
+
+        cookie_name = getattr(settings, "csrf_cookie_name", "csrftoken")
+        header_name = getattr(settings, "csrf_header_name", "X-CSRF-Token")
+
+        cookie_token = request.cookies.get(cookie_name)
+        header_token = request.headers.get(header_name)
+
+        if not cookie_token or not header_token or cookie_token != header_token:
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "success": False,
+                    "message": "CSRF token missing or invalid",
+                    "error_code": "CSRF_FAILED",
+                },
+            )
+
+        return await call_next(request)
     
     def _sanitize_request_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """

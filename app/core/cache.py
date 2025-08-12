@@ -194,12 +194,12 @@ class CacheManager:
             # Try JSON first for simple types
             if isinstance(value, (dict, list, str, int, float, bool, type(None))):
                 return json.dumps(value, ensure_ascii=False).encode('utf-8')
-            else:
-                # Use pickle for complex objects
-                return pickle.dumps(value)
+            # Avoid storing pickled payloads in Redis to prevent RCE risk
+            # For complex/unsupported objects, fall back to memory cache via exception
+            raise TypeError("Value is not JSON-serializable for Redis cache")
         except (TypeError, ValueError):
-            # Fallback to pickle
-            return pickle.dumps(value)
+            # Do not pickle; signal caller to use memory fallback
+            raise
     
     def _deserialize_value(self, data: bytes) -> Any:
         """Deserialize value from Redis storage"""
@@ -207,8 +207,9 @@ class CacheManager:
             # Try JSON first
             return json.loads(data.decode('utf-8'))
         except (json.JSONDecodeError, UnicodeDecodeError):
-            # Fallback to pickle
-            return pickle.loads(data)
+            # Do not attempt to unpickle untrusted data; treat as cache miss
+            logger.warning("Redis cache contained non-JSON data; ignoring for safety")
+            return None
     
     def _memory_set(self, key: str, value: Any, ttl: int = 300):
         """Store in memory cache with TTL"""

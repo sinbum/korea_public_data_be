@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import ValidationError
 import logging
+import time
 
 from .models import (
     UserCreate, UserLogin, UserLoginRequest, UserUpdate, UserResponse, 
@@ -221,10 +222,13 @@ async def google_login(
     2. Redirect user to the authorization URL
     3. Google will redirect back to /auth/google/callback with code and state
     """
+    start_time = time.time()
+    client_ip = request.client.host if request.client else "unknown"
+    user_agent = request.headers.get("user-agent", "unknown")
+    
     try:
-        # Log OAuth initiation
-        client_ip = request.client.host if request.client else "unknown"
-        logger.info(f"Google OAuth login initiated from {client_ip}")
+        # Log OAuth initiation with detailed info
+        logger.info(f"Google OAuth login initiated from {client_ip} | User-Agent: {user_agent[:100]}...")
         
         # Validate redirect_to parameter
         if redirect_to:
@@ -233,20 +237,32 @@ async def google_login(
                 redirect_to = parsed.path or '/'
                 logger.warning(f"OAuth redirect sanitized: {redirect_to}")
         
+        # Generate OAuth data
+        oauth_start_time = time.time()
         oauth_data = google_oauth_client.get_authorization_url(
             redirect_to=redirect_to,
             remember=(remember == 1) if remember is not None else None,
         )
+        oauth_time = time.time() - oauth_start_time
+        
+        total_time = time.time() - start_time
+        
+        logger.info(f"Google OAuth URL generated successfully in {oauth_time:.3f}s (total: {total_time:.3f}s) for {client_ip}")
         
         return {
             "authorization_url": oauth_data["authorization_url"],
             "state": oauth_data["state"]
         }
     except Exception as e:
-        logger.error(f"Google OAuth initialization failed: {e}")
+        total_time = time.time() - start_time
+        logger.error(f"Google OAuth initialization failed after {total_time:.3f}s for {client_ip}: {str(e)}")
+        logger.error(f"Exception type: {type(e).__name__}")
+        logger.error(f"Exception details: {e}")
+        
+        # Return more specific error information
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Google OAuth 초기화 실패"
+            detail=f"Google OAuth 초기화 실패: {str(e)}"
         )
 
 
@@ -656,9 +672,15 @@ def _clear_auth_cookies(response: Response):
         response.delete_cookie(key=key, path="/", domain=cookie_domain)
 
 
+import os
+
+
 @router.post("/test-register")
 async def test_register(data: dict):
     """Test endpoint to isolate the issue"""
+    # 노출 제한: 테스트/디버그 환경에서만 사용
+    if not (os.getenv("TESTING") == "1" or settings.debug):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
     try:
         # Create a minimal UserCreate directly
         from pydantic import BaseModel, Field, EmailStr
@@ -685,6 +707,8 @@ async def test_register(data: dict):
 @router.post("/test-simple")
 async def test_simple(data: dict):
     """Test endpoint without Pydantic models"""
+    if not (os.getenv("TESTING") == "1" or settings.debug):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
     return {"message": "Simple endpoint works", "received": data}
 
 @router.post("/test-clean")

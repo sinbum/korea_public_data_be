@@ -45,13 +45,28 @@ class PublicDataAPIClient:
         start_time = datetime.utcnow()
         
         try:
+            # 민감 파라미터 마스킹 후 디버그 로깅
+            try:
+                def _mask(d: Dict[str, Any]) -> Dict[str, Any]:
+                    masked = {}
+                    for k, v in (d or {}).items():
+                        if isinstance(v, str) and k.lower() in {"servicekey", "authorization", "access_token", "refresh_token", "token"}:
+                            masked[k] = v[:4] + "***" if len(v) > 7 else "***"
+                        else:
+                            masked[k] = v
+                    return masked
+                logger.debug(f"요청 파라미터(마스킹): {_mask(params)}")
+            except Exception:
+                logger.debug("요청 파라미터 로깅 생략(마스킹 실패)")
+
             response = self.client.get(url, params=params)
             response_time = (datetime.utcnow() - start_time).total_seconds()
             
             # 요청 로그 기록 (실제 구현시 MongoDB에 저장)
             log_data = APIRequestLog(
                 endpoint=endpoint,
-                params=params,
+                # 민감 파라미터는 저장하지 않거나 마스킹 처리
+                params={k: (v if k.lower() != "servicekey" else "***") for k, v in (params or {}).items()},
                 response_status=response.status_code,
                 response_time=response_time
             )
