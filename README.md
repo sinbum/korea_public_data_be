@@ -555,6 +555,8 @@ curl -X POST "http://localhost:8000/api/v1/classification/search" \
 | `APP_PORT` | 서버 포트 | `8000` | API 서버 포트 |
 | `DEBUG` | 디버그 모드 | `True` | 개발/프로덕션 구분 |
 | `LOG_LEVEL` | 로그 레벨 | `INFO` | DEBUG, INFO, WARNING, ERROR |
+| `CSRF_ENABLED` | CSRF 보호 활성화 | `false`(dev), `true`(prod) | 더블 서브밋 토큰 검증 활성화 |
+| `FAIL_CLOSE_ON_BLACKLIST_ERROR` | 블랙리스트 조회 실패 시 거부 | `false`(dev), `true`(prod) | Redis 오류시 토큰 거부 여부 |
 
 ### 🔗 외부 API 설정
 
@@ -604,6 +606,10 @@ LOG_LEVEL=WARNING
 
 # CORS 설정 (프로덕션)
 ALLOWED_ORIGINS=https://yourdomain.com,https://api.yourdomain.com
+
+# CSRF/토큰 블랙리스트 정책
+CSRF_ENABLED=true
+FAIL_CLOSE_ON_BLACKLIST_ERROR=true
 ```
 
 ## 📅 자동 데이터 수집 스케줄
