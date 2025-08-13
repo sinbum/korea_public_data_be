@@ -1,0 +1,112 @@
+{% extends "email/base.html" %}
+
+{% block title %}마감 임박 알림 (D-{{ days_left }}) - 한국 공공데이터{% endblock %}
+
+{% block header %}⏰ 마감 {{ urgency_text }} 알림{% endblock %}
+
+{% block content %}
+<h2>안녕하세요, {{ user_name }}님!</h2>
+
+{% if days_left <= 1 %}
+    <div style="background-color: #fef2f2; border: 2px solid #dc2626; padding: 20px; border-radius: 8px; margin: 20px 0;">
+        <h3 style="color: #dc2626; margin: 0 0 10px 0;">🚨 긴급: 오늘 마감입니다!</h3>
+        <p style="color: #b91c1c; font-weight: bold; margin: 0;">
+            관심 있으셨던 공고가 오늘 마감됩니다. 지원을 계획하고 계셨다면 서둘러 진행해 주세요.
+        </p>
+    </div>
+{% elif days_left <= 3 %}
+    <div style="background-color: #fef3c7; border: 2px solid #d97706; padding: 20px; border-radius: 8px; margin: 20px 0;">
+        <h3 style="color: #d97706; margin: 0 0 10px 0;">⚠️ 마감 임박 (D-{{ days_left }})</h3>
+        <p style="color: #92400e; font-weight: bold; margin: 0;">
+            관심 있으셨던 공고가 {{ days_left }}일 후 마감됩니다. 준비하실 시간이 얼마 남지 않았습니다.
+        </p>
+    </div>
+{% else %}
+    <div style="background-color: #dbeafe; border: 2px solid #2563eb; padding: 20px; border-radius: 8px; margin: 20px 0;">
+        <h3 style="color: #2563eb; margin: 0 0 10px 0;">📅 마감 안내 (D-{{ days_left }})</h3>
+        <p style="color: #1e40af; margin: 0;">
+            관심 있으셨던 공고가 {{ days_left }}일 후 마감됩니다. 미리 준비하시기 바랍니다.
+        </p>
+    </div>
+{% endif %}
+
+<div class="alert-info">
+    <h3 style="margin: 0 0 10px 0; color: #1f2937;">{{ announcement.title }}</h3>
+    <p style="margin: 5px 0; color: #4b5563;">{{ announcement.organization }}</p>
+</div>
+
+<div class="meta-info">
+    <table>
+        <tr>
+            <td>공고 분야</td>
+            <td>{{ announcement.category or '미분류' }}</td>
+        </tr>
+        <tr>
+            <td>접수 마감일</td>
+            <td style="color: {% if days_left <= 1 %}#dc2626{% elif days_left <= 3 %}#d97706{% else %}#2563eb{% endif %}; font-weight: bold;">
+                {{ announcement.application_end_date.strftime('%Y년 %m월 %d일 (%A)') }}
+                {% if announcement.application_end_time %}
+                    {{ announcement.application_end_time }}
+                {% endif %}
+            </td>
+        </tr>
+        <tr>
+            <td>남은 시간</td>
+            <td style="color: {% if days_left <= 1 %}#dc2626{% elif days_left <= 3 %}#d97706{% else %}#2563eb{% endif %}; font-weight: bold;">
+                {% if days_left == 0 %}
+                    오늘 마감!
+                {% elif days_left == 1 %}
+                    내일 마감 (1일 남음)
+                {% else %}
+                    {{ days_left }}일 남음
+                {% endif %}
+            </td>
+        </tr>
+        <tr>
+            <td>지원 규모</td>
+            <td>{{ announcement.support_amount or '상세 내용 참조' }}</td>
+        </tr>
+        {% if announcement.contact_info %}
+        <tr>
+            <td>문의처</td>
+            <td>{{ announcement.contact_info }}</td>
+        </tr>
+        {% endif %}
+    </table>
+</div>
+
+{% if announcement.requirements %}
+<h3>📋 주요 지원 요건</h3>
+<div style="background-color: #f8fafc; padding: 15px; border-radius: 5px; margin: 15px 0;">
+    <p style="margin: 0;">{{ announcement.requirements }}</p>
+</div>
+{% endif %}
+
+<div style="text-align: center; margin: 30px 0;">
+    <a href="{{ announcement_url }}" class="cta-button" style="{% if days_left <= 1 %}background-color: #dc2626;{% elif days_left <= 3 %}background-color: #d97706;{% endif %}">
+        {% if days_left <= 1 %}
+            🚨 긴급 지원하기
+        {% elif days_left <= 3 %}
+            ⚠️ 서둘러 지원하기
+        {% else %}
+            📋 공고 상세보기
+        {% endif %}
+    </a>
+</div>
+
+<hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+
+<h3>💡 지원 전 체크리스트</h3>
+<ul style="color: #4b5563;">
+    <li>지원 자격 요건 확인 완료</li>
+    <li>필요 서류 준비 완료</li>
+    <li>온라인 지원 시스템 접속 테스트</li>
+    <li>마감 시간 확인 (보통 오후 6시 또는 자정)</li>
+</ul>
+
+<p style="font-size: 12px; color: #6b7280; margin-top: 30px;">
+    * 마감일 알림은 회원님의 구독 설정에 따라 D-7, D-3, D-1, D-Day에 발송됩니다.<br>
+    * 정확한 마감 시간은 해당 공고문을 직접 확인해 주세요.<br>
+    * <a href="{{ notification_settings_url }}">알림 설정</a>에서 마감 알림 주기를 변경할 수 있습니다.
+</p>
+{% endblock %}

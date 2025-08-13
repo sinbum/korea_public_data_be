@@ -1,0 +1,66 @@
+{% extends "email/base.html" %}
+
+{% block title %}새로운 공고 알림 - 한국 공공데이터{% endblock %}
+
+{% block header %}🚀 새로운 공고가 등록되었습니다{% endblock %}
+
+{% block content %}
+<h2>안녕하세요, {{ user_name }}님!</h2>
+
+<p>회원님의 관심 키워드 <strong>"{{ matched_keywords | join(', ') }}"</strong>에 매칭되는 새로운 공고가 등록되었습니다.</p>
+
+<div class="alert-info">
+    <h3 style="margin: 0 0 10px 0; color: #1f2937;">{{ announcement.title }}</h3>
+    <p style="margin: 5px 0; color: #4b5563;">{{ announcement.organization }}</p>
+</div>
+
+<div class="meta-info">
+    <table>
+        <tr>
+            <td>공고 분야</td>
+            <td>{{ announcement.category or '미분류' }}</td>
+        </tr>
+        <tr>
+            <td>지원 대상</td>
+            <td>{{ announcement.target or '상세 내용 참조' }}</td>
+        </tr>
+        <tr>
+            <td>접수 기간</td>
+            <td>
+                {% if announcement.application_start_date and announcement.application_end_date %}
+                    {{ announcement.application_start_date.strftime('%Y.%m.%d') }} ~ 
+                    {{ announcement.application_end_date.strftime('%Y.%m.%d') }}
+                {% else %}
+                    상세 내용 참조
+                {% endif %}
+            </td>
+        </tr>
+        <tr>
+            <td>지원 규모</td>
+            <td>{{ announcement.support_amount or '상세 내용 참조' }}</td>
+        </tr>
+        <tr>
+            <td>매칭 점수</td>
+            <td>{{ "%.0f" | format(match_score * 100) }}% (임계값: {{ "%.0f" | format(threshold * 100) }}%)</td>
+        </tr>
+    </table>
+</div>
+
+<p>{{ announcement.summary or announcement.description[:200] }}{% if announcement.description|length > 200 %}...{% endif %}</p>
+
+<div style="text-align: center; margin: 30px 0;">
+    <a href="{{ announcement_url }}" class="cta-button">
+        📋 공고 상세보기
+    </a>
+</div>
+
+<hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+
+<h3>🔔 알림 설정 관리</h3>
+<p>더 이상 이런 유형의 알림을 받고 싶지 않다면 <a href="{{ notification_settings_url }}">알림 설정</a>에서 변경하실 수 있습니다.</p>
+
+<p style="font-size: 12px; color: #6b7280; margin-top: 30px;">
+    * 본 알림은 회원님의 구독 설정에 따라 자동 발송되었습니다.<br>
+    * 매칭 점수는 키워드 일치도, 카테고리 관련성 등을 종합하여 계산됩니다.
+</p>
+{% endblock %}

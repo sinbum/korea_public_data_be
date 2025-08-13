@@ -1,0 +1,129 @@
+{% extends "email/base.html" %}
+
+{% block title %}일간 다이제스트 - 한국 공공데이터{% endblock %}
+
+{% block header %}📰 오늘의 공고 다이제스트{% endblock %}
+
+{% block content %}
+<h2>안녕하세요, {{ user_name }}님!</h2>
+
+<p>{{ date.strftime('%Y년 %m월 %d일 %A') }} 기준으로 회원님의 관심 분야에 새로 등록된 공고와 마감 임박 공고를 모아서 전해드립니다.</p>
+
+{% if new_announcements %}
+<h3>🆕 새로 등록된 공고 ({{ new_announcements|length }}건)</h3>
+{% for announcement in new_announcements %}
+<div class="alert-info" style="margin: 15px 0;">
+    <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+            <td style="padding: 0; vertical-align: top; width: 70%;">
+                <h4 style="margin: 0 0 8px 0; color: #1f2937; font-size: 16px;">
+                    <a href="{{ announcement.url }}" style="color: #2563eb; text-decoration: none;">
+                        {{ announcement.title }}
+                    </a>
+                </h4>
+                <p style="margin: 0 0 5px 0; color: #6b7280; font-size: 14px;">
+                    {{ announcement.organization }} | {{ announcement.category or '미분류' }}
+                </p>
+                {% if announcement.summary %}
+                <p style="margin: 5px 0 0 0; color: #4b5563; font-size: 14px; line-height: 1.4;">
+                    {{ announcement.summary[:100] }}{% if announcement.summary|length > 100 %}...{% endif %}
+                </p>
+                {% endif %}
+            </td>
+            <td style="padding: 0 0 0 15px; vertical-align: top; text-align: right; width: 30%;">
+                <div style="background-color: #eff6ff; padding: 8px 12px; border-radius: 4px; font-size: 12px;">
+                    {% if announcement.application_end_date %}
+                    <div style="color: #1e40af; font-weight: bold;">
+                        {{ announcement.application_end_date.strftime('%m/%d') }} 마감
+                    </div>
+                    {% endif %}
+                    {% if announcement.match_score %}
+                    <div style="color: #2563eb; margin-top: 3px;">
+                        매칭: {{ "%.0f" | format(announcement.match_score * 100) }}%
+                    </div>
+                    {% endif %}
+                </div>
+            </td>
+        </tr>
+    </table>
+</div>
+{% endfor %}
+{% endif %}
+
+{% if deadline_announcements %}
+<h3>⏰ 마감 임박 공고 ({{ deadline_announcements|length }}건)</h3>
+{% for announcement in deadline_announcements %}
+<div style="background-color: {% if announcement.days_left <= 1 %}#fef2f2{% elif announcement.days_left <= 3 %}#fef3c7{% else %}#eff6ff{% endif %}; border-left: 4px solid {% if announcement.days_left <= 1 %}#dc2626{% elif announcement.days_left <= 3 %}#d97706{% else %}#2563eb{% endif %}; padding: 15px; margin: 15px 0;">
+    <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+            <td style="padding: 0; vertical-align: top; width: 70%;">
+                <h4 style="margin: 0 0 8px 0; color: #1f2937; font-size: 16px;">
+                    <a href="{{ announcement.url }}" style="color: {% if announcement.days_left <= 1 %}#dc2626{% elif announcement.days_left <= 3 %}#d97706{% else %}#2563eb{% endif %}; text-decoration: none;">
+                        {{ announcement.title }}
+                    </a>
+                </h4>
+                <p style="margin: 0; color: #6b7280; font-size: 14px;">
+                    {{ announcement.organization }} | {{ announcement.category or '미분류' }}
+                </p>
+            </td>
+            <td style="padding: 0 0 0 15px; vertical-align: top; text-align: right; width: 30%;">
+                <div style="background-color: {% if announcement.days_left <= 1 %}#dc2626{% elif announcement.days_left <= 3 %}#d97706{% else %}#2563eb{% endif %}; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; font-weight: bold;">
+                    {% if announcement.days_left == 0 %}
+                        오늘 마감!
+                    {% elif announcement.days_left == 1 %}
+                        내일 마감
+                    {% else %}
+                        D-{{ announcement.days_left }}
+                    {% endif %}
+                </div>
+            </td>
+        </tr>
+    </table>
+</div>
+{% endfor %}
+{% endif %}
+
+{% if not new_announcements and not deadline_announcements %}
+<div style="text-align: center; padding: 40px 20px; color: #6b7280;">
+    <h3 style="color: #9ca3af;">📭 오늘은 새로운 소식이 없습니다</h3>
+    <p>회원님의 관심 키워드에 매칭되는 새로운 공고나 마감 임박 공고가 없습니다.<br>
+    내일 다시 확인해 드리겠습니다!</p>
+</div>
+{% endif %}
+
+<hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+
+<h3>📊 이번 주 통계</h3>
+<div class="meta-info">
+    <table>
+        <tr>
+            <td>새로 등록된 공고</td>
+            <td><strong>{{ stats.new_this_week or 0 }}건</strong></td>
+        </tr>
+        <tr>
+            <td>매칭된 공고</td>
+            <td><strong>{{ stats.matched_this_week or 0 }}건</strong></td>
+        </tr>
+        <tr>
+            <td>이번 주 마감 공고</td>
+            <td><strong>{{ stats.deadline_this_week or 0 }}건</strong></td>
+        </tr>
+        <tr>
+            <td>인기 키워드</td>
+            <td>{{ stats.popular_keywords[:3] | join(', ') if stats.popular_keywords else '데이터 부족' }}</td>
+        </tr>
+    </table>
+</div>
+
+<div style="text-align: center; margin: 30px 0;">
+    <a href="{{ dashboard_url }}" class="cta-button">
+        📈 전체 대시보드 보기
+    </a>
+</div>
+
+<p style="font-size: 12px; color: #6b7280; margin-top: 30px;">
+    * 일간 다이제스트는 회원님의 구독 설정에 따라 매일 {{ digest_time }}에 발송됩니다.<br>
+    * 다이제스트 발송 주기는 <a href="{{ notification_settings_url }}">알림 설정</a>에서 변경할 수 있습니다 (일간/주간/월간).<br>
+    * 더 많은 공고를 보려면 <a href="{{ browse_url }}">전체 공고 둘러보기</a>를 이용해 주세요.
+</p>
+{% endblock %}
