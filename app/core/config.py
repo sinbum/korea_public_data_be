@@ -58,12 +58,49 @@ class Settings(BaseSettings):
     # Development CORS (wildcards only in dev mode)
     cors_allow_dev_wildcards: bool = Field(default=True, description="Allow wildcard CORS patterns in development")
     # 보안 정책 토글: 블랙리스트 조회 실패 시 토큰 허용/거부
-    fail_close_on_blacklist_error: bool = Field(default=False, description="If true, deny tokens when blacklist check fails")
+    # 환경변수와 연동 (없으면 기본 False)
+    fail_close_on_blacklist_error: bool = Field(
+        default_factory=lambda: (str(__import__('os').environ.get('FAIL_CLOSE_ON_BLACKLIST_ERROR', 'false')).lower() == 'true'),
+        description="If true, deny tokens when blacklist check fails"
+    )
     
     # CSRF 보호(더블 서브밋 토큰) 설정 - 기본 비활성화하여 FE 영향 없음
-    csrf_enabled: bool = Field(default=False, description="Enable CSRF protection for state-changing requests")
+    csrf_enabled: bool = Field(
+        default_factory=lambda: (str(__import__('os').environ.get('CSRF_ENABLED', 'false')).lower() == 'true'),
+        description="Enable CSRF protection for state-changing requests"
+    )
     csrf_cookie_name: str = Field(default="csrftoken", description="Cookie name for CSRF token")
     csrf_header_name: str = Field(default="X-CSRF-Token", description="Header name to carry CSRF token")
+
+    # Alerts/Notifications Feature Flags & Config
+    alerts_enabled: bool = Field(
+        default_factory=lambda: (str(__import__('os').environ.get('ALERTS_ENABLED', 'false')).lower() == 'true'),
+        description="Enable alerts/notifications feature (guards runtime impact)"
+    )
+    alerts_match_queue: str = Field(
+        default_factory=lambda: str(__import__('os').environ.get('ALERTS_MATCH_QUEUE', 'alerts.match')),
+        description="Celery queue name for matching tasks"
+    )
+    alerts_notify_queue: str = Field(
+        default_factory=lambda: str(__import__('os').environ.get('ALERTS_NOTIFY_QUEUE', 'alerts.notify')),
+        description="Celery queue name for delivery tasks"
+    )
+    alerts_digest_queue: str = Field(
+        default_factory=lambda: str(__import__('os').environ.get('ALERTS_DIGEST_QUEUE', 'alerts.digest')),
+        description="Celery queue name for digest tasks"
+    )
+    alerts_user_daily_cap: int = Field(
+        default_factory=lambda: int(__import__('os').environ.get('ALERTS_USER_DAILY_CAP', '50')),
+        gt=0,
+        le=10000,
+        description="Per-user daily delivery cap to protect system load"
+    )
+    alerts_global_rps: int = Field(
+        default_factory=lambda: int(__import__('os').environ.get('ALERTS_GLOBAL_RPS', '20')),
+        gt=0,
+        le=10000,
+        description="Global notifications send rate per second"
+    )
     
     @validator('allowed_origins')
     def validate_origins(cls, v, values):

@@ -64,6 +64,13 @@ class CeleryConfig:
         "app.core.tasks.*": {"queue": "system"},
         "app.scheduler.monitoring_tasks.*": {"queue": "monitoring"},
     }
+    # Conditionally add alerts routing to avoid importing tasks when disabled
+    if settings.alerts_enabled:
+        task_routes.update({
+            "app.domains.alerts.tasks.match_and_enqueue": {"queue": settings.alerts_match_queue},
+            "app.domains.alerts.tasks.send_notification": {"queue": settings.alerts_notify_queue},
+            "app.domains.alerts.tasks.digest_daily": {"queue": settings.alerts_digest_queue},
+        })
     
     # Queue configuration
     task_default_queue = "default"
@@ -127,6 +134,22 @@ class CeleryConfig:
             "options": {"queue": "classification", "priority": 3},
         },
     }
+    if settings.alerts_enabled:
+        beat_schedule.update({
+            # Alerts digest once per day at low priority
+            "alerts-digest-daily": {
+                "task": "app.domains.alerts.tasks.digest_daily",
+                "schedule": timedelta(days=1),
+                "options": {"queue": settings.alerts_digest_queue, "priority": 2},
+            },
+            # Match recent announcements every 15 minutes (canary friendly)
+            "alerts-match-announcements-15m": {
+                "task": "app.domains.alerts.tasks.match_and_enqueue",
+                "schedule": timedelta(minutes=15),
+                "options": {"queue": settings.alerts_match_queue, "priority": 5},
+                "args": ("announcements", 15),
+            },
+        })
     
     # Task annotation settings
     task_annotations = {
@@ -178,19 +201,23 @@ def create_celery_app() -> Celery:
         Configured Celery application instance
     """
     # Create Celery app
+    includes: List[str] = [
+        "app.domains.announcements.tasks",
+        "app.domains.businesses.tasks",
+        "app.domains.contents.tasks",
+        "app.domains.statistics.tasks",
+        "app.shared.classification.tasks",
+        "app.core.tasks",
+        "app.scheduler.monitoring_tasks",
+    ]
+    if settings.alerts_enabled:
+        includes.append("app.domains.alerts.tasks")
+
     celery_app = Celery(
         "korea_public_api",
         broker=CeleryConfig.get_broker_url(),
         backend=CeleryConfig.get_result_backend_url(),
-        include=[
-            "app.domains.announcements.tasks",
-            "app.domains.businesses.tasks",
-            "app.domains.contents.tasks",
-            "app.domains.statistics.tasks",
-            "app.shared.classification.tasks",
-            "app.core.tasks",
-            "app.scheduler.monitoring_tasks",
-        ]
+        include=includes,
     )
     
     # Apply configuration
