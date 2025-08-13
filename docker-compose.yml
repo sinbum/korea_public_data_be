@@ -48,8 +48,13 @@ services:
       - PUBLIC_DATA_API_KEY=${PUBLIC_DATA_API_KEY}
       - PUBLIC_DATA_API_KEY_DECODE=${PUBLIC_DATA_API_KEY_DECODE}
       - API_BASE_URL=${API_BASE_URL}
+      - CSRF_ENABLED=${CSRF_ENABLED:-false}
+      - FAIL_CLOSE_ON_BLACKLIST_ERROR=${FAIL_CLOSE_ON_BLACKLIST_ERROR:-false}
       - DEBUG=True
       - LOG_LEVEL=DEBUG
+      - ALERTS_ENABLED=${ALERTS_ENABLED:-true}
+      - ALERTS_GLOBAL_RPS=${ALERTS_GLOBAL_RPS:-10}
+      - ALERTS_USER_DAILY_CAP=${ALERTS_USER_DAILY_CAP:-100}
     volumes:
       - ./app:/app/app:ro  # 코드 변경 감지를 위한 볼륨 마운트
       - ./logs:/app/logs
@@ -81,6 +86,9 @@ services:
       - PUBLIC_DATA_API_KEY_DECODE=${PUBLIC_DATA_API_KEY_DECODE}
       - DEBUG=True
       - LOG_LEVEL=DEBUG
+      - ALERTS_ENABLED=${ALERTS_ENABLED:-true}
+      - ALERTS_GLOBAL_RPS=${ALERTS_GLOBAL_RPS:-10}
+      - ALERTS_USER_DAILY_CAP=${ALERTS_USER_DAILY_CAP:-100}
     volumes:
       - ./app:/app/app:ro
       - ./logs:/app/logs
@@ -107,6 +115,9 @@ services:
       - PUBLIC_DATA_API_KEY_DECODE=${PUBLIC_DATA_API_KEY_DECODE}
       - DEBUG=True
       - LOG_LEVEL=DEBUG
+      - ALERTS_ENABLED=${ALERTS_ENABLED:-true}
+      - ALERTS_GLOBAL_RPS=${ALERTS_GLOBAL_RPS:-10}
+      - ALERTS_USER_DAILY_CAP=${ALERTS_USER_DAILY_CAP:-100}
     volumes:
       - ./app:/app/app:ro
       - ./logs:/app/logs
