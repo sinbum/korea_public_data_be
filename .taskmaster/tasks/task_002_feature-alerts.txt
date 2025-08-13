@@ -1,0 +1,44 @@
+# Task ID: 2
+# Title: 매칭 엔진 MVP 구현: MongoDB 텍스트 인덱스 기반 키워드 검색 및 알림 중복 방지 시스템
+# Status: done
+# Dependencies: 1
+# Priority: high
+# Description: MongoDB text index를 활용한 키워드 검색 기능과 도메인/카테고리/지역/상태/기간 필터를 결합한 매칭 엔진을 구현하고, notifications 컬렉션에 중복 방지를 위한 유니크 인덱스를 설계합니다.
+# Details:
+1. 매칭 엔진 핵심 기능 구현:
+- MongoDB text index 생성: { title: 'text', description: 'text', tags: 'text' }
+- 키워드 검색 쿼리 최적화: $text 연산자와 relevance score 활용
+- 복합 필터링 시스템: domain, category, region, status, period 조건 결합
+- 검색 결과 정렬: relevance score + 등록일시 조합
+
+2. 알림 중복 방지 시스템:
+- notifications 컬렉션 유니크 인덱스: { userId: 1, alertType: 1, entityId: 1, scheduledDate: 1 }
+- 중복 검사 로직: upsert 패턴으로 알림 생성 전 중복 확인
+- 배치 처리 최적화: bulkWrite를 통한 대량 알림 처리
+
+3. 매칭 엔진 서비스 클래스:
+- MatchingEngineService: 검색 로직과 필터링 담당
+- NotificationDeduplicationService: 중복 방지 로직 담당
+- 검색 성능 모니터링: explain() 결과 로깅
+
+4. API 엔드포인트:
+- GET /api/matching/search: 키워드 + 필터 검색
+- POST /api/matching/notifications: 알림 생성 (중복 방지)
+- 페이지네이션 및 정렬 옵션 제공
+
+# Test Strategy:
+1. MongoDB 인덱스 검증: db.collection.getIndexes()로 text index와 unique index 생성 확인
+2. 키워드 검색 테스트: 다양한 검색어로 relevance score 정확성 검증
+3. 필터 조합 테스트: 모든 필터 조합에서 올바른 결과 반환 확인
+4. 중복 방지 테스트: 동일한 알림 생성 시도 시 중복 생성되지 않음을 확인
+5. 성능 테스트: 대용량 데이터에서 검색 응답시간 측정 (목표: 100ms 이하)
+6. 동시성 테스트: 여러 사용자가 동시에 알림 생성 시 중복 방지 동작 확인
+7. 페이지네이션 테스트: 검색 결과 페이징 및 정렬 정확성 검증
+
+# Subtasks:
+## 1. 인덱스 초기화 스크립트 작성 및 유니크 인덱스 생성 [done]
+### Dependencies: None
+### Description: scripts/python/init_alerts_indexes.py 추가, notifications 유니크 인덱스 보장
+### Details:
+
+
