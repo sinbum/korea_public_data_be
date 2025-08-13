@@ -21,6 +21,7 @@ from ...shared.clients.google_oauth_client import google_oauth_client
 from ...core.dependencies import get_service_dependency
 from ...core.config import settings
 from urllib.parse import urlparse
+import secrets
 
 # Router setup
 router = APIRouter(
@@ -655,6 +656,23 @@ def _set_auth_cookies(response: Response, access_token: str, refresh_token: str,
         path="/",
         domain=cookie_domain,
     )
+
+    # CSRF 토큰 쿠키(옵션): 서버 설정에 따라 발급
+    try:
+        if getattr(settings, "csrf_enabled", False):
+            csrf_token = secrets.token_urlsafe(32)
+            response.set_cookie(
+                key=getattr(settings, "csrf_cookie_name", "csrftoken"),
+                value=csrf_token,
+                max_age=refresh_max_age,
+                httponly=False,  # 프론트에서 읽어 헤더 전송
+                samesite=samesite,
+                secure=secure,
+                path="/",
+                domain=cookie_domain,
+            )
+    except Exception:
+        pass
 
 
 def _clear_auth_cookies(response: Response):

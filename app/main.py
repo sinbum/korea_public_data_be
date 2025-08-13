@@ -38,6 +38,12 @@ from .domains.contents.router import router as contents_router
 from .domains.statistics.router import router as statistics_router
 from .domains.users.router import router as users_router
 from .domains.keys.router import router as keys_router
+from .core.config import settings as _settings_for_alerts
+# Alerts versioned router is included conditionally to avoid runtime impact when disabled
+try:
+    from .domains.alerts.versioned_router import get_v1_router as get_alerts_v1_router
+except Exception:
+    get_alerts_v1_router = None  # type: ignore
 from .domains.usage.router import router as usage_router
 from .domains.data_requests.router import router as data_requests_router
 # from .domains.data_sources.router import router as data_sources_router
@@ -349,6 +355,14 @@ app.include_router(keys_router, prefix="/api/v1")
 app.include_router(usage_router, prefix="/api/v1")
 app.include_router(get_task_management_router())
 # app.include_router(data_sources_router, prefix="/api/v1")
+
+# Conditionally mount alerts router when enabled (keeps default runtime unchanged)
+if _settings_for_alerts.alerts_enabled and get_alerts_v1_router is not None:
+    try:
+        app.include_router(get_alerts_v1_router(), prefix="/api")
+        logger.info("Alerts router mounted under /api/v1/alerts")
+    except Exception as e:
+        logger.warning(f"Failed to mount alerts router: {e}")
 
 # Versioned router examples (demonstrating API versioning system)
 # These show how to implement different API versions with backward compatibility
