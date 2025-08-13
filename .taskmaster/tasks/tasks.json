@@ -1557,7 +1557,7 @@
             "description": "BaseService를 상속받는 EmailService 클래스를 구현하고 Jinja2 템플릿 엔진을 통합하여 HTML/텍스트 멀티파트 이메일 발송 기능을 구축합니다.",
             "dependencies": [],
             "details": "EmailService 클래스를 app/shared/services/email_service.py에 생성하고 BaseService를 상속받아 구현. Jinja2 템플릿 엔진 설정 및 templates/email/ 디렉토리에 이메일 템플릿 파일 생성 (HTML과 텍스트 버전). SMTP 설정은 기존 EmailClient를 확장하여 SendGrid API 또는 SMTP 연동. 이메일 발송 로그 및 에러 처리 로직 포함.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "SMTP 연결 테스트, 템플릿 렌더링 정확성 검증, 멀티파트 이메일 형식 검증, 다양한 이메일 클라이언트 호환성 테스트"
           },
           {
@@ -1566,7 +1566,7 @@
             "description": "NotificationPreference 모델을 생성하여 사용자별 알림 선호도를 관리하고, 알림 카테고리별 on/off 설정 및 시간대별 차단 기능을 구현합니다.",
             "dependencies": [],
             "details": "NotificationPreference 모델을 app/domains/alerts/models.py에 추가하고 사용자별 알림 설정 필드 정의 (이메일, 푸시, SMS 채널별 설정, 알림 카테고리별 활성화 여부, 시간대 차단 설정, 알림 빈도 조절). AlertsRepository에 알림 설정 CRUD 메서드 추가. 알림 설정 관리 API 엔드포인트를 AlertsService를 통해 구현.",
-            "status": "pending",
+            "status": "in-progress",
             "testStrategy": "알림 설정 CRUD 작업 검증, 카테고리별 필터링 로직 테스트, 시간대별 차단 기능 정확성 검증, 알림 빈도 조절 로직 테스트"
           },
           {
@@ -1850,7 +1850,7 @@
     ],
     "metadata": {
       "created": "2025-07-21T23:49:16.210Z",
-      "updated": "2025-08-13T14:47:21.926Z",
+      "updated": "2025-08-13T14:55:07.571Z",
       "description": "Tasks for master context"
     }
   },

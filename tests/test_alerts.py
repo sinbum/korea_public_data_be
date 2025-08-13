@@ -5,9 +5,10 @@ from datetime import datetime, timedelta
 from unittest.mock import Mock, patch, AsyncMock
 from bson import ObjectId
 
-from app.domains.alerts.models import AlertSubscription, Notification, AlertFilters
+from app.domains.alerts.models import AlertSubscription, Notification, AlertFilters, NotificationPreference
 from app.domains.alerts.service import AlertsService
 from app.domains.alerts.repository import AlertsRepository
+from app.domains.alerts.frequency_manager import NotificationFrequencyManager
 from app.domains.alerts.tasks import match_and_enqueue, send_notification
 
 
@@ -22,7 +23,19 @@ def mock_db():
 @pytest.fixture
 def alerts_service(mock_db):
     """Create AlertsService instance with mocked DB"""
-    return AlertsService(mock_db)
+    service = AlertsService(mock_db)
+    # Mock the repository to avoid initialization issues
+    service.repository = AsyncMock()
+    return service
+
+
+@pytest.fixture
+def frequency_manager(mock_db):
+    """Create NotificationFrequencyManager instance with mocked DB"""
+    manager = NotificationFrequencyManager(mock_db)
+    # Mock the repository to avoid initialization issues  
+    manager.repository = AsyncMock()
+    return manager
 
 
 @pytest.fixture
@@ -234,6 +247,7 @@ class TestIntegration:
         
         # Setup mock database
         mock_db = AsyncMock()
+        mock_db.__getitem__ = Mock(return_value=AsyncMock())
         mock_dbm.return_value.get_async_database.return_value = mock_db
         
         # Create test subscription
