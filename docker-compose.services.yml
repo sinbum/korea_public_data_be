@@ -1,0 +1,60 @@
+# Docker Compose for services only (MongoDB, Redis)
+# Python app runs locally for development/testing
+
+services:
+  # MongoDB 개발 환경
+  mongodb:
+    image: mongo:6.0
+    container_name: korea_mongodb_local
+    restart: unless-stopped
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME:-admin}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD:-change_me}
+      - MONGO_INITDB_DATABASE=${MONGO_INITDB_DATABASE:-korea_public_api}
+    ports:
+      - "27017:27017"  # 로컬에서 접근 가능
+    volumes:
+      - ./volumes/mongodb/data:/data/db
+      - ./volumes/mongodb/configdb:/data/configdb
+      - ./scripts/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis 개발 환경
+  redis:
+    image: redis:7-alpine
+    container_name: korea_redis_local
+    restart: unless-stopped
+    ports:
+      - "6379:6379"  # 로컬에서 접근 가능
+    volumes:
+      - ./volumes/redis/data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Optional: Celery Flower for monitoring (if needed)
+  # flower:
+  #   image: mher/flower:2.0
+  #   container_name: korea_flower_local
+  #   restart: unless-stopped
+  #   ports:
+  #     - "5555:5555"
+  #   environment:
+  #     - CELERY_BROKER_URL=redis://redis:6379/0
+  #     - FLOWER_PORT=5555
+  #   depends_on:
+  #     - redis
+  #   command: celery flower --broker=redis://host.docker.internal:6379/0
+
+volumes:
+  mongodb_data:
+    driver: local
+  redis_data:
+    driver: local
