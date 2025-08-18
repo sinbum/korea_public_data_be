@@ -28,6 +28,9 @@ from app.shared.models.kstartup import (
     ContentItem,
     StatisticalItem
 )
+from app.core.container import get_container
+from app.domains.users.service import UserService
+from motor.motor_asyncio import AsyncIOMotorClient
 
 
 @pytest.fixture(scope="session")
@@ -57,10 +60,29 @@ def setup_test_environment():
     for key, value in test_env.items():
         os.environ.setdefault(key, value)
     
+    # Initialize DI container with test services
+    container = get_container()
+    
+    # Register test database
+    mock_db = Mock()
+    mock_db.__getitem__ = Mock(return_value=Mock())  # Mock collection access
+    container.register_instance(AsyncIOMotorClient, Mock())
+    
+    # Register UserService
+    mock_user_service = Mock(spec=UserService)
+    mock_user_service.register_local_user = AsyncMock()
+    mock_user_service.login_local_user = AsyncMock()
+    mock_user_service.get_current_user = AsyncMock()
+    mock_user_service.refresh_token = AsyncMock()
+    mock_user_service.logout = AsyncMock()
+    mock_user_service.google_oauth_login = AsyncMock()
+    container.register_instance(UserService, mock_user_service)
+    
     yield
     
     # Cleanup if needed
-    pass
+    # Clear singleton instances if any
+    container._singletons.clear() if hasattr(container, '_singletons') else None
 
 
 @pytest.fixture

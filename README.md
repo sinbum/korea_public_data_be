@@ -45,7 +45,6 @@
 
 ### 🔄 개발 진행 중
 - 📚 **콘텐츠 정보**: 창업 관련 콘텐츠 및 자료 (모델 완성, API 완성됨)
-- 📊 **통계 정보**: 창업 현황 및 성과 통계 데이터 (모델 완성, API 완성됨)
 - 🎯 **기업정보**: 창업기업 상세 정보 (모델 완성, API 완성됨)
 - 🏷️ **분류 시스템**: 사업 및 콘텐츠 자동 분류
 - 🔌 **플러그인 시스템**: 동적 데이터 소스 확장
@@ -90,7 +89,6 @@ be/
 │   │   │   
 │   │   ├── 📁 businesses/              # 🎯 기업정보 도메인 (API 완성)
 │   │   ├── 📁 contents/                # 📚 콘텐츠 도메인 (API 완성)
-│   │   └── 📁 statistics/              # 📊 통계정보 도메인 (API 완성)
 │   │   
 │   ├── 📁 shared/                      # 공통 인프라스트럭처
 │   │   ├── 📁 clients/                 # 외부 API 클라이언트
@@ -177,7 +175,7 @@ be/
 ## ⚡ 빠른 시작
 
 ### 1️⃣ 사전 요구사항
-- **Docker & Docker Compose** (권장)
+- **Docker & Docker Compose** (필수)
 - **Python 3.11+** (로컬 개발 시)
 - **공공데이터포털 API 키** ([발급받기](https://www.data.go.kr/tcs/dss/selectApiDataDetailView.do?publicDataPk=15121654))
 
@@ -189,14 +187,49 @@ git clone <repository-url>
 cd korea_public_data/be
 
 # 2. 환경변수 설정
-# (저장소에 .env.example가 없다면 아래 예시를 참고해 .env 파일을 직접 생성)
+# .env.local을 복사하여 실제 환경 파일 생성
+cp .env.local .env
 # 📝 PUBLIC_DATA_API_KEY에 실제 발급받은 키를 설정
 
 # 3. 볼륨 및 권한 초기화 (최초 1회만)
 ./scripts/init-volumes.sh
 ```
 
-### 3️⃣ Docker로 실행 (👑 권장)
+### 3️⃣ 실행 방법 선택
+
+#### 🎯 옵션 1: 로컬 Python + Docker 서비스 (테스트 권장)
+
+Python 애플리케이션은 로컬에서, MongoDB/Redis는 Docker로 실행하는 방식입니다.
+
+```bash
+# 1. MongoDB와 Redis만 Docker로 실행
+docker-compose -f docker-compose.services.yml up -d
+
+# 2. Python 가상환경 생성 및 활성화
+python -m venv venv
+source venv/bin/activate  # Linux/macOS
+# venv\Scripts\activate   # Windows
+
+# 3. 의존성 설치
+pip install -r requirements.txt
+
+# 4. 환경변수 로드
+export $(cat .env.local | grep -v '^#' | xargs)  # Linux/macOS
+# Windows의 경우 .env.local 파일의 변수를 수동으로 설정
+
+# 5. FastAPI 서버 실행 (Hot Reload)
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# 6. (선택) Celery Worker 실행 (별도 터미널)
+celery -A app.core.celery worker --loglevel=debug
+
+# 7. (선택) Celery Beat 실행 (별도 터미널)
+celery -A app.core.celery beat --loglevel=debug
+```
+
+#### 🐳 옵션 2: 전체 Docker 환경 (프로덕션 유사)
+
+모든 서비스를 Docker 컨테이너로 실행하는 방식입니다.
 
 ```bash
 # 🚀 전체 서비스 시작 (백그라운드)
@@ -209,7 +242,7 @@ docker-compose ps
 docker-compose logs -f api
 
 # 🔍 특정 서비스 로그만 확인
-docker-compose logs -f api celery-worker celery-beat
+docker-compose logs -f api celery_worker celery_beat
 ```
 
 ### 4️⃣ 서비스 접속 및 확인
@@ -222,11 +255,9 @@ docker-compose logs -f api celery-worker celery-beat
 | 📖 **Swagger UI** | http://localhost:8000/docs | 대화형 API 문서 (완전 한국어) |
 | 📚 **ReDoc** | http://localhost:8000/redoc | 읽기 전용 API 문서 |
 | ❤️ **Health Check** | http://localhost:8000/health | 서비스 상태 확인 |
-| 🌺 **Celery Flower (선택)** | http://localhost:5555 | 작업 큐 모니터링 (개발 환경에서는 docker-compose.yml에서 해당 서비스 주석 해제 후 사용) |
-| 🗄️ **MongoDB** | localhost:27017 | 데이터베이스 (admin/password123) |
+| 🌺 **Celery Flower (선택)** | http://localhost:5555 | 작업 큐 모니터링 |
+| 🗄️ **MongoDB** | localhost:27017 | 데이터베이스 접속 |
 | 🔴 **Redis** | localhost:6379 | 캐시 및 메시지 브로커 |
-
-프로덕션 구성 사용 시 Nginx(80/443), Prometheus(9090), Grafana(3030) 포트가 추가로 노출됩니다.
 
 ### 5️⃣ API 동작 테스트
 
@@ -244,31 +275,29 @@ curl -X POST "http://localhost:8000/api/v1/announcements/fetch"
 curl -X GET "http://localhost:8000/version"
 ```
 
-### 6️⃣ 로컬 개발 환경 (개발자용)
+### 6️⃣ 테스트 실행
 
 ```bash
-# Python 가상환경 생성 및 활성화 (권장)
-python -m venv venv
-source venv/bin/activate  # Linux/macOS
-# venv\Scripts\activate   # Windows
+# 로컬 Python 환경에서 테스트 실행 (권장)
+# 1. 서비스 컨테이너만 실행
+docker-compose -f docker-compose.services.yml up -d
 
-# 의존성 설치
-pip install -r requirements.txt
+# 2. 환경변수 설정
+export $(cat .env.local | grep -v '^#' | xargs)
 
-# 인프라스트럭처만 Docker로 실행
-docker-compose up -d mongodb redis
+# 3. 전체 테스트 실행
+python -m pytest tests/ -v
 
-# FastAPI 서버 로컬 실행 (Hot Reload)
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+# 4. 특정 테스트만 실행
+python -m pytest tests/test_auth_api.py -v
+python -m pytest tests/test_alerts_api.py -v
+python -m pytest tests/test_performance.py -v
 
-# Celery Worker 실행 (별도 터미널)
-celery -A app.core.celery worker --loglevel=info
-
-# Celery Beat 스케줄러 실행 (별도 터미널)
-celery -A app.core.celery beat --loglevel=info
+# 5. 테스트 커버리지 확인
+python -m pytest --cov=app --cov-report=html
 ```
 
-### 7️⃣ 프로덕션 실행 (docker-compose.prod.yml)
+### 7️⃣ 프로덕션 실행
 
 ```bash
 # .env에 프로덕션 값 설정 후 실행
@@ -395,47 +424,6 @@ GET /api/v1/contents/popular
 GET /api/v1/contents/statistics
 ```
 
-### 📊 통계정보 (Statistics) - ✅ API 완성
-
-```bash
-# 📥 통계 데이터 수집
-POST /api/v1/statistics/fetch
-
-# 📋 통계 목록 조회
-GET /api/v1/statistics/
-  ├── ?stat_type=월별&year=2024&month=3
-  └── ?period=quarterly&is_active=true
-
-# 🔍 통계 상세 조회
-GET /api/v1/statistics/{statistics_id}
-
-# ➕ 새 통계 생성
-POST /api/v1/statistics/
-
-# ✏️ 통계 수정
-PUT /api/v1/statistics/{statistics_id}
-
-# 🗑️ 통계 삭제
-DELETE /api/v1/statistics/{statistics_id}
-
-# 📊 최근 통계
-GET /api/v1/statistics/recent
-
-# 📅 연도별 통계
-GET /api/v1/statistics/year/{year}
-
-# 📈 통계 개요
-GET /api/v1/statistics/overview
-
-# 📊 집계 지표
-GET /api/v1/statistics/aggregated-metrics
-
-# 📋 월별 리포트
-GET /api/v1/statistics/report/monthly/{year}/{month}
-
-# 📋 연별 리포트
-GET /api/v1/statistics/report/yearly/{year}
-```
 
 ### 🧰 작업 관리 (Task Management) - 운영/모니터링
 
@@ -626,7 +614,6 @@ FAIL_CLOSE_ON_BLACKLIST_ERROR=true
 |--------|----------|----------|-----------|
 | 📚 **콘텐츠** | 매일 | 오전 7시, 오후 7시 | 🔄 API 완성됨 |
 | 🎯 **기업정보** | 주 2회 | 월, 목 오전 8시 | 🔄 API 완성됨 |
-| 📊 **통계정보** | 매주 | 일요일 오전 9시 | 🔄 API 완성됨 |
 
 ### 🔧 스케줄 관리
 
@@ -698,8 +685,6 @@ curl -X GET "http://localhost:8000/api/v1/contents/"
 # 🎯 기업정보 API 테스트
 curl -X GET "http://localhost:8000/api/v1/businesses/"
 
-# 📊 통계정보 API 테스트
-curl -X GET "http://localhost:8000/api/v1/statistics/"
 ```
 
 ### 📊 성능 벤치마크
@@ -725,7 +710,6 @@ wrk -t12 -c400 -d30s http://localhost:8000/api/v1/announcements/
 | 🏢 **사업공고 도메인** | ✅ 완성 | 완전한 CRUD + 실시간 수집 |
 | 🎯 **기업정보 도메인** | ✅ 완성 | API 구현, 테스트 완료 |
 | 📚 **콘텐츠 도메인** | ✅ 완성 | API 구현, 좋아요 기능 포함 |
-| 📊 **통계정보 도메인** | ✅ 완성 | API 구현, 리포트 생성 |
 | 🔧 **DI 컨테이너** | ✅ 완성 | 의존성 주입 시스템 |
 | 🛡️ **예외 처리** | ✅ 완성 | 계층화된 에러 처리 |
 | 📄 **API 문서** | ✅ 완성 | 완전 한국어 Swagger |
