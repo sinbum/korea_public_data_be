@@ -153,7 +153,7 @@ class BusinessService(BaseService[Business, BusinessCreate, BusinessUpdate, Busi
         }
         return await self.get_list(page=page, limit=limit, filters=filters)
     
-    def fetch_and_save_businesses(
+    async def fetch_and_save_businesses(
         self, 
         page_no: int = 1, 
         num_of_rows: int = 10,
@@ -163,6 +163,7 @@ class BusinessService(BaseService[Business, BusinessCreate, BusinessUpdate, Busi
     ) -> List[Business]:
         """공공데이터에서 사업정보를 가져와 저장 (최신순 지원)"""
         businesses = []
+        response = None
         
         try:
             # 최신순 조회를 위한 로직
@@ -174,71 +175,68 @@ class BusinessService(BaseService[Business, BusinessCreate, BusinessUpdate, Busi
                 for business_year in years_to_try:
                     logger.info(f"사업연도 {business_year or '전체'}로 조회 시도 중...")
                     
-                    with KStartupAPIClient() as client:
-                        response = client.get_business_information(
-                            page_no=page_no,
-                            num_of_rows=num_of_rows,
-                            business_field=business_field,
-                            organization=organization,
-                            business_year=business_year
-                        )
-                        
-                        if response.success and response.data.data:
-                            logger.info(f"사업연도 {business_year or '전체'}에서 {len(response.data.data)}건 조회됨")
-                            break
-                    
-                    if not response.success:
-                        logger.warning(f"사업연도 {business_year or '전체'} 조회 실패: {response.error}")
-            else:
-                # 기존 방식 (연도 필터 없이 조회)
-                with KStartupAPIClient() as client:
-                    response = client.get_business_information(
+                    response = await self.api_client.async_get_business_information(
                         page_no=page_no,
                         num_of_rows=num_of_rows,
                         business_field=business_field,
                         organization=organization
                     )
+                    
+                    if response.success and response.data.data:
+                        logger.info(f"사업연도 {business_year or '전체'}에서 {len(response.data.data)}건 조회됨")
+                        break
+                    
+                    if not response.success:
+                        logger.warning(f"사업연도 {business_year or '전체'} 조회 실패: {response.error}")
+            else:
+                # 기존 방식 (연도 필터 없이 조회)
+                response = await self.api_client.async_get_business_information(
+                    page_no=page_no,
+                    num_of_rows=num_of_rows,
+                    business_field=business_field,
+                    organization=organization
+                )
                 
-                if not response.success:
-                    logger.error(f"API 호출 실패: {response.error}")
-                    return businesses
+            if not response.success:
+                logger.error(f"API 호출 실패: {response.error}")
+                return businesses
                 
-                logger.info(f"API 응답: {len(response.data.data)}건 조회")
-                
-                # 응답 데이터 처리
-                for item in response.data.data:
-                    try:
-                        # BusinessItem 객체에서 실제 데이터 추출
-                        business_data = self._transform_businessitem_to_data(item)
-                        
-                        # 중복 체크
-                        business_id = business_data.get("business_id")
-                        business_name = business_data.get("business_name")
-                        
-                        is_duplicate = self.repository.check_duplicate(
-                            business_id=business_id,
-                            business_name=business_name
-                        )
-                        
-                        if is_duplicate:
-                            logger.info(f"중복 데이터 스킵: {business_name}")
-                            continue
-                        
-                        # 새 사업정보 생성
-                        business_create = BusinessCreate(
-                            business_data=business_data,
-                            source_url=f"K-Startup-사업정보-{business_id or 'unknown'}"
-                        )
-                        
-                        # Repository를 통해 저장
-                        business = self.repository.create(business_create)
-                        businesses.append(business)
-                        
-                        logger.info(f"새로운 사업정보 저장: {business_name}")
-                        
-                    except Exception as e:
-                        logger.error(f"데이터 변환/저장 오류: {e}, 데이터: {item}")
+            logger.info(f"API 응답: {len(response.data.data)}건 조회")
+            
+            # 응답 데이터 처리
+            for item in response.data.data:
+                try:
+                    # BusinessItem 객체에서 실제 데이터 추출
+                    business_data = self._transform_businessitem_to_data(item)
+                    
+                    # 중복 체크
+                    business_id = business_data.get("business_id")
+                    business_name = business_data.get("business_name")
+                    
+                    is_duplicate = self.repository.check_duplicate(
+                        business_id=business_id,
+                        business_name=business_name
+                    )
+                    
+                    if is_duplicate:
+                        logger.info(f"중복 데이터 스킵: {business_name}")
                         continue
+                    
+                    # 새 사업정보 생성
+                    business_create = BusinessCreate(
+                        business_data=business_data,
+                        source_url=f"K-Startup-사업정보-{business_id or 'unknown'}"
+                    )
+                    
+                    # Repository를 통해 저장
+                    business = self.repository.create(business_create)
+                    businesses.append(business)
+                    
+                    logger.info(f"새로운 사업정보 저장: {business_name}")
+                    
+                except Exception as e:
+                    logger.error(f"데이터 변환/저장 오류: {e}, 데이터: {item}")
+                    continue
                         
         except Exception as e:
             logger.error(f"K-Startup API 호출 실패: {e}")

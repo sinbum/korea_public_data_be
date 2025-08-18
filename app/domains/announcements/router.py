@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Path, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Path, status, BackgroundTasks
 from fastapi.responses import ORJSONResponse
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from .service import AnnouncementService
+from .batch_service import AnnouncementBatchService
 from .models import AnnouncementResponse, AnnouncementCreate, AnnouncementUpdate
+from .cache_service import announcement_cache_service
 from .schemas import (
     AnnouncementResponse as AnnouncementResponseSchema,
     AnnouncementCreate as AnnouncementCreateSchema,
@@ -33,7 +35,7 @@ from ...shared.exceptions.custom_exceptions import (
     ValidationException,
     BusinessLogicException
 )
-from ...core.dependencies import get_announcement_service
+from ...core.dependencies import get_announcement_service, get_announcement_batch_service
 
 router = APIRouter(
     prefix="/announcements",
@@ -228,6 +230,22 @@ async def get_announcements(
         logger = logging.getLogger(__name__)
         logger.info(f"Router received parameters: business_type='{business_type}', status='{status}', keyword='{keyword}', is_active={is_active}, sort_by='{sort_by}'")
         
+        # 캐시 확인
+        cached_response = announcement_cache_service.get_announcements_list_cache(
+            page=pagination.page,
+            size=pagination.size,
+            is_active=is_active if is_active is not None else True,
+            order_by_latest=order_by_latest,
+            sort_by=sort_by,
+            business_type=business_type,
+            status=status,
+            keyword=keyword
+        )
+        
+        if cached_response:
+            logger.info("Returning cached announcement list")
+            return cached_response
+        
         # Use the enhanced get_announcements method with filtering support
         result = service.get_announcements(
             page=pagination.page,
@@ -265,7 +283,7 @@ async def get_announcements(
         import math
         total_pages = math.ceil(result.total_count / pagination.size) if result.total_count > 0 else 1
         
-        return PaginatedResponse(
+        response = PaginatedResponse(
             success=True,
             items=items,
             message="사업공고 목록 조회 성공",
@@ -278,6 +296,22 @@ async def get_announcements(
                 "has_previous": result.has_previous
             }
         )
+        
+        # 응답 캐싱 (60초 TTL)
+        announcement_cache_service.set_announcements_list_cache(
+            page=pagination.page,
+            size=pagination.size,
+            data=response.model_dump(),
+            ttl_seconds=60,
+            is_active=is_active if is_active is not None else True,
+            order_by_latest=order_by_latest,
+            sort_by=sort_by,
+            business_type=business_type,
+            status=status,
+            keyword=keyword
+        )
+        
+        return response
     except ValidationException as e:
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
@@ -565,6 +599,171 @@ async def get_announcement_statistics(
         return success_response(
             data=stats,
             message="사업공고 통계 조회 성공"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"통계 조회 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@router.post(
+    "/batch-collect",
+    response_model=BaseResponse[dict],
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="사업공고 대량 수집",
+    description="""
+    K-Startup API에서 모든 사업공고 데이터를 대량으로 수집합니다.
+    
+    **주요 기능:**
+    - 최대 25,921개의 사업공고 데이터 수집 가능
+    - 비동기 배치 처리로 높은 성능
+    - 진행률 추적 및 모니터링
+    - 중복 데이터 자동 감지 및 스킵
+    - 벌크 삽입으로 최적화된 성능
+    - 에러 발생 시 개별 삽입 폴백
+    
+    **처리 방식:**
+    - 동시 요청 수: 최대 5개
+    - 페이지당 처리량: 100개 항목
+    - 청크 단위 처리: 20페이지씩 배치
+    - 메모리 최적화된 대용량 처리
+    
+    **예상 소요 시간:**
+    - 전체 데이터: 약 10-30분
+    - 1,000개 항목: 약 1-3분
+    
+    **참고사항:**
+    - 백그라운드에서 실행되며 즉시 응답 반환
+    - 진행 상황은 로그를 통해 모니터링 가능
+    - 대용량 처리로 서버 리소스 사용량 증가 가능
+    """,
+    response_description="배치 수집 작업 시작 확인 메시지",
+    responses={
+        **WRITE_HTTP_RESPONSES,
+        202: {
+            "model": BaseResponse[dict],
+            "description": "배치 수집 작업이 성공적으로 시작됨",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "success": True,
+                        "status": "success",
+                        "data": {
+                            "task_id": "batch_collect_20250814_123456",
+                            "estimated_total": 25921,
+                            "max_pages": 260,
+                            "batch_size": 100,
+                            "status": "started"
+                        },
+                        "message": "사업공고 대량 수집 작업이 시작되었습니다",
+                        "timestamp": "2025-08-14T12:34:56Z"
+                    }
+                }
+            }
+        }
+    }
+)
+async def batch_collect_announcements(
+    background_tasks: BackgroundTasks,
+    max_pages: Optional[int] = Query(
+        None,
+        ge=1,
+        le=500,
+        description="수집할 최대 페이지 수 (None이면 모든 데이터, 테스트용도로 제한 가능)",
+        example=10
+    ),
+    business_type: Optional[str] = Query(
+        None,
+        description="사업 유형으로 필터링",
+        example="정부지원사업"
+    ),
+    business_name: Optional[str] = Query(
+        None,
+        description="사업명으로 필터링 (부분 검색)",
+        example="창업도약패키지"
+    ),
+    batch_service: AnnouncementBatchService = Depends(get_announcement_batch_service)
+):
+    """
+    사업공고 대량 수집 배치 작업 시작
+    
+    백그라운드에서 비동기로 대량 데이터 수집을 실행합니다.
+    """
+    try:
+        from datetime import datetime
+        import uuid
+        
+        # 작업 ID 생성
+        task_id = f"batch_collect_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{str(uuid.uuid4())[:8]}"
+        
+        # 예상 총량 계산
+        estimated_total = 25921
+        if max_pages:
+            estimated_total = min(estimated_total, max_pages * 100)
+        
+        # 백그라운드 작업 시작
+        async def batch_collection_task():
+            """배치 수집 백그라운드 작업"""
+            try:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info(f"배치 수집 작업 시작: {task_id}")
+                
+                result = await batch_service.collect_all_announcements(
+                    max_pages=max_pages,
+                    business_type=business_type,
+                    business_name=business_name
+                )
+                
+                logger.info(f"배치 수집 작업 완료: {task_id} - {result}")
+                
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"배치 수집 작업 오류: {task_id} - {e}")
+        
+        # 백그라운드 태스크 추가
+        background_tasks.add_task(batch_collection_task)
+        
+        return success_response(
+            data={
+                "task_id": task_id,
+                "estimated_total": estimated_total,
+                "max_pages": max_pages or "unlimited",
+                "batch_size": 100,
+                "status": "started",
+                "filters": {
+                    "business_type": business_type,
+                    "business_name": business_name
+                }
+            },
+            message="사업공고 대량 수집 작업이 백그라운드에서 시작되었습니다"
+        )
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"배치 수집 작업 시작 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@router.get(
+    "/batch-statistics",
+    response_model=BaseResponse[dict],
+    summary="수집 통계 조회",
+    description="현재 데이터베이스에 저장된 사업공고 수집 통계를 조회합니다.",
+    responses=READ_ONLY_HTTP_RESPONSES
+)
+async def get_batch_collection_statistics(
+    batch_service: AnnouncementBatchService = Depends(get_announcement_batch_service)
+):
+    """배치 수집 통계 조회"""
+    try:
+        stats = await batch_service.get_collection_statistics()
+        return success_response(
+            data=stats,
+            message="수집 통계 조회 성공"
         )
     except Exception as e:
         raise HTTPException(

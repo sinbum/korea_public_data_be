@@ -28,7 +28,15 @@ class AlertsRepository:
 
     async def list_subscriptions(self, user_id: Any) -> List[Dict[str, Any]]:
         cursor = self.subs.find({"user_id": user_id}).sort("created_at", DESCENDING)
-        return [doc async for doc in cursor]
+        result = []
+        async for doc in cursor:
+            # Convert ObjectId to string for serialization
+            if "_id" in doc:
+                doc["_id"] = str(doc["_id"])
+            if "id" in doc:
+                doc["id"] = str(doc["id"])
+            result.append(doc)
+        return result
 
     async def upsert_notification(self, notif: Notification) -> Optional[str]:
         try:
@@ -50,7 +58,14 @@ class AlertsRepository:
     # NotificationPreference CRUD methods
     async def get_user_preferences(self, user_id: Any) -> Optional[Dict[str, Any]]:
         """사용자의 알림 설정 조회"""
-        return await self.preferences.find_one({"user_id": user_id})
+        doc = await self.preferences.find_one({"user_id": user_id})
+        if doc:
+            # Convert ObjectId to string for serialization
+            if "_id" in doc:
+                doc["_id"] = str(doc["_id"])
+            if "id" in doc:
+                doc["id"] = str(doc["id"])
+        return doc
 
     async def create_user_preferences(self, preferences: NotificationPreference) -> str:
         """사용자의 알림 설정 생성"""
@@ -126,7 +141,15 @@ class AlertsRepository:
             query["digest_frequency"] = digest_frequency
             
         cursor = self.preferences.find(query)
-        return [doc async for doc in cursor]
+        result = []
+        async for doc in cursor:
+            # Convert ObjectId to string for serialization
+            if "_id" in doc:
+                doc["_id"] = str(doc["_id"])
+            if "id" in doc:
+                doc["id"] = str(doc["id"])
+            result.append(doc)
+        return result
 
     async def is_notification_allowed(self, user_id: Any, channel: str, category: str) -> tuple[bool, Dict[str, Any]]:
         """사용자가 특정 채널/카테고리 알림을 받을지 확인"""

@@ -10,20 +10,20 @@ from .repository import AlertsRepository
 
 class AlertsService:
     def __init__(self, db: AsyncIOMotorDatabase):
-        self.repo = AlertsRepository(db)
+        self.repository = AlertsRepository(db)
 
     async def init(self) -> None:
-        await self.repo.ensure_indexes()
+        await self.repository.ensure_indexes()
 
     async def create_subscription(self, sub: AlertSubscription) -> str:
-        return await self.repo.create_subscription(sub)
+        return await self.repository.create_subscription(sub)
 
     async def list_subscriptions(self, user_id: Any) -> List[Dict[str, Any]]:
-        return await self.repo.list_subscriptions(user_id)
+        return await self.repository.list_subscriptions(user_id)
 
     async def enqueue_notification(self, notif: Notification) -> None:
         # Upsert to avoid duplicates; actual send is handled by celery tasks
-        await self.repo.upsert_notification(notif)
+        await self.repository.upsert_notification(notif)
 
     # MVP text match builder using Mongo $text and filter conjunctions
     def build_query(self, domain: str, keywords: List[str], filters: Optional[AlertFilters | Dict[str, Any]]) -> Dict[str, Any]:

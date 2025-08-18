@@ -5,9 +5,10 @@
 기업 관련 작업을 위한 완전한 RESTful API 엔드포인트를 제공합니다.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Path, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Path, status, BackgroundTasks
 from typing import List, Optional
 from .service import BusinessService
+from .batch_service import BusinessBatchService
 from .schemas import (
     BusinessResponse,
     BusinessCreate,
@@ -26,7 +27,7 @@ from ...shared.exceptions.custom_exceptions import (
     ValidationException,
     BusinessLogicException
 )
-from ...core.dependencies import get_business_service
+from ...core.dependencies import get_business_service, get_business_batch_service
 
 router = APIRouter(
     prefix="/businesses",
@@ -98,7 +99,7 @@ async def fetch_businesses(
     중복된 데이터는 자동으로 스킵되며, 새로운 데이터만 데이터베이스에 저장됩니다.
     """
     try:
-        businesses = service.fetch_and_save_businesses(
+        businesses = await service.fetch_and_save_businesses(
             page_no=page_no,
             num_of_rows=num_of_rows,
             business_field=business_field,
@@ -509,4 +510,166 @@ async def delete_business(
         raise HTTPException(
             status_code=500,
             detail=f"사업정보 삭제 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@router.post(
+    "/batch-collect",
+    response_model=BaseResponse[dict],
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="사업정보 대량 수집",
+    description="""
+    K-Startup API에서 모든 사업정보 데이터를 대량으로 수집합니다.
+    
+    **주요 기능:**
+    - 최대 1,231개의 사업정보 데이터 수집 가능
+    - 비동기 배치 처리로 높은 성능
+    - 진행률 추적 및 모니터링
+    - 중복 데이터 자동 감지 및 스킵
+    - 벌크 삽입으로 최적화된 성능
+    - 에러 발생 시 개별 삽입 폴백
+    
+    **처리 방식:**
+    - 동시 요청 수: 최대 5개
+    - 페이지당 처리량: 100개 항목
+    - 청크 단위 처리: 15페이지씩 배치
+    - 메모리 최적화된 중간 규모 처리
+    
+    **예상 소요 시간:**
+    - 전체 데이터: 약 3-8분
+    - 500개 항목: 약 1-3분
+    
+    **참고사항:**
+    - 백그라운드에서 실행되며 즉시 응답 반환
+    - 진행 상황은 로그를 통해 모니터링 가능
+    """,
+    response_description="배치 수집 작업 시작 확인 메시지",
+    responses={
+        202: {
+            "model": BaseResponse[dict],
+            "description": "배치 수집 작업이 성공적으로 시작됨",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "success": True,
+                        "status": "success",
+                        "data": {
+                            "task_id": "business_batch_collect_20250814_123456",
+                            "estimated_total": 1231,
+                            "max_pages": 13,
+                            "batch_size": 100,
+                            "status": "started"
+                        },
+                        "message": "사업정보 대량 수집 작업이 시작되었습니다",
+                        "timestamp": "2025-08-14T12:34:56Z"
+                    }
+                }
+            }
+        }
+    }
+)
+async def batch_collect_businesses(
+    background_tasks: BackgroundTasks,
+    max_pages: Optional[int] = Query(
+        None,
+        ge=1,
+        le=50,
+        description="수집할 최대 페이지 수 (None이면 모든 데이터, 테스트용도로 제한 가능)",
+        example=5
+    ),
+    business_type: Optional[str] = Query(
+        None,
+        description="사업 유형으로 필터링",
+        example="정부지원사업"
+    ),
+    organization: Optional[str] = Query(
+        None,
+        description="주관기관으로 필터링",
+        example="창업진흥원"
+    ),
+    batch_service: BusinessBatchService = Depends(get_business_batch_service)
+):
+    """
+    사업정보 대량 수집 배치 작업 시작
+    
+    백그라운드에서 비동기로 대량 데이터 수집을 실행합니다.
+    """
+    try:
+        from datetime import datetime
+        import uuid
+        
+        # 작업 ID 생성
+        task_id = f"business_batch_collect_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{str(uuid.uuid4())[:8]}"
+        
+        # 예상 총량 계산
+        estimated_total = 1231
+        if max_pages:
+            estimated_total = min(estimated_total, max_pages * 100)
+        
+        # 백그라운드 작업 시작
+        async def batch_collection_task():
+            """배치 수집 백그라운드 작업"""
+            try:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info(f"사업정보 배치 수집 작업 시작: {task_id}")
+                
+                result = await batch_service.collect_all_businesses(
+                    max_pages=max_pages,
+                    business_type=business_type,
+                    organization=organization
+                )
+                
+                logger.info(f"사업정보 배치 수집 작업 완료: {task_id} - {result}")
+                
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"사업정보 배치 수집 작업 오류: {task_id} - {e}")
+        
+        # 백그라운드 태스크 추가
+        background_tasks.add_task(batch_collection_task)
+        
+        return success_response(
+            data={
+                "task_id": task_id,
+                "estimated_total": estimated_total,
+                "max_pages": max_pages or "unlimited",
+                "batch_size": 100,
+                "status": "started",
+                "filters": {
+                    "business_type": business_type,
+                    "organization": organization
+                }
+            },
+            message="사업정보 대량 수집 작업이 백그라운드에서 시작되었습니다"
+        )
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"배치 수집 작업 시작 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@router.get(
+    "/batch-statistics",
+    response_model=BaseResponse[dict],
+    summary="수집 통계 조회",
+    description="현재 데이터베이스에 저장된 사업정보 수집 통계를 조회합니다.",
+)
+async def get_batch_collection_statistics(
+    batch_service: BusinessBatchService = Depends(get_business_batch_service)
+):
+    """배치 수집 통계 조회"""
+    try:
+        stats = await batch_service.get_collection_statistics()
+        return success_response(
+            data=stats,
+            message="수집 통계 조회 성공"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"통계 조회 중 오류가 발생했습니다: {str(e)}"
         )

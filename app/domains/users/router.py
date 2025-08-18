@@ -20,6 +20,7 @@ from .service import UserService
 from ...shared.clients.google_oauth_client import google_oauth_client
 from ...core.dependencies import get_service_dependency
 from ...core.config import settings
+from ...core.constants import HTTPStatusMessages, TokenConstants, OAuthConstants
 from urllib.parse import urlparse
 import secrets
 
@@ -60,7 +61,10 @@ async def get_current_user(
         token = request.cookies.get("access_token")
 
     if not token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="인증 토큰이 없습니다")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, 
+            detail=HTTPStatusMessages.TOKEN_REQUIRED
+        )
 
     return await user_service.get_current_user(token)
 
@@ -108,14 +112,16 @@ async def register(
         logger.warning(f"Validation error during registration: {e}")
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="입력 데이터 유효성 검사 실패"
-        )
+            detail=HTTPStatusMessages.VALIDATION_ERROR
+        ) from e  # Preserve exception chain for better debugging
+    except HTTPException:
+        raise  # Re-raise HTTPExceptions as-is to preserve status codes
     except Exception as e:
-        logger.error(f"Unexpected error during registration: {e}")
+        logger.error(f"Unexpected error during registration: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="회원가입 처리 중 오류가 발생했습니다"
-        )
+            detail=HTTPStatusMessages.REGISTRATION_ERROR
+        ) from e
 
 
 @router.post("/login", 
@@ -157,26 +163,33 @@ async def login(
     - Set-Cookie: access_token (HTTP-only, Secure)
     - Set-Cookie: refresh_token (HTTP-only, Secure)
     """
+    # Extract client info once for better performance
+    client_ip = getattr(request.client, 'host', 'unknown') if request.client else "unknown"
+    user_agent = request.headers.get("user-agent", "unknown")
+    
     try:
-        # Log login attempt (without password)
-        client_ip = request.client.host if request.client else "unknown"
-        user_agent = request.headers.get("user-agent", "unknown")
+        # Log login attempt (without password for security)
         logger.info(f"Login attempt: {user_login.email} from {client_ip}")
         
-        result = await user_service.login_local_user(UserLogin(email=user_login.email, password=user_login.password))
-        _set_auth_cookies(response, result.access_token, result.refresh_token, remember=user_login.remember)
+        # Create UserLogin object once to avoid redundant instantiation
+        login_data = UserLogin(email=user_login.email, password=user_login.password)
+        result = await user_service.login_local_user(login_data)
         
+        # Set cookies and log success
+        _set_auth_cookies(response, result.access_token, result.refresh_token, 
+                         remember=user_login.remember)
         logger.info(f"Login successful: {user_login.email} from {client_ip}")
         return result
-    except HTTPException:
-        logger.warning(f"Login failed: {user_login.email} from {client_ip}")
+        
+    except HTTPException as e:
+        logger.warning(f"Login failed: {user_login.email} from {client_ip} - {e.detail}")
         raise
     except Exception as e:
-        logger.error(f"Unexpected error during login: {e}")
+        logger.error(f"Unexpected error during login: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="로그인 처리 중 오류가 발생했습니다"
-        )
+            detail=HTTPStatusMessages.LOGIN_ERROR
+        ) from e
 
 
 @router.get("/google/login",
@@ -419,17 +432,31 @@ async def logout(
     
     Adds tokens to blacklist to prevent further use
     """
-    token = credentials.credentials if credentials else request.cookies.get("access_token")
-    success = await user_service.logout(token, refresh_token or request.cookies.get("refresh_token"))
+    # Extract tokens once for better performance
+    access_token = credentials.credentials if credentials else request.cookies.get("access_token")
+    refresh_token_value = refresh_token or request.cookies.get("refresh_token")
     
-    if success:
-        _clear_auth_cookies(response)
-        return {"message": "로그아웃되었습니다"}
-    else:
+    try:
+        success = await user_service.logout(access_token, refresh_token_value)
+        
+        if success:
+            _clear_auth_cookies(response)
+            return {"message": HTTPStatusMessages.LOGOUT_SUCCESS}
+        else:
+            # Log the specific reason for logout failure
+            logger.warning(f"Logout failed for token: {access_token[:10] if access_token else 'None'}...")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=HTTPStatusMessages.INVALID_TOKEN
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error during logout: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="로그아웃 처리 중 오류가 발생했습니다"
-        )
+            detail=HTTPStatusMessages.LOGOUT_ERROR
+        ) from e
 
 
 @router.get("/profile", response_model=UserResponse)
@@ -619,8 +646,12 @@ async def auth_status():
 
 # Helpers for cookie-based auth
 def _set_auth_cookies(response: Response, access_token: str, refresh_token: str, remember: bool = True):
-    access_max_age = 15 * 60
-    refresh_max_age = (30 if remember else 7) * 24 * 60 * 60
+    """Set authentication cookies with improved constants usage"""
+    access_max_age = TokenConstants.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    refresh_max_age = (
+        TokenConstants.REFRESH_TOKEN_REMEMBER_DAYS if remember 
+        else TokenConstants.REFRESH_TOKEN_EXPIRE_DAYS
+    ) * 24 * 60 * 60
 
     # Compute cookie attributes based on frontend URL (cross-site in prod)
     secure = False
@@ -630,30 +661,33 @@ def _set_auth_cookies(response: Response, access_token: str, refresh_token: str,
         fe = str(settings.frontend_url)
         u = urlparse(fe)
         host = u.hostname
-        if host and host not in ("localhost", "127.0.0.1"):
+        if host and host not in TokenConstants.COOKIE_SECURE_HOSTS:
             secure = True
             samesite = "none"  # cross-site cookie for separate FE domain
             cookie_domain = host
     except Exception:
         pass
+    # Set access token cookie
     response.set_cookie(
-        key="access_token",
+        key=TokenConstants.ACCESS_TOKEN_COOKIE,
         value=access_token,
         max_age=access_max_age,
         httponly=True,
         samesite=samesite,
         secure=secure,
-        path="/",
+        path=TokenConstants.COOKIE_PATH,
         domain=cookie_domain,
     )
+    
+    # Set refresh token cookie
     response.set_cookie(
-        key="refresh_token",
+        key=TokenConstants.REFRESH_TOKEN_COOKIE,
         value=refresh_token,
         max_age=refresh_max_age,
         httponly=True,
         samesite=samesite,
         secure=secure,
-        path="/",
+        path=TokenConstants.COOKIE_PATH,
         domain=cookie_domain,
     )
 

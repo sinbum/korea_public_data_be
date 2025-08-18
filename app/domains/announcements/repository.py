@@ -161,6 +161,82 @@ class AnnouncementRepository(BaseRepository[Announcement, AnnouncementCreate, An
             logger.error(f"Failed to search announcements with term '{search_term}': {e}")
             return []
     
+    async def create_many(self, creates: List[AnnouncementCreate]) -> List[Announcement]:
+        """대량 공고 생성 (벌크 삽입)"""
+        if not creates:
+            return []
+            
+        try:
+            # 벌크 삽입을 위한 문서 준비
+            documents = []
+            now = datetime.utcnow()
+            
+            for create in creates:
+                doc = {
+                    **create.announcement_data,
+                    "source_url": create.source_url,
+                    "is_active": True,
+                    "created_at": now,
+                    "updated_at": now
+                }
+                documents.append(doc)
+            
+            # 벌크 삽입 실행
+            result = self.collection.insert_many(documents, ordered=False)
+            logger.info(f"벌크 삽입 완료: {len(result.inserted_ids)}개 문서")
+            
+            # 생성된 문서들 조회하여 반환
+            created_announcements = []
+            for doc_id in result.inserted_ids:
+                doc = self.collection.find_one({"_id": doc_id})
+                if doc:
+                    created_announcements.append(self._to_domain_model(doc))
+            
+            return created_announcements
+            
+        except Exception as e:
+            logger.error(f"벌크 삽입 실패: {e}")
+            # 실패 시 개별 삽입 시도
+            return await self._fallback_individual_create(creates)
+    
+    async def _fallback_individual_create(self, creates: List[AnnouncementCreate]) -> List[Announcement]:
+        """벌크 삽입 실패 시 개별 삽입 폴백"""
+        created_announcements = []
+        
+        for create in creates:
+            try:
+                announcement = self.create(create)
+                created_announcements.append(announcement)
+            except Exception as e:
+                logger.warning(f"개별 삽입 실패: {e}")
+                continue
+        
+        return created_announcements
+    
+    async def count_all(self) -> int:
+        """전체 공고 수 조회"""
+        try:
+            return self.collection.count_documents({"is_active": True})
+        except Exception as e:
+            logger.error(f"전체 개수 조회 실패: {e}")
+            return 0
+    
+    async def count_recent(self, days: int = 7) -> int:
+        """최근 N일간 공고 수 조회"""
+        try:
+            from datetime import timedelta
+            cutoff_date = datetime.utcnow() - timedelta(days=days)
+            
+            query = {
+                "is_active": True,
+                "created_at": {"$gte": cutoff_date}
+            }
+            
+            return self.collection.count_documents(query)
+        except Exception as e:
+            logger.error(f"최근 개수 조회 실패: {e}")
+            return 0
+
     def get_recent_announcements(self, limit: int = 10) -> List[Announcement]:
         """Get most recent announcements"""
         try:

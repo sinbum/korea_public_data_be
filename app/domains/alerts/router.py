@@ -14,7 +14,15 @@ from .models import AlertSubscription, NotificationPreference
 from .service import AlertsService
 
 
-router = APIRouter(prefix="/alerts", tags=["alerts"])
+router = APIRouter(
+    prefix="/alerts",
+    tags=["알림 관리"],
+    responses={
+        503: {"description": "알림 기능이 비활성화됨"},
+        500: {"description": "서버 내부 오류"},
+        422: {"description": "요청 데이터 검증 실패"}
+    }
+)
 
 
 async def get_service() -> AlertsService:
@@ -25,7 +33,39 @@ async def get_service() -> AlertsService:
     return service
 
 
-@router.post("/subscriptions", response_model=dict)
+@router.post(
+    "/subscriptions", 
+    response_model=dict,
+    summary="알림 구독 생성",
+    description="""
+    새로운 알림 구독을 생성합니다.
+    
+    **기능:**
+    - 키워드 기반 알림 설정
+    - 다중 채널 지원 (이메일, 웹, 푸시)
+    - 실시간/일별/주별 빈도 설정
+    - 카테고리 및 지역 필터링
+    
+    **사용 예시:**
+    ```json
+    {
+        "keywords": ["AI", "스타트업", "핀테크"],
+        "filters": {
+            "domain": "announcements",
+            "categories": ["기술창업"],
+            "regions": ["서울", "경기"]
+        },
+        "channels": ["email", "web"],
+        "frequency": "realtime"
+    }
+    ```
+    """,
+    responses={
+        200: {"description": "구독 생성 성공", "content": {"application/json": {"example": {"id": "64f1a2b3c4d5e6f7g8h9i0j1"}}}},
+        503: {"description": "알림 기능이 비활성화된 경우"},
+        422: {"description": "입력 데이터 검증 실패"}
+    }
+)
 async def create_subscription(payload: SubscriptionCreateRequest, svc: AlertsService = Depends(get_service)):
     if not settings.alerts_enabled:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Alerts feature disabled")
@@ -41,7 +81,26 @@ async def create_subscription(payload: SubscriptionCreateRequest, svc: AlertsSer
     return {"id": sub_id}
 
 
-@router.get("/subscriptions", response_model=List[SubscriptionResponse])
+@router.get(
+    "/subscriptions", 
+    response_model=List[SubscriptionResponse],
+    summary="알림 구독 목록 조회",
+    description="""
+    현재 사용자의 모든 알림 구독을 조회합니다.
+    
+    **반환 정보:**
+    - 구독 ID 및 생성일
+    - 키워드 및 필터 설정
+    - 알림 채널 및 빈도
+    - 활성 상태 정보
+    
+    **참고:** 알림 기능이 비활성화된 경우 빈 배열을 반환합니다.
+    """,
+    responses={
+        200: {"description": "구독 목록 조회 성공"},
+        503: {"description": "알림 기능이 비활성화된 경우 빈 배열 반환"}
+    }
+)
 async def list_subscriptions(svc: AlertsService = Depends(get_service)):
     if not settings.alerts_enabled:
         return []
@@ -49,7 +108,40 @@ async def list_subscriptions(svc: AlertsService = Depends(get_service)):
     return docs
 
 
-@router.post("/test", response_model=dict)
+@router.post(
+    "/test", 
+    response_model=dict,
+    summary="알림 매칭 미리보기",
+    description="""
+    설정한 키워드와 필터로 매칭되는 공고들을 미리 확인합니다.
+    
+    **기능:**
+    - 키워드 매칭 결과 미리보기
+    - 필터 조건별 결과 수 확인
+    - 구독 생성 전 테스트용
+    
+    **요청 예시:**
+    ```json
+    {
+        "keywords": ["AI", "스타트업"],
+        "filters": {"domain": "announcements"},
+        "limit": 5
+    }
+    ```
+    
+    **응답 예시:**
+    ```json
+    {
+        "total": 3,
+        "items": [{"title": "AI 스타트업 지원사업", "id": "123"}]
+    }
+    ```
+    """,
+    responses={
+        200: {"description": "미리보기 성공", "content": {"application/json": {"example": {"total": 0, "items": []}}}},
+        503: {"description": "알림 기능이 비활성화된 경우"}
+    }
+)
 async def preview_matches(req: NotificationPreviewRequest):
     if not settings.alerts_enabled:
         return {"total": 0, "items": []}
@@ -59,7 +151,40 @@ async def preview_matches(req: NotificationPreviewRequest):
 
 # Notification Preference Management Endpoints
 
-@router.get("/preferences", response_model=NotificationPreferenceResponse)
+@router.get(
+    "/preferences",
+    response_model=NotificationPreferenceResponse,
+    summary="사용자 알림 설정 조회",
+    description="""
+    현재 사용자의 알림 설정을 조회합니다.
+    
+    **기능:**
+    - 개인별 알림 채널 설정 확인
+    - 방해금지 시간 설정 조회
+    - 알림 카테고리별 활성화 상태
+    - 일일/주간 알림 수 제한 설정
+    
+    **반환 정보:**
+    ```json
+    {
+        "email_enabled": true,
+        "web_enabled": true,
+        "push_enabled": false,
+        "quiet_hours_enabled": true,
+        "quiet_hours_start": 22,
+        "quiet_hours_end": 7,
+        "max_daily_notifications": 10
+    }
+    ```
+    
+    **참고:** 설정이 존재하지 않으면 기본 설정으로 자동 생성됩니다.
+    """,
+    responses={
+        200: {"description": "알림 설정 조회 성공"},
+        503: {"description": "알림 기능이 비활성화된 경우"},
+        404: {"description": "사용자 설정을 찾을 수 없음 (자동 생성됨)"}
+    }
+)
 async def get_user_preferences(svc: AlertsService = Depends(get_service)):
     """사용자 알림 설정 조회"""
     if not settings.alerts_enabled:
@@ -78,7 +203,44 @@ async def get_user_preferences(svc: AlertsService = Depends(get_service)):
     return NotificationPreferenceResponse(**preferences)
 
 
-@router.put("/preferences", response_model=NotificationPreferenceResponse)
+@router.put(
+    "/preferences",
+    response_model=NotificationPreferenceResponse,
+    summary="사용자 알림 설정 수정",
+    description="""
+    사용자의 알림 설정을 부분적으로 또는 전체적으로 수정합니다.
+    
+    **기능:**
+    - 알림 채널별 활성화/비활성화
+    - 방해금지 시간 설정 변경
+    - 알림 카테고리별 세부 설정
+    - 일일 최대 알림 수 제한 조정
+    
+    **요청 예시:**
+    ```json
+    {
+        "email_enabled": false,
+        "push_enabled": true,
+        "quiet_hours_start": 23,
+        "quiet_hours_end": 6,
+        "max_daily_notifications": 15,
+        "new_announcements": true,
+        "deadline_reminders": false
+    }
+    ```
+    
+    **특징:**
+    - 부분 업데이트 지원 (변경하고 싶은 필드만 전송)
+    - 존재하지 않는 설정은 기본값으로 자동 생성
+    - 실시간 설정 적용
+    """,
+    responses={
+        200: {"description": "알림 설정 수정 성공"},
+        503: {"description": "알림 기능이 비활성화된 경우"},
+        422: {"description": "입력 데이터 검증 실패"},
+        500: {"description": "설정 업데이트 실패"}
+    }
+)
 async def update_user_preferences(
     updates: NotificationPreferenceUpdate,
     svc: AlertsService = Depends(get_service)
@@ -116,7 +278,51 @@ async def update_user_preferences(
     return NotificationPreferenceResponse(**preferences)
 
 
-@router.post("/preferences/preview", response_model=NotificationPreferencePreview)
+@router.post(
+    "/preferences/preview",
+    response_model=NotificationPreferencePreview,
+    summary="알림 설정 변경 미리보기",
+    description="""
+    알림 설정 변경 시 예상되는 결과를 미리 확인합니다.
+    
+    **기능:**
+    - 일일/주간 예상 알림 수 계산
+    - 활성화될 알림 채널 목록
+    - 활성화될 알림 카테고리 목록
+    - 방해금지 시간 적용 결과
+    - 다이제스트 알림 스케줄
+    
+    **요청 예시:**
+    ```json
+    {
+        "email_enabled": true,
+        "push_enabled": true,
+        "new_announcements": true,
+        "deadline_reminders": true,
+        "quiet_hours_enabled": true,
+        "max_daily_notifications": 8
+    }
+    ```
+    
+    **응답 예시:**
+    ```json
+    {
+        "estimated_daily_notifications": 5,
+        "estimated_weekly_notifications": 35,
+        "active_channels": ["email", "push"],
+        "active_categories": ["new_announcements", "deadline_reminders"],
+        "quiet_hours_summary": "22:00 - 07:00",
+        "digest_schedule": "매일 오전 9시"
+    }
+    ```
+    
+    **참고:** 설정 저장 전 미리보기로 실제 변경되지 않습니다.
+    """,
+    responses={
+        200: {"description": "미리보기 생성 성공", "content": {"application/json": {"example": {"estimated_daily_notifications": 5, "active_channels": ["email"]}}}},
+        503: {"description": "알림 기능이 비활성화된 경우"}
+    }
+)
 async def preview_notification_settings(
     preferences: NotificationPreferenceUpdate,
     svc: AlertsService = Depends(get_service)
@@ -194,7 +400,38 @@ async def preview_notification_settings(
     )
 
 
-@router.delete("/preferences", response_model=dict)
+@router.delete(
+    "/preferences",
+    response_model=dict,
+    summary="사용자 알림 설정 초기화",
+    description="""
+    사용자의 모든 알림 설정을 삭제하고 시스템 기본값으로 초기화합니다.
+    
+    **기능:**
+    - 개인 설정 완전 삭제
+    - 시스템 기본값으로 복원
+    - 모든 채널 기본 상태로 리셋
+    - 알림 히스토리는 유지
+    
+    **주의사항:**
+    - 이 작업은 되돌릴 수 없습니다
+    - 모든 개인 맞춤 설정이 사라집니다
+    - 다음 로그인 시 기본 설정이 적용됩니다
+    
+    **응답 예시:**
+    ```json
+    {
+        "success": true,
+        "message": "Notification preferences reset to default"
+    }
+    ```
+    """,
+    responses={
+        200: {"description": "설정 초기화 성공", "content": {"application/json": {"example": {"success": True, "message": "설정이 기본값으로 초기화되었습니다"}}}},
+        503: {"description": "알림 기능이 비활성화된 경우"},
+        500: {"description": "초기화 과정에서 오류 발생"}
+    }
+)
 async def delete_user_preferences(svc: AlertsService = Depends(get_service)):
     """사용자 알림 설정 삭제 (기본값으로 초기화)"""
     if not settings.alerts_enabled:
@@ -206,7 +443,48 @@ async def delete_user_preferences(svc: AlertsService = Depends(get_service)):
     return {"success": success, "message": "Notification preferences reset to default"}
 
 
-@router.get("/preferences/default", response_model=dict)
+@router.get(
+    "/preferences/default",
+    response_model=dict,
+    summary="시스템 기본 알림 설정 조회",
+    description="""
+    시스템에서 제공하는 기본 알림 설정값을 조회합니다.
+    
+    **기능:**
+    - 신규 사용자 기본 설정 확인
+    - 설정 초기화 시 적용될 값 미리보기
+    - 시스템 권장 설정 참조
+    
+    **반환 정보:**
+    - 기본 활성화 채널 목록
+    - 권장 방해금지 시간
+    - 기본 알림 카테고리 설정
+    - 권장 일일 알림 수 제한
+    
+    **응답 예시:**
+    ```json
+    {
+        "defaults": {
+            "email_enabled": true,
+            "web_enabled": true,
+            "push_enabled": false,
+            "sms_enabled": false,
+            "quiet_hours_enabled": false,
+            "quiet_hours_start": 22,
+            "quiet_hours_end": 7,
+            "max_daily_notifications": 10,
+            "digest_frequency": "daily"
+        }
+    }
+    ```
+    
+    **용도:** 설정 UI의 기본값 표시, 사용자 온보딩 참조
+    """,
+    responses={
+        200: {"description": "기본 설정 조회 성공", "content": {"application/json": {"example": {"defaults": {"email_enabled": True, "max_daily_notifications": 10}}}}},
+        503: {"description": "알림 기능이 비활성화된 경우"}
+    }
+)
 async def get_default_preferences(svc: AlertsService = Depends(get_service)):
     """기본 알림 설정 조회"""
     if not settings.alerts_enabled:
