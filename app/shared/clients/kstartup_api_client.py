@@ -25,7 +25,6 @@ from ..models.kstartup import (
     KStartupAnnouncementResponse,
     KStartupBusinessResponse,
     KStartupContentResponse,
-    KStartupStatisticsResponse,
 )
 from ..models import kstartup as kstartup_models
 from ..exceptions import (
@@ -315,8 +314,6 @@ class KStartupAPIClient(BaseAPIClient[PublicDataResponse]):
             return "business"
         elif "content" in endpoint.lower() or "Content" in endpoint:
             return "content"
-        elif "statistical" in endpoint.lower() or "Statistical" in endpoint:
-            return "statistics"
         else:
             return "announcements"  # Default fallback
     
@@ -378,24 +375,6 @@ class KStartupAPIClient(BaseAPIClient[PublicDataResponse]):
         async with self.async_client() as client:
             return await client.async_get("getContentInformation01", params)
     
-    async def async_get_statistical_information(
-        self, 
-        page_no: int = 1, 
-        num_of_rows: int = 10,
-        year: Optional[int] = None,
-        month: Optional[int] = None
-    ) -> APIResponse[KStartupStatisticsResponse]:
-        """통계 정보 조회 (비동기)"""
-        params = {
-            "page_no": page_no,
-            "num_of_rows": num_of_rows,
-            "year": year,
-            "month": month
-        }
-        
-        self._current_endpoint = "getStatisticalInformation01"
-        async with self.async_client() as client:
-            return await client.async_get("getStatisticalInformation01", params)
     
     async def async_get_business_information(
         self, 
@@ -440,23 +419,6 @@ class KStartupAPIClient(BaseAPIClient[PublicDataResponse]):
         self._current_endpoint = "getContentInformation01"
         return self.get("getContentInformation01", params)
     
-    def get_statistical_information(
-        self, 
-        page_no: int = 1, 
-        num_of_rows: int = 10,
-        year: Optional[int] = None,
-        month: Optional[int] = None
-    ) -> APIResponse[KStartupStatisticsResponse]:
-        """통계 정보 조회"""
-        params = {
-            "page_no": page_no,
-            "num_of_rows": num_of_rows,
-            "year": year,
-            "month": month
-        }
-        
-        self._current_endpoint = "getStatisticalInformation01"
-        return self.get("getStatisticalInformation01", params)
     
     def get_business_information(
         self, 

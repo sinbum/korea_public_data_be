@@ -8,7 +8,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-from ..models.base import BaseService
+from ..interfaces.base_service import BaseService
 from ..clients.email_client import EmailClient
 from ...core.config import settings
 

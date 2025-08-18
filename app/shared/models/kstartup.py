@@ -365,29 +365,8 @@ class KStartupContentResponse(PublicDataResponse):
         return validated_items
 
 
-class KStartupStatisticsResponse(PublicDataResponse):
-    """통계정보 API 응답"""
-    data: List[StatisticalItem]
-    
-    @validator('data', pre=True)
-    def validate_data_items(cls, v):
-        """데이터 아이템 검증"""
-        if not isinstance(v, list):
-            raise DataValidationError("Response data must be a list")
-        
-        validated_items = []
-        for item in v:
-            try:
-                if isinstance(item, dict):
-                    validated_items.append(StatisticalItem(**item))
-                else:
-                    validated_items.append(item)
-            except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.warning(f"Failed to validate statistical item: {e}")
-                
-        return validated_items
+
+
 
 
 # Union type for all K-Startup responses
@@ -395,7 +374,6 @@ KStartupAPIResponse = Union[
     KStartupAnnouncementResponse,
     KStartupBusinessResponse, 
     KStartupContentResponse,
-    KStartupStatisticsResponse
 ]
 
 
@@ -424,8 +402,6 @@ def validate_kstartup_response_data(
             return KStartupBusinessResponse(**data)
         elif response_type == "content":
             return KStartupContentResponse(**data)
-        elif response_type == "statistics":
-            return KStartupStatisticsResponse(**data)
         else:
             raise DataValidationError(f"Unknown response type: {response_type}")
             

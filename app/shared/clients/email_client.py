@@ -16,7 +16,7 @@ class EmailClient:
     def __init__(self, provider: str = "dev") -> None:
         self.provider = provider
 
-    def send(self, to: str, subject: str, html: str, *, meta: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def send(self, to: str, subject: str, html: str, text: Optional[str] = None, *, meta: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         if self.provider == "dev":
             logger.info("[DEV EMAIL] to=%s subject=%s meta=%s", to, subject, meta)
             return {"ok": True, "provider": "dev"}
