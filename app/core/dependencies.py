@@ -44,10 +44,22 @@ def get_announcement_service():
     return get_container().resolve(AnnouncementService)
 
 
+def get_announcement_batch_service():
+    """Get AnnouncementBatchService instance"""
+    from ..domains.announcements.batch_service import AnnouncementBatchService
+    return get_container().resolve(AnnouncementBatchService)
+
+
 def get_business_service():
     """Get BusinessService instance"""
     from ..domains.businesses.service import BusinessService
     return get_container().resolve(BusinessService)
+
+
+def get_business_batch_service():
+    """Get BusinessBatchService instance"""
+    from ..domains.businesses.batch_service import BusinessBatchService
+    return get_container().resolve(BusinessBatchService)
 
 
 def get_content_service():
@@ -56,10 +68,6 @@ def get_content_service():
     return get_container().resolve(ContentService)
 
 
-def get_statistics_service():
-    """Get StatisticsService instance"""
-    from ..domains.statistics.service import StatisticsService
-    return get_container().resolve(StatisticsService)
 
 
 def get_announcement_repository():
@@ -80,10 +88,6 @@ def get_content_repository():
     return get_container().resolve(ContentRepository)
 
 
-def get_statistics_repository():
-    """Get StatisticsRepository instance"""
-    from ..domains.statistics.repository import StatisticsRepository
-    return get_container().resolve(StatisticsRepository)
 
 
 def get_kstartup_client():

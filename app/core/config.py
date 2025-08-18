@@ -22,10 +22,15 @@ class Settings(BaseSettings):
     
     # Redis
     redis_url: str = "redis://localhost:6379/0"
+    
+    # Redis Configuration (캐싱 추가 설정)
+    REDIS_HOST: str = "redis"  # Docker 네트워크 내부 호스트명
+    REDIS_PORT: int = 6379
+    REDIS_DB: int = 0
 
     # Rate limit
-    rl_per_minute: int = Field(default=60, gt=0, le=10000, description="Requests per minute limit")
-    rl_per_hour: int = Field(default=1000, gt=0, le=100000, description="Requests per hour limit")
+    rl_per_minute: int = Field(default=100, gt=0, le=10000, description="Requests per minute limit")
+    rl_per_hour: int = Field(default=3000, gt=0, le=100000, description="Requests per hour limit")
     
     # Logging
     log_level: str = "INFO"
@@ -74,7 +79,7 @@ class Settings(BaseSettings):
 
     # Alerts/Notifications Feature Flags & Config
     alerts_enabled: bool = Field(
-        default_factory=lambda: (str(__import__('os').environ.get('ALERTS_ENABLED', 'false')).lower() == 'true'),
+        default_factory=lambda: (str(__import__('os').environ.get('ALERTS_ENABLED', 'true')).lower() == 'true'),
         description="Enable alerts/notifications feature (guards runtime impact)"
     )
     alerts_match_queue: str = Field(

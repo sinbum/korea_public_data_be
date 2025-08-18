@@ -35,7 +35,6 @@ def _is_redis_available(url: str) -> bool:
 from .domains.announcements.router import router as announcements_router
 from .domains.businesses.router import router as businesses_router
 from .domains.contents.router import router as contents_router
-from .domains.statistics.router import router as statistics_router
 from .domains.users.router import router as users_router
 from .domains.keys.router import router as keys_router
 from .core.config import settings as _settings_for_alerts
@@ -46,7 +45,7 @@ except Exception:
     get_alerts_v1_router = None  # type: ignore
 from .domains.usage.router import router as usage_router
 from .domains.data_requests.router import router as data_requests_router
-# from .domains.data_sources.router import router as data_sources_router
+from .domains.data_sources.router import router as data_sources_router
 from .shared.classification.router import router as classification_router
 from .scheduler.task_management_api import get_task_management_router
 from .shared.exceptions.handlers import (
@@ -160,7 +159,6 @@ app = FastAPI(
     
     ### 🔄 개발 진행 중
     - 📚 **콘텐츠 정보**: 창업 관련 콘텐츠 및 자료 (모델 완성, API 개발 중)
-    - 📊 **통계 정보**: 창업 현황 및 성과 통계 데이터 (모델 완성, API 개발 중)
     - 🎯 **기업정보**: 창업기업 상세 정보 (모델 완성, API 개발 중)
     
     ## 📂 데이터 출처
@@ -347,14 +345,13 @@ app.add_exception_handler(Exception, general_exception_handler)
 app.include_router(announcements_router, prefix="/api/v1")
 app.include_router(businesses_router, prefix="/api/v1")
 app.include_router(contents_router, prefix="/api/v1")
-app.include_router(statistics_router, prefix="/api/v1")
 app.include_router(users_router, prefix="/api/v1")
 app.include_router(data_requests_router, prefix="/api/v1")
 app.include_router(classification_router, prefix="/api/v1")
 app.include_router(keys_router, prefix="/api/v1")
 app.include_router(usage_router, prefix="/api/v1")
 app.include_router(get_task_management_router())
-# app.include_router(data_sources_router, prefix="/api/v1")
+app.include_router(data_sources_router, prefix="/api/v1")
 
 # Conditionally mount alerts router when enabled (keeps default runtime unchanged)
 if _settings_for_alerts.alerts_enabled and get_alerts_v1_router is not None:
@@ -366,13 +363,15 @@ if _settings_for_alerts.alerts_enabled and get_alerts_v1_router is not None:
 
 # Versioned router examples (demonstrating API versioning system)
 # These show how to implement different API versions with backward compatibility
-# Uncomment to enable versioned endpoints alongside existing ones:
-#
-# from .domains.announcements.versioned_router import create_versioned_announcement_router
-# from .domains.businesses.versioned_router import create_versioned_business_router
-# 
-# app.include_router(create_versioned_announcement_router(), prefix="/api")
-# app.include_router(create_versioned_business_router(), prefix="/api")
+try:
+    from .domains.announcements.versioned_router import create_versioned_announcement_router
+    from .domains.businesses.versioned_router import create_versioned_business_router
+    
+    app.include_router(create_versioned_announcement_router(), prefix="/api")
+    app.include_router(create_versioned_business_router(), prefix="/api")
+    logger.info("Versioned routers enabled for announcements and businesses")
+except Exception as e:
+    logger.warning(f"Failed to enable versioned routers: {e}")
 
 # 버전 정보 엔드포인트 추가
 add_version_info_endpoint(app)
@@ -400,7 +399,6 @@ def root():
         "available_domains": [
             "announcements",
             "contents (개발 예정)",
-            "statistics (개발 예정)", 
             "businesses (개발 예정)"
         ]
     }

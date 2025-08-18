@@ -27,26 +27,22 @@ def configure_dependencies() -> DIContainer:
     from ..domains.announcements.repository import AnnouncementRepository
     from ..domains.businesses.repository import BusinessRepository
     from ..domains.contents.repository import ContentRepository
-    from ..domains.statistics.repository import StatisticsRepository
     from ..domains.users.repository import UserRepository
     
     container.register_singleton(AnnouncementRepository)
     container.register_singleton(BusinessRepository)
     container.register_singleton(ContentRepository)
-    container.register_singleton(StatisticsRepository)
     container.register_singleton(UserRepository)
     
     # Register services as singletons (they're stateless but depend on repositories)
     from ..domains.announcements.service import AnnouncementService
     from ..domains.businesses.service import BusinessService
     from ..domains.contents.service import ContentService
-    from ..domains.statistics.service import StatisticsService
     from ..domains.users.service import UserService
     
     container.register_singleton(AnnouncementService)
     container.register_singleton(BusinessService)
     container.register_singleton(ContentService)
-    container.register_singleton(StatisticsService)
     container.register_singleton(UserService)
     
     # Register API clients as singletons
@@ -72,8 +68,7 @@ def validate_container_setup(container: DIContainer) -> dict:
     repositories = [
         "AnnouncementRepository",
         "BusinessRepository", 
-        "ContentRepository",
-        "StatisticsRepository"
+        "ContentRepository"
     ]
     
     for repo_name in repositories:
@@ -87,9 +82,6 @@ def validate_container_setup(container: DIContainer) -> dict:
             elif repo_name == "ContentRepository":
                 from ..domains.contents.repository import ContentRepository
                 instance = container.resolve(ContentRepository)
-            elif repo_name == "StatisticsRepository":
-                from ..domains.statistics.repository import StatisticsRepository
-                instance = container.resolve(StatisticsRepository)
             
             validation_results[repo_name] = {
                 "status": "success",
@@ -107,8 +99,7 @@ def validate_container_setup(container: DIContainer) -> dict:
     services = [
         "AnnouncementService",
         "BusinessService",
-        "ContentService", 
-        "StatisticsService"
+        "ContentService"
     ]
     
     for service_name in services:
@@ -122,9 +113,6 @@ def validate_container_setup(container: DIContainer) -> dict:
             elif service_name == "ContentService":
                 from ..domains.contents.service import ContentService
                 instance = container.resolve(ContentService)
-            elif service_name == "StatisticsService":
-                from ..domains.statistics.service import StatisticsService
-                instance = container.resolve(StatisticsService)
             
             validation_results[service_name] = {
                 "status": "success",

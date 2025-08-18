@@ -288,8 +288,10 @@ def configure_container():
     # This will be called during application startup
     from ..domains.announcements.repository import AnnouncementRepository
     from ..domains.announcements.service import AnnouncementService
+    from ..domains.announcements.batch_service import AnnouncementBatchService
     from ..domains.businesses.repository import BusinessRepository
     from ..domains.businesses.service import BusinessService
+    from ..domains.businesses.batch_service import BusinessBatchService
     from ..domains.contents.repository import ContentRepository
     from ..domains.contents.service import ContentService
     from ..domains.statistics.repository import StatisticsRepository
@@ -311,6 +313,10 @@ def configure_container():
     container.register_singleton(BusinessService)
     container.register_singleton(ContentService)
     container.register_singleton(StatisticsService)
+    
+    # Register batch services as singletons
+    container.register_singleton(AnnouncementBatchService)
+    container.register_singleton(BusinessBatchService)
     
     # Register API client as transient (new instance per request)
     container.register_transient(KStartupAPIClient)

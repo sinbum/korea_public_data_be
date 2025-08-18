@@ -38,7 +38,7 @@ class DatabaseManager:
             # Connection pooling
             "maxPoolSize": 50,
             "minPoolSize": 5,
-            "maxIdleTimeMS": 30000,  # 30 seconds
+            "maxIdleTimeMS": 600000,  # 10 minutes (increased from 30 seconds)
             "waitQueueTimeoutMS": 5000,  # 5 seconds
             
             # Timeout configurations
@@ -62,7 +62,7 @@ class DatabaseManager:
             # Connection pooling (async)
             "maxPoolSize": 100,  # Higher for async workloads
             "minPoolSize": 10,
-            "maxIdleTimeMS": 60000,  # 60 seconds for longer-lived async connections
+            "maxIdleTimeMS": 600000,  # 10 minutes (increased from 60 seconds)
             "waitQueueTimeoutMS": 10000,  # 10 seconds
             
             # Timeout configurations
