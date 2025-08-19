@@ -44,10 +44,7 @@ services:
 
   # API 서버 프로덕션 환경
   api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: production
+    image: korea-api-prod:latest
     restart: always
     environment:
       - MONGODB_URL=mongodb://api_user:api_password@mongodb:27017/korea_public_api
@@ -100,12 +97,15 @@ services:
 
   # Celery Worker 프로덕션 환경
   celery_worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: production
+    image: korea-api-prod:latest
     restart: always
     command: celery -A app.core.celery worker --loglevel=info --concurrency=4
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.core.celery inspect ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     environment:
       - MONGODB_URL=mongodb://api_user:api_password@mongodb:27017/korea_public_api
       - REDIS_URL=redis://redis:6379/0
@@ -131,13 +131,16 @@ services:
 
   # Celery Beat 프로덕션 환경
   celery_beat:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: production
+    image: korea-api-prod:latest
     container_name: korea_celery_beat_prod
     restart: always
     command: celery -A app.core.celery beat --loglevel=info
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep '[c]elery.*beat' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     environment:
       - MONGODB_URL=mongodb://api_user:api_password@mongodb:27017/korea_public_api
       - REDIS_URL=redis://redis:6379/0
@@ -162,18 +165,26 @@ services:
 
   # Celery Flower 프로덕션 환경 (선택적)
   flower:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: production
+    image: korea-api-prod:latest
     container_name: korea_celery_flower_prod
     restart: always
     command: celery -A app.core.celery flower --port=5555 --basic_auth=admin:${FLOWER_PASSWORD:-secure_password}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5555 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     ports:
       - "5555:5555"
     environment:
       - MONGODB_URL=mongodb://api_user:api_password@mongodb:27017/korea_public_api
       - REDIS_URL=redis://redis:6379/0
+      - DATABASE_NAME=${DATABASE_NAME:-korea_public_api}
+      - PUBLIC_DATA_API_KEY=${PUBLIC_DATA_API_KEY}
+      - PUBLIC_DATA_API_KEY_DECODE=${PUBLIC_DATA_API_KEY_DECODE}
+      - DEBUG=False
+      - LOG_LEVEL=INFO
     volumes:
       - ./volumes/logs:/app/logs
     depends_on:
@@ -222,8 +233,6 @@ services:
       - ./volumes/grafana:/var/lib/grafana
       - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
       - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
-      - ./monitoring/grafana/alerting:/etc/grafana/provisioning/alerting:ro
-      - ./monitoring/grafana/contact-points:/etc/grafana/provisioning/contact-points:ro
     networks:
       - korea_api_network
 

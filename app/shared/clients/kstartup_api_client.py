@@ -110,6 +110,8 @@ class KStartupAPIClient(BaseAPIClient[PublicDataResponse]):
         
         # Always request JSON format
         request_params["params"]["type"] = "json"
+        # Add returnType parameter for JSON response
+        request_params["params"]["returnType"] = "json"
         
         # Add K-Startup specific headers
         request_params["headers"].update({

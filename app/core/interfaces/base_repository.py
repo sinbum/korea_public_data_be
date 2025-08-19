@@ -79,6 +79,10 @@ class QueryFilter:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to MongoDB query dict"""
         return self.filters
+    
+    def build(self) -> Dict[str, Any]:
+        """Build MongoDB query dict (alias for to_dict)"""
+        return self.filters
 
 
 class SortOption:
@@ -99,6 +103,10 @@ class SortOption:
     
     def to_list(self) -> List[tuple]:
         """Convert to MongoDB sort list"""
+        return self.sorts
+    
+    def build(self) -> List[tuple]:
+        """Build MongoDB sort list (alias for to_list)"""
         return self.sorts
 
 

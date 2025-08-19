@@ -1,542 +1,191 @@
 """
-Enhanced Redis caching layer with circuit breaker pattern and performance optimization.
+In-memory caching module for API responses.
 
-Provides intelligent caching with fallback mechanisms, circuit breaker pattern,
-and performance monitoring for improved application responsiveness.
+Provides a simple LRU cache implementation for caching frequently
+accessed data to reduce database load and improve response times.
 """
 
-import asyncio
-import json
-import logging
 import time
-from contextlib import asynccontextmanager
-from dataclasses import dataclass
-from enum import Enum
-from typing import Any, Dict, Optional, Union, Callable
-from functools import wraps
-import pickle
+import json
 import hashlib
-
-import redis.asyncio as aioredis
-import redis
-from redis.exceptions import ConnectionError, TimeoutError, RedisError
-
-from .config import settings
+from typing import Any, Optional, Dict, Callable
+from collections import OrderedDict
+from functools import wraps
+import logging
 
 logger = logging.getLogger(__name__)
 
 
-class CircuitState(Enum):
-    """Circuit breaker states"""
-    CLOSED = "closed"      # Normal operation
-    OPEN = "open"          # Circuit is open, failing fast
-    HALF_OPEN = "half_open"  # Testing if service is back
-
-
-@dataclass
-class CircuitBreakerConfig:
-    """Circuit breaker configuration"""
-    failure_threshold: int = 5
-    recovery_timeout: int = 60  # seconds
-    expected_exception: tuple = (ConnectionError, TimeoutError, RedisError)
-
-
-class CircuitBreaker:
-    """Circuit breaker implementation for Redis operations"""
+class LRUCache:
+    """Thread-safe LRU (Least Recently Used) cache implementation"""
     
-    def __init__(self, config: CircuitBreakerConfig):
-        self.config = config
-        self.state = CircuitState.CLOSED
-        self.failure_count = 0
-        self.last_failure_time = None
-        self.success_count = 0
+    def __init__(self, max_size: int = 128, ttl: int = 300):
+        """
+        Initialize LRU cache.
         
-    def call(self, func: Callable, *args, **kwargs):
-        """Execute function with circuit breaker protection"""
-        if self.state == CircuitState.OPEN:
-            if self._should_attempt_reset():
-                self.state = CircuitState.HALF_OPEN
-                logger.info("Circuit breaker moved to HALF_OPEN state")
-            else:
-                raise ConnectionError("Circuit breaker is OPEN")
+        Args:
+            max_size: Maximum number of items in cache
+            ttl: Time to live in seconds (default 5 minutes)
+        """
+        self.max_size = max_size
+        self.ttl = ttl
+        self.cache: OrderedDict = OrderedDict()
+        self.timestamps: Dict[str, float] = {}
         
-        try:
-            result = func(*args, **kwargs)
-            self._on_success()
-            return result
-            
-        except self.config.expected_exception as e:
-            self._on_failure()
-            raise e
-    
-    async def async_call(self, func: Callable, *args, **kwargs):
-        """Execute async function with circuit breaker protection"""
-        if self.state == CircuitState.OPEN:
-            if self._should_attempt_reset():
-                self.state = CircuitState.HALF_OPEN
-                logger.info("Circuit breaker moved to HALF_OPEN state")
-            else:
-                raise ConnectionError("Circuit breaker is OPEN")
-        
-        try:
-            result = await func(*args, **kwargs)
-            self._on_success()
-            return result
-            
-        except self.config.expected_exception as e:
-            self._on_failure()
-            raise e
-    
-    def _should_attempt_reset(self) -> bool:
-        """Check if circuit breaker should attempt to reset"""
-        return (
-            self.last_failure_time and
-            time.time() - self.last_failure_time >= self.config.recovery_timeout
-        )
-    
-    def _on_success(self):
-        """Handle successful operation"""
-        if self.state == CircuitState.HALF_OPEN:
-            self.success_count += 1
-            if self.success_count >= 2:  # Require 2 successes to fully close
-                self.state = CircuitState.CLOSED
-                self.failure_count = 0
-                self.success_count = 0
-                logger.info("Circuit breaker moved to CLOSED state")
-        else:
-            self.failure_count = 0
-    
-    def _on_failure(self):
-        """Handle failed operation"""
-        self.failure_count += 1
-        self.last_failure_time = time.time()
-        self.success_count = 0
-        
-        if self.failure_count >= self.config.failure_threshold:
-            self.state = CircuitState.OPEN
-            logger.warning(f"Circuit breaker moved to OPEN state after {self.failure_count} failures")
-
-
-class CacheManager:
-    """Enhanced cache manager with circuit breaker and fallback mechanisms"""
-    
-    def __init__(self):
-        self.sync_client: Optional[redis.Redis] = None
-        self.async_client: Optional[aioredis.Redis] = None
-        self.circuit_breaker = CircuitBreaker(CircuitBreakerConfig())
-        self._memory_cache: Dict[str, Dict[str, Any]] = {}
-        self._cache_stats = {
-            "hits": 0,
-            "misses": 0,
-            "errors": 0,
-            "circuit_open_count": 0,
-            "memory_fallback_count": 0
-        }
-    
-    def _get_redis_config(self) -> Dict[str, Any]:
-        """Get optimized Redis connection configuration"""
-        return {
-            "socket_connect_timeout": 2.0,
-            "socket_timeout": 3.0,
-            "retry_on_timeout": True,
-            "retry_on_error": [ConnectionError, TimeoutError],
-            "max_connections": 20,
-            "health_check_interval": 30,
-            "decode_responses": False,  # Handle binary data
-            "protocol": 3,  # Use RESP3 for better performance
-        }
-    
-    def connect_sync(self) -> None:
-        """Initialize synchronous Redis client"""
-        try:
-            config = self._get_redis_config()
-            self.sync_client = redis.from_url(settings.redis_url, **config)
-            
-            # Test connection
-            self.circuit_breaker.call(self.sync_client.ping)
-            logger.info("Redis 동기 연결 성공 (circuit breaker 활성화)")
-            
-        except Exception as e:
-            logger.error(f"Redis 동기 연결 실패: {e}")
-            raise
-    
-    async def connect_async(self) -> None:
-        """Initialize asynchronous Redis client"""
-        try:
-            config = self._get_redis_config()
-            self.async_client = aioredis.from_url(settings.redis_url, **config)
-            
-            # Test connection
-            await self.circuit_breaker.async_call(self.async_client.ping)
-            logger.info("Redis 비동기 연결 성공 (circuit breaker 활성화)")
-            
-        except Exception as e:
-            logger.error(f"Redis 비동기 연결 실패: {e}")
-            raise
-    
-    def close_sync(self) -> None:
-        """Close synchronous Redis connection"""
-        if self.sync_client:
-            self.sync_client.close()
-            self.sync_client = None
-            logger.info("Redis 동기 연결 종료")
-    
-    async def close_async(self) -> None:
-        """Close asynchronous Redis connection"""
-        if self.async_client:
-            await self.async_client.close()
-            self.async_client = None
-            logger.info("Redis 비동기 연결 종료")
-    
-    def _serialize_value(self, value: Any) -> bytes:
-        """Serialize value for Redis storage"""
-        try:
-            # Try JSON first for simple types
-            if isinstance(value, (dict, list, str, int, float, bool, type(None))):
-                return json.dumps(value, ensure_ascii=False).encode('utf-8')
-            # Avoid storing pickled payloads in Redis to prevent RCE risk
-            # For complex/unsupported objects, fall back to memory cache via exception
-            raise TypeError("Value is not JSON-serializable for Redis cache")
-        except (TypeError, ValueError):
-            # Do not pickle; signal caller to use memory fallback
-            raise
-    
-    def _deserialize_value(self, data: bytes) -> Any:
-        """Deserialize value from Redis storage"""
-        try:
-            # Try JSON first
-            return json.loads(data.decode('utf-8'))
-        except (json.JSONDecodeError, UnicodeDecodeError):
-            # Do not attempt to unpickle untrusted data; treat as cache miss
-            logger.warning("Redis cache contained non-JSON data; ignoring for safety")
-            return None
-    
-    def _memory_set(self, key: str, value: Any, ttl: int = 300):
-        """Store in memory cache with TTL"""
-        expire_time = time.time() + ttl
-        self._memory_cache[key] = {
-            "value": value,
-            "expire_time": expire_time
-        }
-        self._cache_stats["memory_fallback_count"] += 1
-    
-    def _memory_get(self, key: str) -> Optional[Any]:
-        """Get from memory cache"""
-        if key not in self._memory_cache:
-            return None
-        
-        cache_entry = self._memory_cache[key]
-        if time.time() > cache_entry["expire_time"]:
-            del self._memory_cache[key]
-            return None
-        
-        return cache_entry["value"]
-    
-    def _memory_delete(self, key: str) -> bool:
-        """Delete from memory cache"""
-        return self._memory_cache.pop(key, None) is not None
-    
-    def _cleanup_memory_cache(self):
-        """Clean expired entries from memory cache"""
-        current_time = time.time()
-        expired_keys = [
-            key for key, entry in self._memory_cache.items()
-            if current_time > entry["expire_time"]
-        ]
-        for key in expired_keys:
-            del self._memory_cache[key]
-    
-    def set(self, key: str, value: Any, ttl: int = 3600) -> bool:
-        """Set value in cache with TTL (sync)"""
-        try:
-            if not self.sync_client:
-                self.connect_sync()
-            
-            serialized_value = self._serialize_value(value)
-            result = self.circuit_breaker.call(
-                self.sync_client.setex, key, ttl, serialized_value
-            )
-            return bool(result)
-            
-        except Exception as e:
-            logger.warning(f"Redis set failed, using memory fallback: {e}")
-            self._cache_stats["errors"] += 1
-            if self.circuit_breaker.state == CircuitState.OPEN:
-                self._cache_stats["circuit_open_count"] += 1
-            
-            # Fallback to memory cache
-            self._memory_set(key, value, min(ttl, 300))  # Max 5 min in memory
+    def _is_expired(self, key: str) -> bool:
+        """Check if cache entry is expired"""
+        if key not in self.timestamps:
             return True
-    
-    async def aset(self, key: str, value: Any, ttl: int = 3600) -> bool:
-        """Set value in cache with TTL (async)"""
-        try:
-            if not self.async_client:
-                await self.connect_async()
-            
-            serialized_value = self._serialize_value(value)
-            result = await self.circuit_breaker.async_call(
-                self.async_client.setex, key, ttl, serialized_value
-            )
-            return bool(result)
-            
-        except Exception as e:
-            logger.warning(f"Redis aset failed, using memory fallback: {e}")
-            self._cache_stats["errors"] += 1
-            if self.circuit_breaker.state == CircuitState.OPEN:
-                self._cache_stats["circuit_open_count"] += 1
-            
-            # Fallback to memory cache
-            self._memory_set(key, value, min(ttl, 300))  # Max 5 min in memory
-            return True
+        return time.time() - self.timestamps[key] > self.ttl
     
     def get(self, key: str) -> Optional[Any]:
-        """Get value from cache (sync)"""
-        try:
-            if not self.sync_client:
-                self.connect_sync()
-            
-            data = self.circuit_breaker.call(self.sync_client.get, key)
-            if data is None:
-                # Check memory fallback
-                memory_result = self._memory_get(key)
-                if memory_result is not None:
-                    self._cache_stats["hits"] += 1
-                    return memory_result
-                
-                self._cache_stats["misses"] += 1
-                return None
-            
-            self._cache_stats["hits"] += 1
-            return self._deserialize_value(data)
-            
-        except Exception as e:
-            logger.warning(f"Redis get failed, checking memory fallback: {e}")
-            self._cache_stats["errors"] += 1
-            if self.circuit_breaker.state == CircuitState.OPEN:
-                self._cache_stats["circuit_open_count"] += 1
-            
-            # Fallback to memory cache
-            memory_result = self._memory_get(key)
-            if memory_result is not None:
-                self._cache_stats["hits"] += 1
-                return memory_result
-            
-            self._cache_stats["misses"] += 1
+        """Get value from cache"""
+        if key not in self.cache:
             return None
-    
-    async def aget(self, key: str) -> Optional[Any]:
-        """Get value from cache (async)"""
-        try:
-            if not self.async_client:
-                await self.connect_async()
             
-            data = await self.circuit_breaker.async_call(self.async_client.get, key)
-            if data is None:
-                # Check memory fallback
-                memory_result = self._memory_get(key)
-                if memory_result is not None:
-                    self._cache_stats["hits"] += 1
-                    return memory_result
-                
-                self._cache_stats["misses"] += 1
-                return None
-            
-            self._cache_stats["hits"] += 1
-            return self._deserialize_value(data)
-            
-        except Exception as e:
-            logger.warning(f"Redis aget failed, checking memory fallback: {e}")
-            self._cache_stats["errors"] += 1
-            if self.circuit_breaker.state == CircuitState.OPEN:
-                self._cache_stats["circuit_open_count"] += 1
-            
-            # Fallback to memory cache
-            memory_result = self._memory_get(key)
-            if memory_result is not None:
-                self._cache_stats["hits"] += 1
-                return memory_result
-            
-            self._cache_stats["misses"] += 1
+        if self._is_expired(key):
+            self.delete(key)
             return None
+            
+        # Move to end (most recently used)
+        self.cache.move_to_end(key)
+        return self.cache[key]
     
-    def delete(self, key: str) -> bool:
-        """Delete key from cache (sync)"""
-        try:
-            if not self.sync_client:
-                self.connect_sync()
-            
-            result = self.circuit_breaker.call(self.sync_client.delete, key)
-            # Also delete from memory cache
-            self._memory_delete(key)
-            return bool(result)
-            
-        except Exception as e:
-            logger.warning(f"Redis delete failed: {e}")
-            self._cache_stats["errors"] += 1
-            # Still try to delete from memory cache
-            return self._memory_delete(key)
-    
-    async def adelete(self, key: str) -> bool:
-        """Delete key from cache (async)"""
-        try:
-            if not self.async_client:
-                await self.connect_async()
-            
-            result = await self.circuit_breaker.async_call(self.async_client.delete, key)
-            # Also delete from memory cache
-            self._memory_delete(key)
-            return bool(result)
-            
-        except Exception as e:
-            logger.warning(f"Redis adelete failed: {e}")
-            self._cache_stats["errors"] += 1
-            # Still try to delete from memory cache
-            return self._memory_delete(key)
-    
-    def clear_pattern(self, pattern: str) -> int:
-        """Clear all keys matching pattern (sync)"""
-        try:
-            if not self.sync_client:
-                self.connect_sync()
-            
-            keys = self.circuit_breaker.call(self.sync_client.keys, pattern)
-            if keys:
-                result = self.circuit_breaker.call(self.sync_client.delete, *keys)
-                return result
-            return 0
-            
-        except Exception as e:
-            logger.warning(f"Redis clear_pattern failed: {e}")
-            self._cache_stats["errors"] += 1
-            
-            # Clear matching keys from memory cache
-            import fnmatch
-            matching_keys = [
-                key for key in self._memory_cache.keys()
-                if fnmatch.fnmatch(key, pattern)
-            ]
-            for key in matching_keys:
-                del self._memory_cache[key]
-            return len(matching_keys)
-    
-    def get_stats(self) -> Dict[str, Any]:
-        """Get cache performance statistics"""
-        self._cleanup_memory_cache()
+    def set(self, key: str, value: Any) -> None:
+        """Set value in cache"""
+        # Remove oldest if cache is full
+        if len(self.cache) >= self.max_size and key not in self.cache:
+            oldest_key = next(iter(self.cache))
+            self.delete(oldest_key)
         
-        stats = self._cache_stats.copy()
-        stats.update({
-            "circuit_breaker_state": self.circuit_breaker.state.value,
-            "memory_cache_size": len(self._memory_cache),
-            "redis_connected": self.sync_client is not None or self.async_client is not None,
-            "hit_rate": (
-                stats["hits"] / (stats["hits"] + stats["misses"])
-                if (stats["hits"] + stats["misses"]) > 0 else 0
-            )
-        })
-        return stats
+        self.cache[key] = value
+        self.cache.move_to_end(key)
+        self.timestamps[key] = time.time()
     
-    def is_healthy(self) -> bool:
-        """Check cache health"""
-        try:
-            if self.sync_client:
-                self.circuit_breaker.call(self.sync_client.ping)
-                return True
-            return False
-        except Exception:
-            return self.circuit_breaker.state != CircuitState.OPEN
+    def delete(self, key: str) -> None:
+        """Delete value from cache"""
+        if key in self.cache:
+            del self.cache[key]
+        if key in self.timestamps:
+            del self.timestamps[key]
+    
+    def clear(self) -> None:
+        """Clear all cache entries"""
+        self.cache.clear()
+        self.timestamps.clear()
+    
+    def size(self) -> int:
+        """Get current cache size"""
+        return len(self.cache)
+    
+    def stats(self) -> Dict[str, Any]:
+        """Get cache statistics"""
+        return {
+            "size": self.size(),
+            "max_size": self.max_size,
+            "ttl": self.ttl,
+            "keys": list(self.cache.keys())[:10]  # Show first 10 keys
+        }
 
 
-# Global cache manager instance
-cache_manager = CacheManager()
+# Global cache instances for different purposes
+announcement_cache = LRUCache(max_size=256, ttl=60)  # 1 minute TTL for announcements
+detail_cache = LRUCache(max_size=128, ttl=300)  # 5 minutes TTL for details
+search_cache = LRUCache(max_size=64, ttl=30)  # 30 seconds TTL for search results
 
 
-# Convenience functions
-def cache_set(key: str, value: Any, ttl: int = 3600) -> bool:
-    """Set value in cache"""
-    return cache_manager.set(key, value, ttl)
-
-async def cache_aset(key: str, value: Any, ttl: int = 3600) -> bool:
-    """Set value in cache (async)"""
-    return await cache_manager.aset(key, value, ttl)
-
-def cache_get(key: str) -> Optional[Any]:
-    """Get value from cache"""
-    return cache_manager.get(key)
-
-async def cache_aget(key: str) -> Optional[Any]:
-    """Get value from cache (async)"""
-    return await cache_manager.aget(key)
-
-def cache_delete(key: str) -> bool:
-    """Delete key from cache"""
-    return cache_manager.delete(key)
-
-async def cache_adelete(key: str) -> bool:
-    """Delete key from cache (async)"""
-    return await cache_manager.adelete(key)
+def cache_key_generator(*args, **kwargs) -> str:
+    """Generate cache key from function arguments"""
+    key_data = {
+        "args": args,
+        "kwargs": kwargs
+    }
+    key_str = json.dumps(key_data, sort_keys=True, default=str)
+    return hashlib.md5(key_str.encode()).hexdigest()
 
 
-# Decorators for caching
-def cached(ttl: int = 3600, key_prefix: str = ""):
-    """Decorator for caching function results"""
-    def decorator(func):
+def cached(cache_instance: LRUCache, key_prefix: str = ""):
+    """
+    Decorator for caching function results.
+    
+    Args:
+        cache_instance: Cache instance to use
+        key_prefix: Optional prefix for cache keys
+    """
+    def decorator(func: Callable):
         @wraps(func)
-        def wrapper(*args, **kwargs):
+        async def async_wrapper(*args, **kwargs):
             # Generate cache key
-            key_parts = [key_prefix or func.__name__]
-            if args:
-                key_parts.extend(str(arg) for arg in args)
-            if kwargs:
-                key_parts.extend(f"{k}:{v}" for k, v in sorted(kwargs.items()))
+            cache_key = f"{key_prefix}:{cache_key_generator(*args, **kwargs)}"
             
-            cache_key = hashlib.md5(":".join(key_parts).encode()).hexdigest()
+            # Check cache
+            cached_value = cache_instance.get(cache_key)
+            if cached_value is not None:
+                logger.debug(f"Cache hit for {func.__name__} with key {cache_key}")
+                return cached_value
             
-            # Try to get from cache
-            cached_result = cache_manager.get(cache_key)
-            if cached_result is not None:
-                return cached_result
-            
-            # Execute function and cache result
-            result = func(*args, **kwargs)
-            cache_manager.set(cache_key, result, ttl)
-            return result
-        
-        return wrapper
-    return decorator
-
-def acached(ttl: int = 3600, key_prefix: str = ""):
-    """Decorator for caching async function results"""
-    def decorator(func):
-        @wraps(func)
-        async def wrapper(*args, **kwargs):
-            # Generate cache key
-            key_parts = [key_prefix or func.__name__]
-            if args:
-                key_parts.extend(str(arg) for arg in args)
-            if kwargs:
-                key_parts.extend(f"{k}:{v}" for k, v in sorted(kwargs.items()))
-            
-            cache_key = hashlib.md5(":".join(key_parts).encode()).hexdigest()
-            
-            # Try to get from cache
-            cached_result = await cache_manager.aget(cache_key)
-            if cached_result is not None:
-                return cached_result
-            
-            # Execute function and cache result
+            # Call function and cache result
             result = await func(*args, **kwargs)
-            await cache_manager.aset(cache_key, result, ttl)
+            cache_instance.set(cache_key, result)
+            logger.debug(f"Cache miss for {func.__name__}, cached with key {cache_key}")
+            
             return result
         
-        return wrapper
+        @wraps(func)
+        def sync_wrapper(*args, **kwargs):
+            # Generate cache key
+            cache_key = f"{key_prefix}:{cache_key_generator(*args, **kwargs)}"
+            
+            # Check cache
+            cached_value = cache_instance.get(cache_key)
+            if cached_value is not None:
+                logger.debug(f"Cache hit for {func.__name__} with key {cache_key}")
+                return cached_value
+            
+            # Call function and cache result
+            result = func(*args, **kwargs)
+            cache_instance.set(cache_key, result)
+            logger.debug(f"Cache miss for {func.__name__}, cached with key {cache_key}")
+            
+            return result
+        
+        # Return appropriate wrapper based on function type
+        import asyncio
+        if asyncio.iscoroutinefunction(func):
+            return async_wrapper
+        else:
+            return sync_wrapper
+    
     return decorator
 
-@asynccontextmanager
-async def get_cache_session():
-    """Context manager for cache operations"""
-    try:
-        yield cache_manager
-    finally:
-        # Connection cleanup handled by connection pool
-        pass
+
+def invalidate_announcement_cache():
+    """Invalidate announcement-related caches"""
+    announcement_cache.clear()
+    search_cache.clear()
+    logger.info("Announcement caches invalidated")
+
+
+def invalidate_detail_cache(announcement_id: str = None):
+    """Invalidate detail cache for specific announcement or all"""
+    if announcement_id:
+        # Remove specific announcement from cache
+        keys_to_remove = [
+            key for key in detail_cache.cache.keys() 
+            if announcement_id in key
+        ]
+        for key in keys_to_remove:
+            detail_cache.delete(key)
+        logger.info(f"Detail cache invalidated for announcement {announcement_id}")
+    else:
+        detail_cache.clear()
+        logger.info("All detail caches invalidated")
+
+
+def get_cache_stats() -> Dict[str, Any]:
+    """Get statistics for all caches"""
+    return {
+        "announcement_cache": announcement_cache.stats(),
+        "detail_cache": detail_cache.stats(),
+        "search_cache": search_cache.stats()
+    }

@@ -225,12 +225,17 @@ async def get_announcements(
     표준 페이지네이션과 필터링을 지원합니다.
     """
     try:
-        # Debug logging to check received parameters
+        import time
         import logging
         logger = logging.getLogger(__name__)
+        
+        # Performance profiling
+        start_time = time.time()
+        
         logger.info(f"Router received parameters: business_type='{business_type}', status='{status}', keyword='{keyword}', is_active={is_active}, sort_by='{sort_by}'")
         
         # 캐시 확인
+        cache_check_start = time.time()
         cached_response = announcement_cache_service.get_announcements_list_cache(
             page=pagination.page,
             size=pagination.size,
@@ -241,12 +246,15 @@ async def get_announcements(
             status=status,
             keyword=keyword
         )
+        cache_check_time = time.time() - cache_check_start
+        logger.info(f"Cache check took: {cache_check_time:.3f}s")
         
         if cached_response:
-            logger.info("Returning cached announcement list")
+            logger.info(f"Returning cached announcement list - Total time: {time.time() - start_time:.3f}s")
             return cached_response
         
         # Use the enhanced get_announcements method with filtering support
+        db_query_start = time.time()
         result = service.get_announcements(
             page=pagination.page,
             page_size=pagination.size,
@@ -257,19 +265,22 @@ async def get_announcements(
             status=status,
             search=keyword
         )
+        db_query_time = time.time() - db_query_start
+        logger.info(f"Database query took: {db_query_time:.3f}s")
         
+        # Optimize serialization - use dict() instead of model_dump() for better performance
+        serialization_start = time.time()
         items = []
         for a in result.items:
-            # Ensure announcement_data is properly serialized
-            if hasattr(a.announcement_data, 'model_dump'):
-                announcement_data_dict = a.announcement_data.model_dump(mode='json')
-            elif isinstance(a.announcement_data, dict):
+            # Fast serialization without model_dump
+            if isinstance(a.announcement_data, dict):
                 announcement_data_dict = a.announcement_data
+            elif hasattr(a.announcement_data, '__dict__'):
+                announcement_data_dict = a.announcement_data.__dict__
             else:
-                # Convert to dict if it's some other type
-                announcement_data_dict = dict(a.announcement_data) if a.announcement_data else {}
+                announcement_data_dict = {}
             
-            # Create plain dictionary instead of Pydantic model
+            # Create plain dictionary with minimal processing
             response_item = {
                 "id": str(a.id),
                 "announcement_data": announcement_data_dict,
@@ -280,9 +291,13 @@ async def get_announcements(
             }
             items.append(response_item)
         
+        serialization_time = time.time() - serialization_start
+        logger.info(f"Serialization took: {serialization_time:.3f}s for {len(items)} items")
+        
         import math
         total_pages = math.ceil(result.total_count / pagination.size) if result.total_count > 0 else 1
         
+        response_creation_start = time.time()
         response = PaginatedResponse(
             success=True,
             items=items,
@@ -296,8 +311,11 @@ async def get_announcements(
                 "has_previous": result.has_previous
             }
         )
+        response_creation_time = time.time() - response_creation_start
+        logger.info(f"Response creation took: {response_creation_time:.3f}s")
         
         # 응답 캐싱 (60초 TTL)
+        cache_set_start = time.time()
         announcement_cache_service.set_announcements_list_cache(
             page=pagination.page,
             size=pagination.size,
@@ -310,6 +328,18 @@ async def get_announcements(
             status=status,
             keyword=keyword
         )
+        cache_set_time = time.time() - cache_set_start
+        logger.info(f"Cache set took: {cache_set_time:.3f}s")
+        
+        total_time = time.time() - start_time
+        logger.info(f"=== Performance Summary ===")
+        logger.info(f"Cache check: {cache_check_time:.3f}s")
+        logger.info(f"DB query: {db_query_time:.3f}s")
+        logger.info(f"Serialization: {serialization_time:.3f}s")
+        logger.info(f"Response creation: {response_creation_time:.3f}s")
+        logger.info(f"Cache set: {cache_set_time:.3f}s")
+        logger.info(f"TOTAL TIME: {total_time:.3f}s")
+        logger.info(f"========================")
         
         return response
     except ValidationException as e:

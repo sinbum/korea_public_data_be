@@ -35,16 +35,16 @@ class DatabaseManager:
     def _get_sync_client_options(self) -> Dict[str, Any]:
         """Get optimized connection options for sync client"""
         return {
-            # Connection pooling
-            "maxPoolSize": 50,
-            "minPoolSize": 5,
-            "maxIdleTimeMS": 600000,  # 10 minutes (increased from 30 seconds)
-            "waitQueueTimeoutMS": 5000,  # 5 seconds
+            # Connection pooling - 더 높은 값으로 증가
+            "maxPoolSize": 100,  # 50에서 100으로 증가
+            "minPoolSize": 10,   # 5에서 10으로 증가
+            "maxIdleTimeMS": 900000,  # 15 minutes로 증가
+            "waitQueueTimeoutMS": 3000,  # 3 seconds로 감소
             
-            # Timeout configurations
-            "connectTimeoutMS": 10000,  # 10 seconds
-            "socketTimeoutMS": 20000,   # 20 seconds
-            "serverSelectionTimeoutMS": 10000,  # 10 seconds
+            # Timeout configurations - 더 빠른 응답을 위해 조정
+            "connectTimeoutMS": 5000,  # 5 seconds로 감소
+            "socketTimeoutMS": 15000,   # 15 seconds로 감소
+            "serverSelectionTimeoutMS": 5000,  # 5 seconds로 감소
             
             # Reliability options
             "retryWrites": True,
@@ -59,16 +59,16 @@ class DatabaseManager:
     def _get_async_client_options(self) -> Dict[str, Any]:
         """Get optimized connection options for async client"""
         return {
-            # Connection pooling (async)
-            "maxPoolSize": 100,  # Higher for async workloads
-            "minPoolSize": 10,
-            "maxIdleTimeMS": 600000,  # 10 minutes (increased from 60 seconds)
-            "waitQueueTimeoutMS": 10000,  # 10 seconds
+            # Connection pooling (async) - 더 공격적인 풀링
+            "maxPoolSize": 150,  # 100에서 150으로 증가
+            "minPoolSize": 20,   # 10에서 20으로 증가
+            "maxIdleTimeMS": 900000,  # 15 minutes로 증가
+            "waitQueueTimeoutMS": 5000,  # 5 seconds로 감소
             
-            # Timeout configurations
-            "connectTimeoutMS": 15000,  # 15 seconds
-            "socketTimeoutMS": 30000,   # 30 seconds
-            "serverSelectionTimeoutMS": 15000,  # 15 seconds
+            # Timeout configurations - 더 빠른 응답
+            "connectTimeoutMS": 5000,  # 5 seconds로 감소
+            "socketTimeoutMS": 20000,   # 20 seconds로 감소
+            "serverSelectionTimeoutMS": 5000,  # 5 seconds로 감소
             
             # Reliability options
             "retryWrites": True,

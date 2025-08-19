@@ -9,6 +9,7 @@ from ...shared.interfaces.domain_services import IAnnouncementService
 from ...shared.schemas import PaginatedResponse, DataCollectionResult
 from ...shared.pagination import PaginationParams, FilterParams, PaginatedResult
 from ...core.interfaces.base_repository import QueryFilter, PaginationResult
+from ...core.cache import announcement_cache, detail_cache, cached
 import logging
 
 logger = logging.getLogger(__name__)

@@ -78,12 +78,48 @@ class AnnouncementRepository(BaseRepository[Announcement, AnnouncementCreate, An
             logger.error(f"Failed to find announcements by business_type {business_type}: {e}")
             return []
     
-    def find_active_announcements(self, page: int = 1, page_size: int = 20) -> PaginationResult[Announcement]:
-        """Get paginated active announcements"""
+    def find_active_announcements(self, page: int = 1, page_size: int = 20, projection: Dict[str, Any] = None) -> PaginationResult[Announcement]:
+        """Get paginated active announcements with optional field projection"""
         try:
             filters = QueryFilter().eq("is_active", True)
             sort = SortOption().desc("created_at")
-            return self.get_paginated(page=page, page_size=page_size, filters=filters, sort=sort)
+            
+            # 기본 프로젝션 - 목록에 필요한 필드만
+            if projection is None:
+                projection = {
+                    "_id": 1,
+                    "announcement_data.announcement_id": 1,
+                    "announcement_data.title": 1,
+                    "announcement_data.business_name": 1,
+                    "announcement_data.business_type": 1,
+                    "announcement_data.status": 1,
+                    "announcement_data.start_date": 1,
+                    "announcement_data.end_date": 1,
+                    "announcement_data.deadline": 1,
+                    "created_at": 1,
+                    "updated_at": 1,
+                    "is_active": 1
+                }
+            
+            # MongoDB 쿼리 with projection
+            skip = (page - 1) * page_size
+            total_count = self.collection.count_documents(filters.build())
+            
+            cursor = self.collection.find(
+                filters.build(),
+                projection=projection
+            ).sort(sort.build()).skip(skip).limit(page_size)
+            
+            items = [self._to_domain_model(doc) for doc in cursor]
+            
+            return PaginationResult(
+                items=items,
+                total_count=total_count,
+                page=page,
+                page_size=page_size,
+                has_next=(page * page_size) < total_count,
+                has_previous=page > 1
+            )
         except Exception as e:
             logger.error(f"Failed to get active announcements: {e}")
             # Return empty pagination result on error

@@ -22,6 +22,7 @@ from ...shared.pagination import PaginationParams, PaginatedResult
 from .service import AnnouncementService
 from .schemas import AnnouncementResponse, AnnouncementCreate, AnnouncementUpdate
 from .models import Announcement
+from ...core.cache import announcement_cache, detail_cache, cached
 
 # V1 Router - Legacy format support
 v1_router = VersionedAPIRouter(
